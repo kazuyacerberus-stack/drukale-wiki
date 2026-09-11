@@ -23,7 +23,13 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <h1 className="text-4xl font-bold mb-8">Wiki Drukale</h1>
-      {loading ? <p>Carregando...</p> : <div className="grid grid-cols-3 gap-6">{characters.map(c => <div key={c.id} className="bg-gray-800 p-6 rounded"><h2 className="text-xl font-bold">{c.name}</h2><p className="text-gray-400">{c.description}</p></div>)}</div>}
+      {loading ? <p>Carregando...</p> : <div className="grid grid-cols-3 gap-6">{characters.map(c => (
+        <div key={c.id} className="bg-gray-800 p-6 rounded">
+          {c.image_url && <img src={c.image_url} alt={c.name} className="w-full h-48 object-cover rounded mb-4" />}
+          <h2 className="text-xl font-bold">{c.name}</h2>
+          <p className="text-gray-400">{c.description}</p>
+        </div>
+      ))}</div>}
     </div>
   );
 }
