@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import './matrix.css';
 import MatrixRain from './components/MatrixRain';
@@ -12,6 +12,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
   const [query, setQuery] = useState('');
+  const [faccao, setFaccao] = useState('');   // '' = todas
+  const [estado, setEstado] = useState('');   // '' = todos
   const [broken, setBroken] = useState<Record<string, boolean>>({});
   const { beep, muted, setMuted } = useBeep();
 
@@ -29,16 +31,77 @@ export default function Home() {
     })();
   }, []);
 
+  /**
+   * Monta a lista de abas de um campo a partir dos personagens que existem.
+   * Agrupa ignorando maiúsculas — "Casa Drukale" e "casa drukale" viram
+   * uma aba só — e mostra a forma como foi escrita da primeira vez.
+   * Ordena da facção mais numerosa para a menos numerosa.
+   */
+  const abasDe = (campo: 'faction' | 'status') => {
+    const mapa = new Map<string, { rotulo: string; n: number }>();
+    for (const c of chars) {
+      const bruto = (c[campo] ?? '').trim();
+      if (!bruto) continue;
+      const chave = bruto.toLowerCase();
+      const atual = mapa.get(chave);
+      if (atual) atual.n++;
+      else mapa.set(chave, { rotulo: bruto, n: 1 });
+    }
+    return [...mapa.entries()]
+      .map(([chave, v]) => ({ chave, rotulo: v.rotulo, n: v.n }))
+      .sort((a, b) => b.n - a.n || a.rotulo.localeCompare(b.rotulo));
+  };
+
+  const faccoes = useMemo(() => abasDe('faction'), [chars]);
+  const estados = useMemo(() => abasDe('status'), [chars]);
+
   const q = query.trim().toLowerCase();
-  const list = q
-    ? chars.filter((c) =>
-        [c.name, c.epithet, c.faction, c.description]
-          .some((v) => (v ?? '').toLowerCase().includes(q))
+  const list = chars.filter((c) => {
+    if (faccao && (c.faction ?? '').trim().toLowerCase() !== faccao) return false;
+    if (estado && (c.status ?? '').trim().toLowerCase() !== estado) return false;
+    if (
+      q &&
+      ![c.name, c.epithet, c.faction, c.description].some((v) =>
+        (v ?? '').toLowerCase().includes(q)
       )
-    : chars;
+    ) return false;
+    return true;
+  });
+
+  const filtrando = Boolean(q || faccao || estado);
 
   const inicial = (n: string | null) => (n?.trim()?.[0] ?? '?').toUpperCase();
   const rota = (c: Character) => `/personagem/${c.slug || c.id}`;
+
+  /** Desenha uma linha de abas. Clicar na aba já ativa desliga o filtro. */
+  const linhaDeAbas = (
+    titulo: string,
+    todos: string,
+    opcoes: { chave: string; rotulo: string; n: number }[],
+    valor: string,
+    definir: (v: string) => void
+  ) => (
+    <div className="abas">
+      <span className="abas-rot">{titulo}</span>
+      <button
+        className={`aba${valor === '' ? ' on' : ''}`}
+        onClick={() => { definir(''); beep('click'); }}
+        onMouseEnter={() => beep('hover')}
+      >
+        {todos}<span className="n">{chars.length}</span>
+      </button>
+      {opcoes.map((o) => (
+        <button
+          key={o.chave}
+          className={`aba${valor === o.chave ? ' on' : ''}`}
+          onClick={() => { definir(valor === o.chave ? '' : o.chave); beep('click'); }}
+          onMouseEnter={() => beep('hover')}
+        >
+          {o.rotulo}<span className="n">{o.n}</span>
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="term">
@@ -65,6 +128,16 @@ export default function Home() {
           <p className="sub">&gt; arquivo central de personagens <span className="cur" /></p>
         </header>
 
+        {/* abas de filtragem — aparecem assim que existir facção ou status preenchido */}
+        {!loading && (faccoes.length > 0 || estados.length > 0) && (
+          <div className="filtros">
+            {faccoes.length > 0 &&
+              linhaDeAbas('facção', 'todas', faccoes, faccao, setFaccao)}
+            {estados.length > 0 &&
+              linhaDeAbas('status', 'todos', estados, estado, setEstado)}
+          </div>
+        )}
+
         <div className="bar">
           <input
             className="srch"
@@ -86,8 +159,8 @@ export default function Home() {
           </div>
         ) : list.length === 0 ? (
           <p className="vazio">
-            {q
-              ? 'nenhum registro corresponde à busca'
+            {filtrando
+              ? 'nenhum registro corresponde aos filtros'
               : 'arquivo vazio — nenhum personagem registrado'}
           </p>
         ) : (

@@ -88,6 +88,27 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .count { font-size: 11.5px; letter-spacing: 2px; color: rgba(0,255,102,.55); white-space: nowrap; }
 
+/* ---------- abas de filtragem ---------- */
+.filtros { margin: 0 0 22px; display: grid; gap: 11px; }
+.abas { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.abas-rot {
+  flex: none; margin-right: 3px; font-size: 10.5px; letter-spacing: 2px;
+  color: rgba(138,255,192,.3); text-transform: uppercase;
+}
+.aba {
+  padding: 6px 13px; font-family: inherit; font-size: 11.5px; letter-spacing: 1.5px;
+  cursor: pointer; background: transparent; border: 1px solid rgba(0,255,102,.18);
+  color: rgba(138,255,192,.55); border-radius: 2px; transition: .2s; white-space: nowrap;
+}
+.aba:hover { border-color: rgba(0,255,102,.5); color: var(--g2); }
+.aba .n { margin-left: 7px; font-size: 10px; color: rgba(0,255,102,.4); }
+.aba.on {
+  border-color: var(--g); color: var(--g); background: rgba(0,255,102,.08);
+  text-shadow: 0 0 8px rgba(0,255,102,.55);
+  box-shadow: 0 0 14px rgba(0,255,102,.22), inset 0 0 18px rgba(0,255,102,.05);
+}
+.aba.on .n { color: rgba(0,255,102,.8); }
+
 .erro { color: #ff5f5f; font-size: 13px; letter-spacing: 1.5px; }
 .vazio { text-align: center; padding: 60px 0; color: rgba(138,255,192,.35); font-size: 13.5px; letter-spacing: 1.5px; }
 
