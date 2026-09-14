@@ -7,7 +7,7 @@ import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
 import Protegido from '../components/Protegido';
 import { cabecalhoAuth, sair } from '../lib/auth';
-import { supabase, type Character } from '../lib/db';
+import { supabase, lerSecoes, type Character } from '../lib/db';
 
 export default function Painel() {
   const router = useRouter();
@@ -64,10 +64,12 @@ export default function Painel() {
   const inicial = (n: string | null) => (n?.trim()?.[0] ?? '?').toUpperCase();
   const ruim = aviso.startsWith('FALHA');
 
-  /* quantos campos da ficha estão preenchidos — mostra o que falta completar */
+  /* quantos itens da ficha estão preenchidos — mostra o que falta completar */
+  const ITENS_FICHA = 7;   // epíteto, citação, facção, status, raça, afiliações e as abas
   const completude = (c: Character) => {
-    const campos = [c.epithet, c.quote, c.history, c.powers, c.faction, c.status, c.race, c.affiliation];
-    return campos.filter(Boolean).length;
+    const campos = [c.epithet, c.quote, c.faction, c.status, c.race, c.affiliation];
+    const temAbas = lerSecoes(c.sections).length > 0;
+    return campos.filter(Boolean).length + (temAbas ? 1 : 0);
   };
 
   return (
@@ -145,8 +147,8 @@ export default function Painel() {
                     <span className="slug">/personagem/{c.slug || id}</span>
                   </div>
 
-                  <div className="barra" title={`${preenchidos} de 8 campos preenchidos`}>
-                    <span style={{ width: `${(preenchidos / 8) * 100}%` }} />
+                  <div className="barra" title={`${preenchidos} de ${ITENS_FICHA} itens preenchidos`}>
+                    <span style={{ width: `${(preenchidos / ITENS_FICHA) * 100}%` }} />
                   </div>
 
                   {emConfirmacao ? (

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
 import { useBeep } from '../../components/useBeep';
-import { supabase, FICHA, type Character } from '../../lib/db';
+import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
 
 export default function PersonagemPage() {
   const params = useParams<{ slug: string }>();
@@ -19,12 +19,14 @@ export default function PersonagemPage() {
   });
   const [loading, setLoading] = useState(true);
   const [quebrada, setQuebrada] = useState(false);
+  const [abaAtiva, setAbaAtiva] = useState(0);
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
     if (!chave) return;
     (async () => {
       setLoading(true);
+      setAbaAtiva(0);   // trocou de personagem, volta para a primeira aba
 
       // busca todos e resolve localmente: funciona por slug ou por id,
       // e já entrega os vizinhos para a navegação do rodapé
@@ -55,6 +57,9 @@ export default function PersonagemPage() {
       setLoading(false);
     })();
   }, [chave]);
+
+  // precisa ficar aqui em cima: hooks não podem vir depois dos returns abaixo
+  const secoes = useMemo(() => lerSecoes(alvo?.sections), [alvo]);
 
   const inicial = (n: string | null) => (n?.trim()?.[0] ?? '?').toUpperCase();
   const rota = (c: Character) => `/personagem/${c.slug || c.id}`;
@@ -93,6 +98,10 @@ export default function PersonagemPage() {
   }
 
   /* ---------- ficha ---------- */
+  // se alguém apagou abas no painel enquanto esta página estava aberta,
+  // o índice guardado pode ter ficado grande demais — trava no último
+  const ativa = secoes.length ? Math.min(abaAtiva, secoes.length - 1) : 0;
+
   const linhas = FICHA.map((f) => ({
     rotulo: f.rotulo,
     valor: (alvo[f.campo] as string | null) ?? null,
@@ -159,21 +168,29 @@ export default function PersonagemPage() {
               </section>
             )}
 
-            {alvo.history && (
-              <section className="sec" style={{ animationDelay: '140ms' }}>
-                <h2>história</h2>
-                <p>{alvo.history}</p>
-              </section>
+            {secoes.length > 0 && (
+              <div className="bloco-abas" style={{ animationDelay: '140ms' }}>
+                <div className="abas abas-ficha">
+                  {secoes.map((s, i) => (
+                    <button
+                      key={i}
+                      className={`aba${i === ativa ? ' on' : ''}`}
+                      onClick={() => { setAbaAtiva(i); beep('click'); }}
+                      onMouseEnter={() => beep('hover')}
+                    >
+                      {s.titulo}
+                    </button>
+                  ))}
+                </div>
+
+                {/* a key faz o texto reaparecer com a animação a cada troca */}
+                <section className="sec sec-aba" key={ativa}>
+                  <p>{secoes[ativa].texto}</p>
+                </section>
+              </div>
             )}
 
-            {alvo.powers && (
-              <section className="sec" style={{ animationDelay: '220ms' }}>
-                <h2>poderes e habilidades</h2>
-                <p>{alvo.powers}</p>
-              </section>
-            )}
-
-            {!alvo.description && !alvo.history && !alvo.powers && (
+            {!alvo.description && secoes.length === 0 && (
               <p className="vazio">nenhum conteúdo arquivado para este registro.</p>
             )}
           </div>

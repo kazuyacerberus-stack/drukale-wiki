@@ -24,6 +24,33 @@ export function clienteComToken(token: string | null) {
   );
 }
 
+/** Uma aba da história do personagem. */
+export type Secao = { titulo: string; texto: string };
+
+/** Limites de segurança, aplicados também no servidor. */
+export const LIMITES = { abas: 20, titulo: 60, texto: 20000 };
+
+/**
+ * Lê as abas vindas do banco sem confiar no formato.
+ * A coluna é JSON livre — dá para editar à mão no painel do Supabase —
+ * então qualquer coisa pode chegar aqui. Nada de quebrar a página do
+ * personagem por causa de um registro torto: o que não presta é ignorado.
+ */
+export function lerSecoes(valor: unknown): Secao[] {
+  if (!Array.isArray(valor)) return [];
+  const out: Secao[] = [];
+  for (const item of valor) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    const titulo = typeof o.titulo === 'string' ? o.titulo.trim() : '';
+    const texto = typeof o.texto === 'string' ? o.texto : '';
+    if (!titulo && !texto.trim()) continue;   // aba totalmente vazia, descarta
+    out.push({ titulo: titulo || 'sem título', texto });
+    if (out.length >= LIMITES.abas) break;
+  }
+  return out;
+}
+
 export type Character = {
   id: number | string;
   slug: string | null;
@@ -31,8 +58,9 @@ export type Character = {
   epithet: string | null;      // epíteto / alcunha
   quote: string | null;        // citação marcante
   description: string | null;  // resumo curto (aparece na galeria)
-  history: string | null;      // história completa
-  powers: string | null;       // poderes e habilidades
+  history: string | null;      // legado: texto antigo, hoje só cópia de segurança
+  powers: string | null;       // legado: idem
+  sections: unknown;           // abas da história — passe por lerSecoes() antes de usar
   faction: string | null;      // facção / casa
   status: string | null;       // vivo, morto, desaparecido...
   race: string | null;         // raça / origem

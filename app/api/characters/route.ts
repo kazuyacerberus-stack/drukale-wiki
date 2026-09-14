@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clienteComToken, BUCKET, slugify, limpo } from '../../lib/db';
+import { clienteComToken, BUCKET, slugify, limpo, lerSecoes, LIMITES } from '../../lib/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** Campos de texto aceitos no formulário. */
+/**
+ * Campos de texto aceitos no formulário.
+ * `history` e `powers` saíram de propósito: viraram abas dentro de
+ * `sections` e as colunas antigas ficam intactas como cópia de segurança.
+ * Se voltassem para cá, o primeiro salvamento apagaria esse backup.
+ */
 const CAMPOS = [
   'name', 'epithet', 'faction', 'status', 'race',
-  'affiliation', 'quote', 'description', 'history', 'powers',
+  'affiliation', 'quote', 'description',
 ] as const;
 
 /**
@@ -89,10 +94,39 @@ async function slugLivre(cli: SupabaseClient, base: string, ignorar?: string | n
   return `${base}-${Date.now()}`;
 }
 
-function lerCampos(form: FormData): Record<string, string | null> {
-  const r: Record<string, string | null> = {};
+function lerCampos(form: FormData): Record<string, unknown> {
+  const r: Record<string, unknown> = {};
   for (const campo of CAMPOS) r[campo] = limpo(form.get(campo));
   return r;
+}
+
+/**
+ * Lê as abas enviadas pelo formulário e corta no tamanho máximo.
+ *
+ * Duas decisões deliberadas aqui:
+ *  - campo ausente não é o mesmo que lista vazia. Se o formulário não
+ *    mandou `sections`, não mexemos na coluna — assim uma tela antiga
+ *    em cache nunca apaga as abas de ninguém.
+ *  - JSON quebrado derruba o salvamento em vez de virar lista vazia.
+ *    Melhor o usuário ver um erro do que perder o texto calado.
+ */
+function aplicarSecoes(form: FormData, registro: Record<string, unknown>) {
+  const bruto = form.get('sections');
+  if (typeof bruto !== 'string') return;
+
+  let dados: unknown = [];
+  if (bruto.trim()) {
+    try {
+      dados = JSON.parse(bruto);
+    } catch {
+      throw new Error('As abas chegaram corrompidas. Recarregue a página e tente de novo.');
+    }
+  }
+
+  registro.sections = lerSecoes(dados).map((s) => ({
+    titulo: s.titulo.slice(0, LIMITES.titulo),
+    texto: s.texto.slice(0, LIMITES.texto),
+  }));
 }
 
 const BLOQUEADO =
@@ -109,15 +143,21 @@ export async function POST(request: NextRequest) {
     const form = await request.formData();
     const registro = lerCampos(form);
 
-    if (!registro.name) {
+    const nome = typeof registro.name === 'string' ? registro.name : '';
+    if (!nome) {
       return NextResponse.json({ error: 'O nome é obrigatório' }, { status: 400 });
     }
 
-    registro.slug = await slugLivre(cli, slugify(registro.name));
+    aplicarSecoes(form, registro);
 
+    const slug = await slugLivre(cli, slugify(nome));
+    registro.slug = slug;
+
+    let imageUrl: string | null = null;
     const file = form.get('file');
     if (file instanceof File && file.size > 0) {
-      registro.image_url = await subirImagem(cli, file, registro.slug);
+      imageUrl = await subirImagem(cli, file, slug);
+      registro.image_url = imageUrl;
     }
 
     const { data: criados, error } = await cli
@@ -137,8 +177,8 @@ export async function POST(request: NextRequest) {
       {
         success: true,
         message: 'Personagem gravado com sucesso!',
-        slug: registro.slug,
-        imageUrl: registro.image_url ?? null,
+        slug,
+        imageUrl,
       },
       { status: 200 }
     );
@@ -161,9 +201,12 @@ export async function PUT(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'Registro não identificado' }, { status: 400 });
 
     const registro = lerCampos(form);
-    if (!registro.name) {
+    const nome = typeof registro.name === 'string' ? registro.name : '';
+    if (!nome) {
       return NextResponse.json({ error: 'O nome é obrigatório' }, { status: 400 });
     }
+
+    aplicarSecoes(form, registro);
 
     const { data: atual, error: erroBusca } = await cli
       .from('characters')
@@ -176,18 +219,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const slugAtual: string | null = atual.slug ?? null;
-    registro.slug =
+    const slug =
       form.get('trocarSlug') === '1'
-        ? await slugLivre(cli, slugify(registro.name), slugAtual)
+        ? await slugLivre(cli, slugify(nome), slugAtual)
         : slugAtual;
+    registro.slug = slug;
 
     const file = form.get('file');
     const trocouImagem = file instanceof File && file.size > 0;
     const removeu = form.get('removerImagem') === '1';
 
+    let imageUrl: string | null = atual.image_url ?? null;
     if (trocouImagem) {
-      registro.image_url = await subirImagem(cli, file, registro.slug ?? 'personagem');
+      imageUrl = await subirImagem(cli, file, slug ?? 'personagem');
+      registro.image_url = imageUrl;
     } else if (removeu) {
+      imageUrl = null;
       registro.image_url = null;
     }
 
@@ -214,9 +261,8 @@ export async function PUT(request: NextRequest) {
       {
         success: true,
         message: 'Registro atualizado!',
-        slug: registro.slug,
-        imageUrl:
-          registro.image_url !== undefined ? registro.image_url : atual.image_url ?? null,
+        slug,
+        imageUrl,
       },
       { status: 200 }
     );

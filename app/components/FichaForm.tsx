@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { slugify, type Character } from '../lib/db';
+import { slugify, lerSecoes, LIMITES, type Character, type Secao } from '../lib/db';
 import { cabecalhoAuth } from '../lib/auth';
 
 const CANVAS = 520;   // palco de edição
@@ -20,13 +20,11 @@ export type Campos = {
   affiliation: string;
   quote: string;
   description: string;
-  history: string;
-  powers: string;
 };
 
 const VAZIO: Campos = {
   name: '', epithet: '', faction: '', status: '', race: '',
-  affiliation: '', quote: '', description: '', history: '', powers: '',
+  affiliation: '', quote: '', description: '',
 };
 
 function doPersonagem(c: Character): Campos {
@@ -39,8 +37,6 @@ function doPersonagem(c: Character): Campos {
     affiliation: c.affiliation ?? '',
     quote: c.quote ?? '',
     description: c.description ?? '',
-    history: c.history ?? '',
-    powers: c.powers ?? '',
   };
 }
 
@@ -56,6 +52,30 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
     (k: keyof Campos) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setF((s) => ({ ...s, [k]: e.target.value }));
+
+  /* ---------- abas da história ---------- */
+  const [secoes, setSecoes] = useState<Secao[]>(() => lerSecoes(inicial?.sections));
+  const [confirmarAba, setConfirmarAba] = useState<number | null>(null);
+
+  const novaAba = () =>
+    setSecoes((s) => (s.length >= LIMITES.abas ? s : [...s, { titulo: '', texto: '' }]));
+
+  const mudarAba = (i: number, campo: keyof Secao, valor: string) =>
+    setSecoes((s) => s.map((a, j) => (j === i ? { ...a, [campo]: valor } : a)));
+
+  const moverAba = (i: number, direcao: -1 | 1) =>
+    setSecoes((s) => {
+      const j = i + direcao;
+      if (j < 0 || j >= s.length) return s;
+      const copia = [...s];
+      [copia[i], copia[j]] = [copia[j], copia[i]];
+      return copia;
+    });
+
+  const removerAba = (i: number) => {
+    setSecoes((s) => s.filter((_, j) => j !== i));
+    setConfirmarAba(null);
+  };
 
   const [image, setImage] = useState<File | null>(null);
   const [finalPreview, setFinalPreview] = useState('');
@@ -293,6 +313,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
     try {
       const fd = new FormData();
       (Object.keys(f) as (keyof Campos)[]).forEach((k) => fd.append(k, f[k]));
+      fd.append('sections', JSON.stringify(secoes));
       if (image) fd.append('file', image);
 
       if (editando && inicial) {
@@ -321,6 +342,8 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
           setTrocarSlug(false);
         } else {
           setF(VAZIO);
+          setSecoes([]);
+          setConfirmarAba(null);
           setImage(null);
           setFinalPreview('');
           imgRef.current = null;
@@ -470,16 +493,71 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
           <textarea value={f.description} onChange={set('description')} rows={3}
             placeholder="Uma ou duas frases — é o que aparece na galeria." required />
         </div>
-        <div className="field">
-          <label>história</label>
-          <textarea value={f.history} onChange={set('history')} rows={8}
-            placeholder="Origem, feitos, quedas, redenções..." />
-          <p className="dica">quebras de linha são preservadas na página</p>
-        </div>
-        <div className="field">
-          <label>poderes e habilidades</label>
-          <textarea value={f.powers} onChange={set('powers')} rows={5} placeholder="O que ele é capaz de fazer." />
-        </div>
+      </div>
+
+      <div className="grupo">
+        <span className="grupo-t">abas da história</span>
+
+        <p className="dica" style={{ marginTop: 0, marginBottom: 18 }}>
+          cada aba vira um botão na página do personagem — uma por capítulo:
+          origem, ascensão, guerra, poderes, relações... quebras de linha
+          são preservadas.
+        </p>
+
+        {secoes.length === 0 && (
+          <p className="vazio-abas">nenhuma aba ainda — este personagem só terá o resumo.</p>
+        )}
+
+        {secoes.map((a, i) => (
+          <div className="aba-edit" key={i}>
+            <div className="aba-edit-topo">
+              <span className="aba-num">{i + 1}</span>
+              <input
+                value={a.titulo}
+                maxLength={LIMITES.titulo}
+                onChange={(e) => mudarAba(i, 'titulo', e.target.value)}
+                placeholder="nome da aba — ex: Origem"
+              />
+              <button
+                type="button" className="mini-btn" title="subir"
+                onClick={() => moverAba(i, -1)} disabled={i === 0}
+              >↑</button>
+              <button
+                type="button" className="mini-btn" title="descer"
+                onClick={() => moverAba(i, 1)} disabled={i === secoes.length - 1}
+              >↓</button>
+              {confirmarAba === i ? (
+                <>
+                  <button type="button" className="mini-btn dim" onClick={() => removerAba(i)}>
+                    apagar mesmo
+                  </button>
+                  <button type="button" className="mini-btn" onClick={() => setConfirmarAba(null)}>
+                    cancelar
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="mini-btn dim" onClick={() => setConfirmarAba(i)}>
+                  remover
+                </button>
+              )}
+            </div>
+            <textarea
+              value={a.texto}
+              rows={7}
+              maxLength={LIMITES.texto}
+              onChange={(e) => mudarAba(i, 'texto', e.target.value)}
+              placeholder="O que acontece nesta parte da história dele."
+            />
+          </div>
+        ))}
+
+        {secoes.length < LIMITES.abas ? (
+          <button type="button" className="mini-btn add-aba" onClick={novaAba}>
+            + nova aba
+          </button>
+        ) : (
+          <p className="dica">limite de {LIMITES.abas} abas atingido.</p>
+        )}
       </div>
 
       <div className="grupo">
