@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clienteComToken, BUCKET, slugify, limpo, lerSecoes, LIMITES } from '../../lib/db';
+import {
+  clienteComToken, BUCKET, BUCKET_FICHAS, slugify, limpo,
+  lerSecoes, LIMITES, caminhoDoStorage,
+} from '../../lib/db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -39,25 +42,19 @@ function naoAutorizado(msg: string) {
 }
 
 /**
- * Do endereço público do Storage extrai o caminho do arquivo.
- * .../object/public/Characters/1789-elsharion.png  ->  1789-elsharion.png
+ * Remove um arquivo do Storage sem derrubar a operação se falhar.
+ * É faxina: se não der, o registro já foi salvo e o que sobra é um
+ * arquivo órfão ocupando espaço — nunca motivo para o usuário ver erro.
  */
-function caminhoDoStorage(url: string | null): string | null {
-  if (!url) return null;
-  const marca = `/object/public/${BUCKET}/`;
-  const i = url.indexOf(marca);
-  if (i < 0) return null;
-  const caminho = url.slice(i + marca.length).split('?')[0];
-  return caminho ? decodeURIComponent(caminho) : null;
+async function apagarArquivo(cli: SupabaseClient, bucket: string, url: string | null) {
+  const caminho = caminhoDoStorage(url, bucket);
+  if (!caminho) return;
+  const { error } = await cli.storage.from(bucket).remove([caminho]);
+  if (error) console.error(`Falha ao remover arquivo antigo de ${bucket}:`, error.message);
 }
 
-/** Remove um arquivo do Storage sem derrubar a operação se falhar. */
-async function apagarImagem(cli: SupabaseClient, url: string | null) {
-  const caminho = caminhoDoStorage(url);
-  if (!caminho) return;
-  const { error } = await cli.storage.from(BUCKET).remove([caminho]);
-  if (error) console.error('Falha ao remover imagem antiga:', error.message);
-}
+const apagarImagem = (cli: SupabaseClient, url: string | null) =>
+  apagarArquivo(cli, BUCKET, url);
 
 /** Sobe a imagem e devolve o endereço público. */
 async function subirImagem(cli: SupabaseClient, file: File, base: string): Promise<string> {
@@ -129,6 +126,22 @@ function aplicarSecoes(form: FormData, registro: Record<string, unknown>) {
   }));
 }
 
+/**
+ * Guarda o endereço da ficha anexada.
+ *
+ * O arquivo em si já subiu direto do navegador para o Storage — aqui
+ * chega só o endereço dele. Campo vazio significa "tirei o anexo";
+ * campo ausente significa "não mexi nisso", e aí a coluna fica como está.
+ */
+function aplicarFicha(form: FormData, registro: Record<string, unknown>) {
+  const url = form.get('sheet_url');
+  if (typeof url !== 'string') return;
+
+  const endereco = limpo(url);
+  registro.sheet_url = endereco;
+  registro.sheet_name = endereco ? limpo(form.get('sheet_name')) : null;
+}
+
 const BLOQUEADO =
   'O Supabase recusou a operação. Confira as políticas da tabela characters.';
 
@@ -149,6 +162,7 @@ export async function POST(request: NextRequest) {
     }
 
     aplicarSecoes(form, registro);
+    aplicarFicha(form, registro);
 
     const slug = await slugLivre(cli, slugify(nome));
     registro.slug = slug;
@@ -207,6 +221,7 @@ export async function PUT(request: NextRequest) {
     }
 
     aplicarSecoes(form, registro);
+    aplicarFicha(form, registro);
 
     const { data: atual, error: erroBusca } = await cli
       .from('characters')
@@ -254,8 +269,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: BLOQUEADO }, { status: 403 });
     }
 
-    // só apaga a antiga depois que o banco confirmou
+    // só apaga as antigas depois que o banco confirmou
     if (trocouImagem || removeu) await apagarImagem(cli, atual.image_url ?? null);
+
+    // ficha trocada ou removida: o arquivo velho não serve mais a ninguém
+    const fichaAntiga: string | null = atual.sheet_url ?? null;
+    if ('sheet_url' in registro && fichaAntiga && fichaAntiga !== registro.sheet_url) {
+      await apagarArquivo(cli, BUCKET_FICHAS, fichaAntiga);
+    }
 
     return NextResponse.json(
       {
@@ -285,7 +306,7 @@ export async function DELETE(request: NextRequest) {
 
     const { data: atual } = await cli
       .from('characters')
-      .select('image_url')
+      .select('image_url, sheet_url')
       .eq('id', id)
       .single();
 
@@ -303,7 +324,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: BLOQUEADO }, { status: 403 });
     }
 
+    // o personagem se foi: retrato e ficha anexada vão junto
     await apagarImagem(cli, atual?.image_url ?? null);
+    await apagarArquivo(cli, BUCKET_FICHAS, atual?.sheet_url ?? null);
 
     return NextResponse.json({ success: true, message: 'Registro removido.' }, { status: 200 });
   } catch (error) {

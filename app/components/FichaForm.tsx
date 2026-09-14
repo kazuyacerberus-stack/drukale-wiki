@@ -2,8 +2,19 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { slugify, lerSecoes, LIMITES, type Character, type Secao } from '../lib/db';
+import {
+  slugify, lerSecoes, LIMITES, conferirFicha, subirFicha,
+  apagarFichaDoNavegador, FICHA_MAX_ROTULO,
+  type Character, type Secao,
+} from '../lib/db';
 import { cabecalhoAuth } from '../lib/auth';
+
+/** 350000 -> "342 KB" ; 5300000 -> "5.1 MB" */
+function tamanhoLegivel(bytes: number): string {
+  return bytes < 1024 * 1024
+    ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+    : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
 
 const CANVAS = 520;   // palco de edição
 const CROP = 380;     // janela de corte
@@ -81,6 +92,29 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
   const [finalPreview, setFinalPreview] = useState('');
   const [imagemAtual, setImagemAtual] = useState<string | null>(inicial?.image_url ?? null);
   const [removerImagem, setRemoverImagem] = useState(false);
+
+  /* ---------- arquivo da ficha ---------- */
+  const [ficha, setFicha] = useState<File | null>(null);
+  const [fichaAtual, setFichaAtual] = useState<string | null>(inicial?.sheet_url ?? null);
+  const [fichaNome, setFichaNome] = useState<string | null>(inicial?.sheet_name ?? null);
+  const [removerFicha, setRemoverFicha] = useState(false);
+  const [erroFicha, setErroFicha] = useState('');
+
+  const escolherFicha = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const escolhido = e.target.files?.[0] ?? null;
+    e.target.value = '';   // permite reescolher o mesmo arquivo depois
+    if (!escolhido) return;
+
+    const problema = conferirFicha(escolhido);
+    if (problema) {
+      setErroFicha(problema);
+      setFicha(null);
+      return;
+    }
+    setErroFicha('');
+    setFicha(escolhido);
+    setRemoverFicha(false);
+  };
 
   const [trocarSlug, setTrocarSlug] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -305,15 +339,50 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
   };
 
   /* ---------- envio ---------- */
+
+  /**
+   * O arquivo sobe antes do registro ser salvo. Se o salvamento falhar,
+   * o arquivo ficaria no Storage sem ninguém apontando para ele — some
+   * com ele. Nunca reclama: é faxina, não pode virar um segundo erro
+   * na cara de quem já está vendo o primeiro.
+   */
+  const desfazerUpload = async (url: string | null) => {
+    if (!url) return;
+    try {
+      await apagarFichaDoNavegador(url);
+    } catch {
+      /* ignora de propósito */
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setStatus(editando ? 'ATUALIZANDO...' : 'TRANSMITINDO...');
     setDestino(null);
+    setErroFicha('');
+
+    // se o arquivo subir e o salvamento falhar depois, este endereço
+    // serve para desfazer o upload em vez de deixar lixo no Storage
+    let subiuAgora: string | null = null;
+
     try {
+      let enderecoFicha = removerFicha ? null : fichaAtual;
+      let nomeFicha = removerFicha ? null : fichaNome;
+
+      if (ficha) {
+        setStatus('ENVIANDO ARQUIVO...');
+        enderecoFicha = await subirFicha(ficha, slugify(f.name || 'personagem'));
+        nomeFicha = ficha.name;
+        subiuAgora = enderecoFicha;
+        setStatus(editando ? 'ATUALIZANDO...' : 'TRANSMITINDO...');
+      }
+
       const fd = new FormData();
       (Object.keys(f) as (keyof Campos)[]).forEach((k) => fd.append(k, f[k]));
       fd.append('sections', JSON.stringify(secoes));
+      fd.append('sheet_url', enderecoFicha ?? '');
+      fd.append('sheet_name', nomeFicha ?? '');
       if (image) fd.append('file', image);
 
       if (editando && inicial) {
@@ -331,19 +400,27 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
 
       if (!res.ok) {
         setStatus('FALHA :: ' + (data.error ?? 'desconhecida'));
+        await desfazerUpload(subiuAgora);
       } else {
         setStatus(editando ? 'REGISTRO ATUALIZADO' : 'REGISTRO GRAVADO');
         setDestino(data.slug ?? null);
+        setFicha(null);
+        setRemoverFicha(false);
         if (editando) {
           if (data.imageUrl !== undefined) setImagemAtual(data.imageUrl);
+          setFichaAtual(enderecoFicha);
+          setFichaNome(nomeFicha);
           setImage(null);
           setFinalPreview('');
           setRemoverImagem(false);
           setTrocarSlug(false);
         } else {
+          // criou: o formulário volta em branco para o próximo personagem
           setF(VAZIO);
           setSecoes([]);
           setConfirmarAba(null);
+          setFichaAtual(null);
+          setFichaNome(null);
           setImage(null);
           setFinalPreview('');
           imgRef.current = null;
@@ -351,6 +428,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
       }
     } catch (err) {
       setStatus('FALHA :: ' + (err instanceof Error ? err.message : 'desconhecida'));
+      await desfazerUpload(subiuAgora);
     }
     setLoading(false);
   };
@@ -622,6 +700,70 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
             )}
           </>
         )}
+      </div>
+
+      <div className="grupo">
+        <span className="grupo-t">arquivo da ficha</span>
+
+        <p className="dica" style={{ marginTop: 0, marginBottom: 14 }}>
+          PDF ou Word (.pdf, .doc, .docx), até {FICHA_MAX_ROTULO}. Vira um
+          botão na página do personagem. PDF abre numa aba; Word baixa.
+        </p>
+
+        {ficha ? (
+          <div className="arq">
+            <span className="arq-sel">NOVO</span>
+            <div className="arq-txt">
+              <strong>{ficha.name}</strong>
+              <span>{tamanhoLegivel(ficha.size)} · sobe quando você salvar</span>
+            </div>
+            <button type="button" className="mini-btn dim" onClick={() => setFicha(null)}>
+              descartar
+            </button>
+          </div>
+        ) : fichaAtual && !removerFicha ? (
+          <div className="arq">
+            <span className="arq-sel">ATUAL</span>
+            <div className="arq-txt">
+              <strong>{fichaNome || 'ficha anexada'}</strong>
+              <a href={fichaAtual} target="_blank" rel="noopener noreferrer">abrir para conferir</a>
+            </div>
+            <label className="mini-btn" style={{ cursor: 'pointer' }}>
+              trocar
+              <input
+                type="file" accept=".pdf,.doc,.docx"
+                style={{ display: 'none' }} onChange={escolherFicha}
+              />
+            </label>
+            <button
+              type="button" className="mini-btn dim"
+              onClick={() => { setFicha(null); setRemoverFicha(true); }}
+            >remover</button>
+          </div>
+        ) : (
+          <label className="arq-vazio">
+            <input
+              type="file" accept=".pdf,.doc,.docx"
+              style={{ display: 'none' }} onChange={escolherFicha}
+            />
+            <strong>escolher arquivo</strong>
+            <span>
+              {removerFicha
+                ? 'a ficha atual será apagada quando você salvar'
+                : 'nenhum arquivo anexado'}
+            </span>
+          </label>
+        )}
+
+        {removerFicha && !ficha && (
+          <p className="dica" style={{ marginTop: 12 }}>
+            <button type="button" className="lnk" onClick={() => setRemoverFicha(false)}>
+              desfazer remoção
+            </button>
+          </p>
+        )}
+
+        {erroFicha && <p className="erro" style={{ marginTop: 12 }}>{erroFicha}</p>}
       </div>
 
       <button className="go" disabled={loading}>

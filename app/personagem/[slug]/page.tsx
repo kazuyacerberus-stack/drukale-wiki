@@ -210,6 +210,20 @@ export default function PersonagemPage() {
                 </div>
               ))}
             </dl>
+
+            {alvo.sheet_url && (
+              <a
+                className="baixar"
+                href={alvo.sheet_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => beep('click')}
+                onMouseEnter={() => beep('hover')}
+              >
+                <strong>ficha completa</strong>
+                <span>{alvo.sheet_name || 'abrir arquivo'}</span>
+              </a>
+            )}
           </aside>
         </div>
 
