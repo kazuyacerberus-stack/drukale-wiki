@@ -85,6 +85,7 @@ export default function Painel() {
             <div className="hd-act">
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/admin/novo">+ novo registro</Link>
+              <Link className="ico" href="/admin/comunidade">comunidade</Link>
               <button
                 className="ico dim"
                 onClick={async () => { await sair(); router.replace('/admin/login'); }}

@@ -23,6 +23,16 @@ export async function entrar(email: string, senha: string) {
   if (error) throw new Error(traduz(error.message));
 }
 
+/**
+ * Cria a conta. Devolve `true` se já veio com sessão ativa (login
+ * automático), ou `false` se o Supabase exige confirmar o e-mail antes.
+ */
+export async function cadastrar(email: string, senha: string): Promise<boolean> {
+  const { data, error } = await supabase.auth.signUp({ email, password: senha });
+  if (error) throw new Error(traduz(error.message));
+  return Boolean(data.session);
+}
+
 export async function sair() {
   await supabase.auth.signOut();
 }
@@ -32,6 +42,10 @@ function traduz(msg: string): string {
   const m = msg.toLowerCase();
   if (m.includes('invalid login credentials')) return 'E-mail ou senha incorretos';
   if (m.includes('email not confirmed')) return 'E-mail ainda não confirmado';
+  if (m.includes('user already registered') || m.includes('already registered'))
+    return 'Já existe uma conta com este e-mail';
+  if (m.includes('password') && (m.includes('short') || m.includes('at least')))
+    return 'A senha é curta demais';
   if (m.includes('too many requests') || m.includes('rate limit'))
     return 'Tentativas demais — espere um minuto';
   if (m.includes('failed to fetch') || m.includes('network'))
