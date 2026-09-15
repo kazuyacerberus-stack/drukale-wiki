@@ -5,7 +5,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/db';
 import { entrar } from '../lib/auth';
 import { BUCKET_CENAS, TIPOS_CENA, normalizarCena, validarAnexoCena, mensagemCena, urlAnexoCena, type Cena, type AnexoCena, type TipoCena } from '../lib/cenas';
+import Avatar from '../components/Avatar';
 import s from './cenas.module.css';
+
+type PerfilLeve = { apelido: string; avatar_url: string | null; banido: boolean };
 
 type Arquivo = { id: string; file: File; preview: string };
 const TAMANHO = 20;
@@ -22,6 +25,9 @@ function Midia({ url, tipo, nome }: { url: string; tipo: string; nome: string })
 export default function CenasPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [authPronto, setAuthPronto] = useState(false);
+  const [ehAdmin, setEhAdmin] = useState(false);
+  const [perfis, setPerfis] = useState<Map<string, PerfilLeve>>(new Map());
+  const [emails, setEmails] = useState<Map<string, string>>(new Map());
   const [login, setLogin] = useState(false);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -60,6 +66,35 @@ export default function CenasPage() {
     const { data } = supabase.auth.onAuthStateChange((_evento, session) => { setUserId(session?.user.id ?? null); setAuthPronto(true); });
     return () => { vivo = false; data.subscription.unsubscribe(); arquivosRef.current.forEach(a => URL.revokeObjectURL(a.preview)); };
   }, []);
+
+  // apelido/avatar de quem postou só aparece para quem tem conta; e-mail, só para o admin
+  useEffect(() => {
+    if (!userId) { setEhAdmin(false); return; }
+    let vivo = true;
+    (async () => {
+      const [admin, todos] = await Promise.all([
+        supabase.rpc('drk_e_admin'),
+        supabase.from('profiles').select('user_id,apelido,avatar_url,banido'),
+      ]);
+      if (!vivo) return;
+      setEhAdmin(admin.data === true);
+      if (todos.data) setPerfis(new Map((todos.data as { user_id: string; apelido: string; avatar_url: string | null; banido: boolean }[]).map(p => [p.user_id, p])));
+      if (admin.data === true) {
+        const lista = await supabase.rpc('drk_admin_listar_perfis');
+        if (vivo && lista.data) setEmails(new Map((lista.data as { user_id: string; email: string }[]).map(r => [r.user_id, r.email])));
+      }
+    })();
+    return () => { vivo = false; };
+  }, [userId]);
+
+  const silenciarRapido = async (alvo: string) => {
+    const ate = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    await supabase.rpc('drk_silenciar_usuario', { alvo, ate });
+  };
+  const alternarExpulsao = async (alvo: string, estado: boolean) => {
+    const { error } = await supabase.rpc('drk_expulsar_usuario', { alvo, expulso: estado });
+    if (!error) setPerfis(prev => { const p = prev.get(alvo); return p ? new Map(prev).set(alvo, { ...p, banido: estado }) : prev; });
+  };
 
   useEffect(() => {
     const el = textoRef.current;
@@ -176,7 +211,7 @@ export default function CenasPage() {
     <div className={s.wrap}>
       <header className={s.topo}>
         <span className={s.caminho}><i /> drukale://arquivo/cenas</span>
-        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/mundo">◍ Mundo</Link></nav>
+        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/mundo">◍ Mundo</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
       </header>
       <section className={s.hero}>
         <div><p className={s.eyebrow}>IMPÉRIO DRUKALE / REGISTROS NARRATIVOS</p><h1>ARQUIVO DE CENAS<span>_</span></h1><p>Cada personagem deixa um rastro. Registre o seu.</p></div>
@@ -184,7 +219,7 @@ export default function CenasPage() {
       </section>
       <div className={s.status}><span>● {userId ? 'ACESSO IDENTIFICADO' : 'ARQUIVO PÚBLICO'}</span><span>TERMINAL DE MEMÓRIAS // 01</span></div>
       {aviso && <p className={s.aviso} role="status">{aviso}</p>}
-      {login && <section className={s.painel} aria-labelledby="login-titulo"><h2 id="login-titulo">Identifique-se para publicar</h2><p>Use a conta fornecida pelo administrador da wiki.</p><form onSubmit={autenticar} className={s.login}>
+      {login && <section className={s.painel} aria-labelledby="login-titulo"><h2 id="login-titulo">Identifique-se para publicar</h2><p>Entre com sua conta. <Link href="/cadastro">Não tem conta? Cadastre-se</Link></p><form onSubmit={autenticar} className={s.login}>
         <label>E-mail<input type="email" required autoComplete="username" value={email} onChange={e => setEmail(e.target.value)} /></label>
         <label>Senha<input type="password" required autoComplete="current-password" value={senha} onChange={e => setSenha(e.target.value)} /></label>
         <button className={s.primario} disabled={autenticando}>{autenticando ? 'Entrando…' : 'Entrar'}</button><button type="button" disabled={autenticando} onClick={() => { setLogin(false); setSenha(''); }}>Fechar</button>
@@ -223,7 +258,17 @@ export default function CenasPage() {
           <div className={s.linha}><h2>Últimas transmissões</h2><button onClick={atualizar} disabled={carregando}>↻ Atualizar</button></div>
           {erroFeed && <div role="alert" className={s.erro}>{erroFeed}<button onClick={() => setRevisao(r => r + 1)}>Tentar novamente</button></div>}
           {!carregando && !erroFeed && cenas.length === 0 && <div className={`${s.painel} ${s.vazio}`}><span aria-hidden="true">[ _ ]</span><h3>{filtroPessoa || filtroLocal || filtroTipo ? 'Nenhuma cena encontrada' : 'O próximo registro é seu'}</h3><p>{filtroPessoa || filtroLocal || filtroTipo ? 'Experimente outro nome ou limpe os filtros.' : 'Abra uma nova cena e comece a história do seu personagem.'}</p></div>}
-          {cenas.map(c => <article key={c.id} className={`${s.painel} ${s.cena}`}><div className={s.linha}><span className={s.tipo}>{c.tipo}</span><time dateTime={c.created_at}>{new Date(c.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time></div><h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p><div className={s.texto}>{c.texto}</div>
+          {cenas.map(c => <article key={c.id} className={`${s.painel} ${s.cena}`}><div className={s.linha}><span className={s.tipo}>{c.tipo}</span><time dateTime={c.created_at}>{new Date(c.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time></div>
+            {perfis.get(c.user_id) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 -6px', fontSize: 12, color: '#9ab3a2' }}>
+              <Avatar url={perfis.get(c.user_id)!.avatar_url} nome={perfis.get(c.user_id)!.apelido} tamanho={22} />
+              <span>{perfis.get(c.user_id)!.apelido}</span>
+              {ehAdmin && emails.get(c.user_id) && <span style={{ color: '#6f8a79' }}>({emails.get(c.user_id)})</span>}
+              {ehAdmin && c.user_id !== userId && <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                <button type="button" onClick={() => silenciarRapido(c.user_id)}>🔇 1h</button>
+                <button type="button" onClick={() => alternarExpulsao(c.user_id, !perfis.get(c.user_id)?.banido)}>{perfis.get(c.user_id)?.banido ? '✓ reintegrar' : '⛔ expulsar'}</button>
+              </span>}
+            </div>}
+            <h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p><div className={s.texto}>{c.texto}</div>
             {c.anexos.length > 0 && <div className={s.midias}>{c.anexos.map(a => <figure key={a.caminho}><Midia url={urlAnexoCena(a.caminho)} tipo={a.tipo} nome={a.nome} /></figure>)}</div>}
             <footer className={s.assinatura}><div><small>AUTOR</small><strong>{c.autor}</strong></div><div><small>PERSONAGEM</small><strong>{c.personagem}</strong></div><span aria-hidden="true">╬</span></footer>
           </article>)}

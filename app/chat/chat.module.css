@@ -1,0 +1,77 @@
+.terminal{--verde:#46ff8a;--muted:#9ab3a2;min-height:100vh;background:radial-gradient(ellipse at 70% 0,#10361c66,transparent 50%),#030805;color:#dcebe0;font-family:'Share Tech Mono',Consolas,monospace;padding:0 28px 28px;color-scheme:dark}
+.terminal *{box-sizing:border-box}
+.wrap{max-width:900px;margin:auto;display:flex;flex-direction:column;min-height:100vh}
+.terminal button,.terminal input,.terminal textarea{font:inherit}
+.terminal button{cursor:pointer;border:1px solid #496353;color:#c9e1d1;background:#112019;padding:9px 13px;border-radius:3px;transition:background .15s,border-color .15s}
+.terminal button:hover{background:#1b3525;border-color:var(--verde)}
+.terminal button:disabled{opacity:.5;cursor:wait}
+.terminal a{color:#b3cfbd;text-decoration:none}
+.terminal a:hover{color:var(--verde)}
+.terminal :focus-visible{outline:2px solid #6bffa5;outline-offset:3px}
+.primario{background:var(--verde);color:#031108;font-weight:bold;border-color:#8affb4}
+.primario:hover{background:#a0ffbd}
+
+.topo{min-height:70px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #294032;gap:14px;font-size:13px;flex-wrap:wrap;padding:10px 0}
+.caminho{color:#9fbaa9;letter-spacing:1px}
+.caminho i{display:inline-block;width:7px;height:7px;background:var(--verde);border-radius:50%;box-shadow:0 0 10px #3f8;margin-right:10px}
+.topo nav{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+
+.aviso,.erro{padding:12px 14px;border-radius:3px;margin:14px 0;line-height:1.6;font-size:13px}
+.aviso{border:1px solid #558064;color:#b4ffd1;background:#0d1f14}
+.erro{border:1px solid #b88170;background:#331d16;color:#ffd1c0}
+
+.portao{margin:auto;text-align:center;padding:60px 20px;color:#c3d6c9}
+.portao h1{color:var(--verde);letter-spacing:2px}
+.portao .acoesPortao{display:flex;gap:12px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+
+.janela{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:18px 2px 24px;min-height:40vh}
+.carregarAntigas{align-self:center;font-size:11px}
+.vazioChat{margin:auto;text-align:center;color:#8ca394;padding:40px}
+
+.linhaMsg{display:flex;gap:10px;align-items:flex-start;max-width:88%}
+.propria{align-self:flex-end;flex-direction:row-reverse}
+.corpoMsg{display:flex;flex-direction:column;gap:4px;min-width:0}
+.propria .corpoMsg{align-items:flex-end}
+.cabecalhoMsg{display:flex;gap:8px;align-items:baseline;font-size:11px;color:#9ab3a2;flex-wrap:wrap}
+.apelidoMsg{color:#bfe4cd;font-weight:bold}
+.emailAdmin{color:#6f8a79;font-size:10px}
+.bolha{background:#132018;border:1px solid #3a5644;border-radius:12px;padding:10px 13px;overflow-wrap:anywhere;font-size:14px;line-height:1.55;max-width:100%}
+.propria .bolha{background:#173a24;border-color:#4c8a63}
+.bolhaTexto{white-space:pre-wrap}
+.bolhaMidia{margin-top:6px;max-width:280px}
+.bolhaMidia img,.bolhaMidia video{display:block;width:100%;max-height:320px;object-fit:contain;border-radius:8px;background:#020603}
+.figurinhaMidia img{max-height:150px;width:auto;max-width:150px;background:none;border:0}
+
+.acoesAdmin{display:flex;gap:6px;margin-top:4px}
+.acoesAdmin button{padding:3px 8px;font-size:10px}
+.suspenso{color:#ff9a8a}
+
+.composerZona{position:sticky;bottom:0;background:#030805;padding-top:10px;border-top:1px solid #294032}
+.avisoComposer{padding:10px 14px;border:1px solid #b88170;background:#331d16;color:#ffd1c0;border-radius:3px;font-size:12.5px;margin-bottom:10px}
+.composer{display:flex;align-items:flex-end;gap:8px;padding-bottom:16px;position:relative}
+.composer textarea{flex:1;resize:none;max-height:140px;min-height:42px;border:1px solid #405c48;border-radius:8px;background:#050c08;color:#e6f2e9;padding:11px 13px}
+.composer textarea::placeholder{color:#8a9e90}
+.btnIcone{border-radius:50%;width:42px;height:42px;display:grid;place-items:center;flex:none;padding:0;font-size:17px}
+
+.gifPicker{position:absolute;bottom:calc(100% + 8px);right:0;width:min(360px,90vw);max-height:380px;display:flex;flex-direction:column;background:#0a1610;border:1px solid #3a5644;border-radius:8px;box-shadow:0 10px 30px #000a;padding:12px;gap:8px;z-index:20}
+.gifTopo{display:flex;gap:8px;align-items:center}
+.gifTopo button{flex:1;font-size:12px}
+.gifTopo .abaOn{border-color:var(--verde);color:var(--verde)}
+.gifTopo .fechar{flex:none;width:32px}
+.gifPicker input[type=text]{width:100%;border:1px solid #405c48;border-radius:3px;background:#050c08;color:#e6f2e9;padding:9px 11px}
+.gifGrade{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;overflow-y:auto}
+.gifGrade button{padding:0;border:1px solid transparent;overflow:hidden;border-radius:4px;aspect-ratio:1;background:#050c08}
+.gifGrade img{width:100%;height:100%;object-fit:cover;display:block}
+.gifStatus{font-size:11.5px;color:var(--muted);text-align:center}
+
+.anexoPreview{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px dashed #4f6955;border-radius:6px;margin-bottom:8px;font-size:12px}
+.anexoPreview img,.anexoPreview video{max-height:60px;border-radius:4px}
+.anexoPreview button{margin-left:auto;font-size:11px}
+
+@media(max-width:640px){
+  .terminal{padding:0 14px 14px}
+  .linhaMsg{max-width:96%}
+  .bolhaMidia{max-width:100%}
+  .gifPicker{width:min(320px,94vw)}
+}
+@media(prefers-reduced-motion:reduce){.terminal *{transition:none!important;scroll-behavior:auto!important}}

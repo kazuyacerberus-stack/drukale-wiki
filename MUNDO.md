@@ -3,8 +3,9 @@
 Leia uma vez inteiro antes de começar. São 4 passos e leva uns 10 minutos.
 
 > **Já instalou uma vez?** Então pule direto para o
-> **[PASSO 1B](#passo-1b--a-serpente-e-a-imagem-do-ambiente)**, que é o
-> único SQL novo. Depois siga os passos 2, 3 e 4 normalmente.
+> **[PASSO 1B](#passo-1b--a-serpente-e-a-imagem-do-ambiente)** e o
+> **[PASSO 1C](#passo-1c--comunidade-contas-apelido-avatar-e-chat)**,
+> que são o SQL novo. Depois siga os passos 2, 3 e 4 normalmente.
 
 ---
 
@@ -43,6 +44,41 @@ Este passo faz três coisas:
 
 No fim tem que aparecer a lista de colunas terminando em `imagem`, e o
 balde `locais` com limite `8`.
+
+---
+
+## PASSO 1C — Comunidade: contas, apelido, avatar e chat
+
+Mesma coisa, com o arquivo `sql/09-comunidade.sql`. Este passo cria:
+
+- os **perfis** (apelido + foto de cada conta);
+- o poder de **silenciar** e **expulsar** uma conta;
+- o **chat** da comunidade, com entrega em tempo real;
+- os baldes de imagem `avatars` (fotos de perfil) e `chat` (anexos do chat).
+
+No fim tem que aparecer uma lista com um perfil por conta que já existia
+(inclusive a sua), e os baldes `avatars`/`chat` na segunda consulta.
+
+> Este passo também muda quem pode publicar uma cena: quem estiver
+> silenciado ou expulso deixa de conseguir postar. Não apaga cena nenhuma.
+
+### A chave do Giphy (busca de GIF e figurinha no chat)
+
+O botão de GIF/figurinha do chat busca de verdade no Giphy, e isso precisa
+de uma chavinha grátis:
+
+1. Entre em **developers.giphy.com**, crie uma conta e clique em
+   **Create an App** → escolha **API** (não SDK) → dê um nome qualquer,
+   ex. "Drukale Chat".
+2. Copie a **API Key** que aparece.
+3. Abra o arquivo `.env.local`, na pasta do site, e adicione uma linha:
+   `NEXT_PUBLIC_GIPHY_API_KEY=cole_a_chave_aqui`
+4. Se o site já está publicado na Vercel, adicione a mesma linha lá
+   também: painel do projeto na Vercel → **Settings** → **Environment
+   Variables** → nome `NEXT_PUBLIC_GIPHY_API_KEY`, valor a chave.
+
+Sem essa chave o resto do site funciona normalmente — só o botão de
+GIF/figurinha do chat avisa que ainda falta configurar.
 
 ---
 
@@ -116,6 +152,36 @@ balde `locais` com limite `8`.
 Para mudar ou apagar depois: clique no ponto → **editar** ou **remover**.
 Trocar a imagem apaga a antiga do Storage sozinho; remover o local
 também leva a imagem junto.
+
+### Contas, apelido, cenas e chat
+
+**Qualquer pessoa pode criar uma conta sozinha**, em `/cadastro`: escolhe
+e-mail, senha, apelido e (se quiser) uma foto. Com essa conta dá para:
+
+- ler o site inteiro normalmente (isso já era público);
+- publicar cenas em `/cenas`;
+- entrar no chat em `/chat` — o chat só é visível para quem tem conta;
+- trocar apelido e foto a qualquer momento em `/perfil`.
+
+Essa conta **não** consegue criar, editar ou apagar personagens/locais —
+isso continua exclusivo de quem está em `drukale_admins`, como sempre foi.
+
+O apelido e a foto aparecem ao lado de cada cena e mensagem para quem
+está logado. O **e-mail de quem postou só aparece para você**, o
+administrador — os outros membros só veem o apelido.
+
+**Silenciar e expulsar** (só o administrador vê essas opções):
+
+- Em `/admin/comunidade` tem a lista de todas as contas, com busca por
+  e-mail ou apelido, e os botões **silenciar** (escolhendo por quanto
+  tempo), **remover silêncio**, **expulsar** e **reintegrar**.
+- Silenciado: continua logado e lendo o site, mas o Supabase recusa
+  novas cenas e mensagens dele até o prazo passar.
+- Expulso: bloqueio permanente de postar, e as mensagens antigas dele
+  somem do chat de todo mundo (só você continua vendo, no chat e na
+  lista de contas).
+- Atalhos rápidos também aparecem direto no chat e nas cenas, ao lado do
+  nome de quem postou, quando você está logado como administrador.
 
 ### Os sete tipos
 
