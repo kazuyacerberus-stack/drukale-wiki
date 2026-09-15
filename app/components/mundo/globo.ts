@@ -185,15 +185,11 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
   gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
   const aPos = gl.getAttribLocation(prog, 'pos');
-  gl.enableVertexAttribArray(aPos);
-  gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
 
   const bufUv = gl.createBuffer()!;
   gl.bindBuffer(gl.ARRAY_BUFFER, bufUv);
   gl.bufferData(gl.ARRAY_BUFFER, m.uv, gl.STATIC_DRAW);
   const aUv = gl.getAttribLocation(prog, 'uv');
-  gl.enableVertexAttribArray(aUv);
-  gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
 
   const bufIdx = gl.createBuffer()!;
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
@@ -212,9 +208,11 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
     gl.generateMipmap(gl.TEXTURE_2D);
     return t;
   }
-  subirTextura(mapas.cor, 0);
-  subirTextura(mapas.normal, 1);
-  subirTextura(mapas.emissivo, 2);
+  const texturas = [
+    subirTextura(mapas.cor, 0),
+    subirTextura(mapas.normal, 1),
+    subirTextura(mapas.emissivo, 2),
+  ];
   gl.uniform1i(gl.getUniformLocation(prog, 'mapa'), 0);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaN'), 1);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaE'), 2);
@@ -237,6 +235,35 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       const L = canvas.width, A = canvas.height;
       gl.viewport(0, 0, L, A);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // ------------------------------------------------------------
+      // Reassumir a placa de vídeo antes de desenhar.
+      //
+      // O WebGL tem UM estado só, compartilhado. A cidadela usa outro
+      // programa e outros buffers, e quem desenhou por último deixa o
+      // estado dela armado. Na primeira versão isto era montado uma vez
+      // só, na criação, e funcionava — mas só porque nos meus testes o
+      // globo desenhava antes de a cidadela existir. No site a cidadela
+      // é criada primeiro, e aí o globo tentava desenhar usando os
+      // índices da estação: a placa recusava e o planeta não aparecia.
+      // Agora cada quadro rearma o que é do globo, do zero.
+      // ------------------------------------------------------------
+      gl.useProgram(prog);
+      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufUv);
+      gl.enableVertexAttribArray(aUv);
+      gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
+
+      for (let i = 0; i < 3; i++) {
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, texturas[i]);
+      }
+      gl.enable(gl.DEPTH_TEST);
 
       const r3 = rotacao3(giro, inclina);
       const modelo = para4(r3, 0);
@@ -430,7 +457,12 @@ export function criarCidadela(gl: WebGLRenderingContext) {
      */
     desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array,
              orb: number[], tam: number, giroProprio = 0) {
+      // mesma precaução do globo: o estado da placa vem de quem
+      // desenhou por último, então a cidadela rearma o que é dela
       gl.useProgram(prog);
+      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      gl.enable(gl.DEPTH_TEST);
+
       gl.uniformMatrix3fv(uRot, false, r3);
       gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
 
