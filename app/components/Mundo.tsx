@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/db';
 import { gerarMundo } from './mundo/textura';
 import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
@@ -32,6 +32,26 @@ function aplicar3T(m: Float32Array, v: number[]): [number, number, number] {
   ];
 }
 
+/**
+ * Acha o giro/inclinação da câmera que deixam um ponto (lat, lon) bem de
+ * frente, no centro da tela — é a matemática inversa do desenho: em vez
+ * de girar o mundo e ver onde o ponto cai, parte de "quero este ponto no
+ * centro" e resolve os dois ângulos que fazem isso acontecer.
+ */
+function mirarPara(lat: number, lon: number): { giro: number; inclina: number } {
+  const v = paraVetor(lat, lon, 1);
+  let giro = Math.atan2(-v[0], v[2]);
+  const uz = -v[0] * Math.sin(giro) + v[2] * Math.cos(giro);
+  const uy = v[1];
+  let inclina = Math.atan2(-uy, -uz);
+  // duas soluções existem (giradas 180° uma da outra); esta fica com o
+  // planeta na posição natural, polo norte para cima, em vez de de cabeça
+  // para baixo
+  if (inclina > Math.PI / 2) { inclina -= Math.PI; giro += Math.PI; }
+  else if (inclina < -Math.PI / 2) { inclina += Math.PI; giro += Math.PI; }
+  return { giro, inclina: Math.max(-1.35, Math.min(1.35, inclina)) };
+}
+
 export default function Mundo() {
   const telaRef = useRef<HTMLCanvasElement>(null);
   const fundoRef = useRef<HTMLCanvasElement>(null);
@@ -47,8 +67,15 @@ export default function Mundo() {
   // o laço de desenho nasce uma vez só e não enxerga o estado do React;
   // por isso a vontade de girar mora aqui, num espelho que ele lê
   const giraSozinho = useRef(true);
+  // qual botão de zoom/giro está sendo segurado agora, se algum
+  const segurando = useRef<null | 'zoomMais' | 'zoomMenos' | 'giroEsq' | 'giroDir' | 'inclinaCima' | 'inclinaBaixo'>(null);
+  // para onde a câmera está viajando sozinha, quando alguém clica um local na lista
+  const alvoCam = useRef<{ giro: number; inclina: number } | null>(null);
 
   const [locais, setLocais] = useState<Local[]>([]);
+  const [mostrarLista, setMostrarLista] = useState(true);
+  const [filtroTipo, setFiltroTipo] = useState<Set<TipoLocal>>(new Set());
+  const [buscaLocal, setBuscaLocal] = useState('');
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
   const [erro, setErro] = useState('');
   const [logado, setLogado] = useState(false);
@@ -129,6 +156,29 @@ export default function Mundo() {
           // gira sozinho quando ninguém está mexendo nem lendo uma ficha
           if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
             cam.current.giro += 0.0011;
+          }
+
+          // segurando um botão de zoom ou de giro: ajusta a câmera a cada quadro
+          if (segurando.current) {
+            const s = segurando.current;
+            if (s === 'zoomMais') cam.current.dist = Math.max(PERTO, cam.current.dist * 0.985);
+            else if (s === 'zoomMenos') cam.current.dist = Math.min(LONGE, cam.current.dist * 1.015);
+            else if (s === 'giroEsq') cam.current.giro -= 0.022;
+            else if (s === 'giroDir') cam.current.giro += 0.022;
+            else if (s === 'inclinaCima') cam.current.inclina = Math.max(-1.35, cam.current.inclina - 0.016);
+            else if (s === 'inclinaBaixo') cam.current.inclina = Math.min(1.35, cam.current.inclina + 0.016);
+          }
+
+          // viajando sozinha até o local que alguém escolheu na lista
+          if (alvoCam.current) {
+            const a = alvoCam.current;
+            cam.current.giro += (a.giro - cam.current.giro) * 0.08;
+            cam.current.inclina += (a.inclina - cam.current.inclina) * 0.08;
+            if (Math.abs(a.giro - cam.current.giro) < 0.002 && Math.abs(a.inclina - cam.current.inclina) < 0.002) {
+              cam.current.giro = a.giro;
+              cam.current.inclina = a.inclina;
+              alvoCam.current = null;
+            }
           }
 
           const { giro, inclina, dist } = cam.current;
@@ -250,6 +300,7 @@ export default function Mundo() {
     // quem pegou o planeta com a mão quer olhar, não ver passar:
     // o giro automático para sozinho e só volta se for pedido
     if (girando) mudarGiro(false);
+    alvoCam.current = null;
   };
 
   const aoMover = (e: React.PointerEvent) => {
@@ -275,9 +326,32 @@ export default function Mundo() {
   };
 
   const aoRolar = (e: React.WheelEvent) => {
+    // rolar é só para aproximar — sem isto, o planeta continuava girando
+    // sozinho embaixo de quem só queria dar zoom num ponto parado
+    if (girando) mudarGiro(false);
+    alvoCam.current = null;
     const fator = Math.exp(e.deltaY * 0.0013);
     cam.current.dist = Math.max(PERTO, Math.min(LONGE, cam.current.dist * fator));
   };
+
+  /** Segura um botão de zoom ou de giro: o laço de desenho lê isto a cada quadro. */
+  const segurar = (tipo: NonNullable<typeof segurando.current>) => (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (girando) mudarGiro(false);
+    alvoCam.current = null;
+    segurando.current = tipo;
+  };
+  const soltar = (e: React.PointerEvent) => { e.stopPropagation(); segurando.current = null; };
+
+  /** Gira a câmera sozinha até deixar o local de frente, pelo caminho mais curto. */
+  function focarLocal(l: Local) {
+    if (girando) mudarGiro(false);
+    const alvo = mirarPara(l.lat, l.lon);
+    let giro = alvo.giro;
+    while (giro - cam.current.giro > Math.PI) giro -= Math.PI * 2;
+    while (giro - cam.current.giro < -Math.PI) giro += Math.PI * 2;
+    alvoCam.current = { giro, inclina: alvo.inclina };
+  }
 
   /**
    * Descobre em que ponto do planeta o clique caiu.
@@ -446,6 +520,13 @@ export default function Mundo() {
      ============================================================ */
   const emEdicao = rascunho !== null;
 
+  const locaisFiltrados = useMemo(() => {
+    const q = buscaLocal.trim().toLowerCase();
+    return locais
+      .filter((l) => (filtroTipo.size === 0 || filtroTipo.has(l.tipo)) && (!q || l.nome.toLowerCase().includes(q)))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [locais, filtroTipo, buscaLocal]);
+
   return (
     <div className="mundo">
       <div
@@ -476,6 +557,7 @@ export default function Mundo() {
               setRascunho(null);
               setSelecionado(l);
               pausado.current = true;
+              focarLocal(l);
             }}
           >
             <span className="marco-ponto" />
@@ -501,6 +583,28 @@ export default function Mundo() {
         {fase === 'pronto' && cravando && !emEdicao && (
           <div className="mundo-dica">clique no planeta para cravar o ponto</div>
         )}
+
+        {/* ---------- zoom e giro por botão ---------- */}
+        {fase === 'pronto' && (
+          <div className="mundo-controles" aria-label="Controles de zoom e giro">
+            <div className="giro-pad">
+              <button type="button" className="giro-cima" title="inclinar para cima"
+                onPointerDown={segurar('inclinaCima')} onPointerUp={soltar} onPointerLeave={soltar}>▲</button>
+              <button type="button" className="giro-esq" title="girar para a esquerda"
+                onPointerDown={segurar('giroEsq')} onPointerUp={soltar} onPointerLeave={soltar}>◀</button>
+              <button type="button" className="giro-dir" title="girar para a direita"
+                onPointerDown={segurar('giroDir')} onPointerUp={soltar} onPointerLeave={soltar}>▶</button>
+              <button type="button" className="giro-baixo" title="inclinar para baixo"
+                onPointerDown={segurar('inclinaBaixo')} onPointerUp={soltar} onPointerLeave={soltar}>▼</button>
+            </div>
+            <div className="zoom-pad">
+              <button type="button" title="aproximar"
+                onPointerDown={segurar('zoomMais')} onPointerUp={soltar} onPointerLeave={soltar}>＋</button>
+              <button type="button" title="afastar"
+                onPointerDown={segurar('zoomMenos')} onPointerUp={soltar} onPointerLeave={soltar}>－</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ---------- barra de controle ---------- */}
@@ -514,6 +618,13 @@ export default function Mundo() {
           <span className="erro mundo-erro">FALHA :: {erro}</span>
         )}
 
+        <button
+          type="button"
+          className={`mini-btn${mostrarLista ? ' on' : ''}`}
+          onClick={() => setMostrarLista((v) => !v)}
+        >
+          ▤ locais
+        </button>
         <button
           type="button"
           className={`mini-btn${girando ? '' : ' on'}`}
@@ -532,6 +643,65 @@ export default function Mundo() {
           </button>
         )}
       </div>
+
+      {/* ---------- lista e filtro de locais ---------- */}
+      {mostrarLista && (
+        <aside className="painel painel-locais" aria-label="Lista de locais">
+          <button type="button" className="painel-x" onClick={() => setMostrarLista(false)}>✕</button>
+          <span className="painel-tipo">buscar no mapa</span>
+          <h2>Locais</h2>
+
+          <input
+            className="lista-busca"
+            type="search"
+            value={buscaLocal}
+            onChange={(e) => setBuscaLocal(e.target.value)}
+            placeholder="buscar pelo nome..."
+          />
+
+          <div className="tipos">
+            {TIPOS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                title={t.dica}
+                className={`aba${filtroTipo.has(t.id) ? ' on' : ''}`}
+                onClick={() => setFiltroTipo((prev) => {
+                  const novo = new Set(prev);
+                  if (novo.has(t.id)) novo.delete(t.id); else novo.add(t.id);
+                  return novo;
+                })}
+              >{t.rotulo}</button>
+            ))}
+            {filtroTipo.size > 0 && (
+              <button type="button" className="aba" onClick={() => setFiltroTipo(new Set())}>limpar</button>
+            )}
+          </div>
+
+          <ul className="lista-locais">
+            {locaisFiltrados.length === 0 && <li className="lista-vazia">nenhum local encontrado</li>}
+            {locaisFiltrados.map((l) => (
+              <li key={l.id}>
+                <button
+                  type="button"
+                  className={selecionado?.id === l.id ? 'on' : ''}
+                  onClick={() => {
+                    setRascunho(null);
+                    setSelecionado(l);
+                    pausado.current = true;
+                    focarLocal(l);
+                    setMostrarLista(false);
+                  }}
+                >
+                  <i style={{ background: tipoDe(l.tipo).cor }} />
+                  <span className="lista-nome">{l.nome}</span>
+                  <span className="lista-tipo">{tipoDe(l.tipo).rotulo}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
 
       {/* ---------- painel lateral ---------- */}
       {(selecionado || rascunho) && (

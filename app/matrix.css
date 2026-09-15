@@ -831,6 +831,60 @@ html, body { margin: 0; padding: 0; background: #000; }
   box-shadow: 0 0 8px currentColor;
 }
 
+/* ---------- zoom e giro por botão, sobre o globo ---------- */
+.mundo-controles {
+  position: absolute; z-index: 3; right: 14px; bottom: 14px;
+  display: flex; align-items: flex-end; gap: 12px;
+  -webkit-user-select: none; user-select: none;
+}
+.mundo-controles button {
+  width: 30px; height: 30px; padding: 0; display: grid; place-items: center;
+  font-size: 12px; line-height: 1; border-radius: 3px;
+  background: rgba(2,8,4,.72); border: 1px solid rgba(0,255,102,.3); color: rgba(138,255,192,.75);
+  touch-action: none;
+}
+.mundo-controles button:hover, .mundo-controles button:active {
+  border-color: var(--g); color: var(--g); background: rgba(0,255,102,.12);
+}
+.giro-pad {
+  display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 3px;
+}
+.giro-cima { grid-column: 2; grid-row: 1; }
+.giro-esq  { grid-column: 1; grid-row: 2; }
+.giro-dir  { grid-column: 3; grid-row: 2; }
+.giro-baixo { grid-column: 2; grid-row: 3; }
+.zoom-pad { display: flex; flex-direction: column; gap: 3px; }
+.zoom-pad button { font-size: 15px; }
+
+/* ---------- lista de locais, painel à esquerda ---------- */
+.painel-locais { left: 14px; right: auto; }
+.lista-busca {
+  display: block; width: 100%; margin: 14px 0 12px; padding: 10px 12px;
+  font-family: inherit; font-size: 13px; letter-spacing: .4px;
+  background: rgba(0,255,102,.035); color: var(--g2);
+  border: 1px solid rgba(0,255,102,.22); border-radius: 2px; outline: none;
+}
+.lista-busca::placeholder { color: rgba(138,255,192,.3); }
+.lista-busca:focus { border-color: var(--g); background: rgba(0,255,102,.07); }
+.painel-locais .tipos { margin-bottom: 4px; }
+.lista-locais {
+  list-style: none; margin: 14px 0 0; padding: 0;
+  max-height: min(46vh, 360px); overflow-y: auto;
+  display: grid; gap: 4px;
+}
+.lista-vazia { padding: 18px 0; text-align: center; font-size: 12px; color: rgba(138,255,192,.3); font-style: italic; }
+.lista-locais button {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 8px 9px; text-align: left; border-radius: 2px;
+  background: transparent; border: 1px solid transparent; color: inherit;
+  font-family: inherit; cursor: pointer; transition: .18s;
+}
+.lista-locais button:hover { background: rgba(0,255,102,.06); }
+.lista-locais button.on { border-color: rgba(0,255,102,.4); background: rgba(0,255,102,.09); }
+.lista-locais i { flex: none; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.lista-nome { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lista-tipo { flex: none; font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; color: rgba(138,255,192,.4); }
+
 @media (max-width: 760px) {
   .palco { height: min(62vh, 460px); min-height: 320px; }
   .marco-nome { font-size: 10px; }
@@ -844,6 +898,9 @@ html, body { margin: 0; padding: 0; background: #000; }
     background: #020804;
     border-left: 0; border-right: 0; border-bottom: 0;
   }
+  .mundo-controles { right: 8px; bottom: 8px; gap: 8px; }
+  .mundo-controles button, .giro-pad, .giro-pad button { width: 26px; height: 26px; }
+  .giro-pad { grid-template-columns: repeat(3, 26px); grid-template-rows: repeat(3, 26px); }
 }
 
 /* ============================================================
@@ -991,6 +1048,24 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .gotico .mini-btn.dim { color: rgba(255,140,130,.6); border-color: rgba(164,52,42,.35); }
 .gotico .legenda { color: rgba(217,208,182,.45); }
+
+.gotico .mundo-controles button {
+  border-color: var(--latao-fraco); color: var(--ambar);
+  background: linear-gradient(180deg, rgba(184,136,60,.14), rgba(0,0,0,.55));
+}
+.gotico .mundo-controles button:hover, .gotico .mundo-controles button:active {
+  border-color: var(--latao); color: #ffd79a; background: rgba(184,136,60,.2);
+}
+.gotico .lista-busca {
+  border-color: var(--latao-fraco); color: var(--osso); background: rgba(0,0,0,.45);
+}
+.gotico .lista-busca::placeholder { color: rgba(217,208,182,.32); }
+.gotico .lista-busca:focus { border-color: var(--latao); background: rgba(0,0,0,.6); }
+.gotico .lista-locais button:hover { background: rgba(184,136,60,.12); }
+.gotico .lista-locais button.on { border-color: var(--latao-fraco); background: rgba(184,136,60,.18); }
+.gotico .lista-nome { color: var(--osso); }
+.gotico .lista-tipo { color: rgba(217,208,182,.4); }
+.gotico .lista-vazia { color: rgba(217,208,182,.3); }
 .gotico .ft { color: rgba(184,136,60,.28); }
 .gotico .mundo-dica {
   border-color: var(--sangue); background: rgba(24,4,2,.8); color: #ff9b8f;
