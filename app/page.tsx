@@ -123,6 +123,7 @@ export default function Home() {
                 {muted ? '♪ off' : '♪ on'}
               </button>
               <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
+              <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/admin">+ novo</Link>
             </div>
           </div>
