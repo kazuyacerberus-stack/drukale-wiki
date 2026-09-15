@@ -141,16 +141,19 @@ function moldeDaCaveira(
 export default function Abertura() {
   const [vivo, setVivo] = useState(true);
   const [fase, setFase] = useState<Fase>('chuva');
+  const [calmo, setCalmo] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pularRef = useRef<() => void>(() => {});
 
   useEffect(() => {
-    // quem pediu menos movimento no sistema não quer uma caveira piscando
-    const parado = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    if (parado) {
-      setVivo(false);
-      return;
-    }
+    /**
+     * Quem pediu menos movimento no sistema continua vendo a abertura —
+     * só que sem o que incomoda: nada de tremor, nada de piscar. Sumir
+     * por completo era pior: a pessoa só via um botão relampejar na tela
+     * e achava que o site estava quebrado.
+     */
+    const reduzido = !!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    setCalmo(reduzido);
 
     const cv = canvasRef.current;
     if (!cv) return;
@@ -291,7 +294,7 @@ export default function Abertura() {
 
         const vermelho = faseAtual === 'perigo';
         // no alerta a caveira treme; na liberação ela se acalma
-        const tremor = vermelho ? (Math.random() - 0.5) * 3 : 0;
+        const tremor = vermelho && !reduzido ? (Math.random() - 0.5) * 3 : 0;
         const sumindo = faseAtual === 'saindo'
           ? Math.max(0, 1 - (t - T.ACESSO) / (T.FIM - T.ACESSO))
           : 1;
@@ -308,7 +311,7 @@ export default function Abertura() {
             casa.proxima = t + 90 + Math.random() * 500;
           }
 
-          const brilho = (vermelho && Math.random() < 0.08) ? 1 : 0.86;
+          const brilho = (vermelho && !reduzido && Math.random() < 0.08) ? 1 : 0.86;
           ctx.fillStyle = vermelho
             ? `rgba(255,90,90,${(brilho * sumindo).toFixed(3)})`
             : `rgba(190,255,215,${(brilho * sumindo).toFixed(3)})`;
@@ -321,7 +324,16 @@ export default function Abertura() {
     raf = requestAnimationFrame(loop);
 
     /* ---------- pular ---------- */
-    const tecla = () => pular();
+    /**
+     * Quem recarrega com Ctrl+Shift+R ainda está com essas teclas
+     * afundadas quando a página nova nasce, e o navegador repete o
+     * evento. Sem este filtro a abertura se mata antes do primeiro
+     * quadro: aparece o botão de pular e some tudo junto.
+     */
+    const tecla = (e: KeyboardEvent) => {
+      if (e.key === 'Control' || e.key === 'Shift' || e.key === 'Alt' || e.key === 'Meta') return;
+      pular();
+    };
     window.addEventListener('keydown', tecla);
     const travado = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -337,7 +349,7 @@ export default function Abertura() {
 
   return (
     <div
-      className={`abertura${fase === 'saindo' ? ' indo' : ''}`}
+      className={`abertura${fase === 'saindo' ? ' indo' : ''}${calmo ? ' calma' : ''}`}
       onClick={() => pularRef.current()}
       role="presentation"
     >
