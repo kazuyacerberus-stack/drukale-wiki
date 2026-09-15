@@ -22,7 +22,7 @@ export function urlAnexoCena(caminho: string) {
 
 export function mensagemCena(erro: unknown): string {
   const e = erro as { message?: string; code?: string };
-  if (['42P01', 'PGRST205', '42883', 'PGRST202'].includes(e?.code ?? '')) return 'A aba ainda precisa ser configurada no Supabase. Aplique o arquivo sql/07-cenas.sql.';
+  if (['42P01', 'PGRST205', '42883', 'PGRST202'].includes(e?.code ?? '')) return 'A aba ainda precisa ser configurada no Supabase. Aplique o arquivo sql/08-cenas.sql.';
   if (e?.code === '42501') return 'Sua sessão não tem permissão. Entre novamente ou fale com o administrador.';
   if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Seu texto continua no editor; tente novamente.';
   return e?.message || 'Não foi possível concluir. Tente novamente.';

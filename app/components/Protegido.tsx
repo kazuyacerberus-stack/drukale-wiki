@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/db';
 
-type Estado = 'verificando' | 'dentro' | 'fora';
+type Estado = 'verificando' | 'dentro' | 'fora' | 'jogador' | 'erro';
 
 /**
  * Envolve as telas do admin. Se não houver sessão, manda para o login.
@@ -20,12 +20,18 @@ export default function Protegido({ children }: { children: ReactNode }) {
   useEffect(() => {
     let vivo = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (vivo) setEstado(data.session ? 'dentro' : 'fora');
-    });
+    let versao = 0;
+    const verificar = async (logado: boolean) => {
+      const atual = ++versao;
+      if (!logado) { if (vivo) setEstado('fora'); return; }
+      const { data, error } = await supabase.rpc('drk_e_admin');
+      if (vivo && atual === versao) setEstado(error ? 'erro' : data === true ? 'dentro' : 'jogador');
+    };
+    supabase.auth.getSession().then(({ data }) => { if (vivo) void verificar(Boolean(data.session)); });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evento, sessao) => {
-      if (vivo) setEstado(sessao ? 'dentro' : 'fora');
+      // Não executa outra chamada Supabase dentro do callback de autenticação.
+      window.setTimeout(() => { if (vivo) void verificar(Boolean(sessao)); }, 0);
     });
 
     return () => {
@@ -55,5 +61,7 @@ export default function Protegido({ children }: { children: ReactNode }) {
     );
   }
 
+  if (estado === 'erro') return <p className="erro">Não foi possível verificar a permissão. Aplique sql/08-cenas.sql e recarregue a página.</p>;
+  if (estado === 'jogador') return <div className="load"><p>Seu acesso permite publicar cenas.</p><a href="/cenas">Ir para o arquivo de cenas →</a></div>;
   return <>{children}</>;
 }

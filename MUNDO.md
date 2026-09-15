@@ -2,6 +2,10 @@
 
 Leia uma vez inteiro antes de começar. São 4 passos e leva uns 10 minutos.
 
+> **Já instalou uma vez?** Então pule direto para o
+> **[PASSO 1B](#passo-1b--a-serpente-e-a-imagem-do-ambiente)**, que é o
+> único SQL novo. Depois siga os passos 2, 3 e 4 normalmente.
+
 ---
 
 ## PASSO 1 — Criar a tabela no Supabase
@@ -22,6 +26,23 @@ Sem este passo o planeta abre, mas não deixa salvar nenhum local.
 > Se der erro, me mande a mensagem inteira. **Não** rode duas vezes achando
 > que na segunda vai. (Pode rodar de novo sem medo, aliás: o arquivo foi
 > feito para não apagar nem duplicar nada. Mas o erro continua lá.)
+
+---
+
+## PASSO 1B — A serpente e a imagem do ambiente
+
+Mesma coisa, com o arquivo `sql/07-serpente-e-imagem.sql`.
+
+Este passo faz três coisas:
+
+- libera o sétimo tipo de local, a **serpente** (sem ele, o Supabase
+  recusa a serpente e o painel acusa erro ao gravar);
+- cria a coluna onde fica o endereço da **imagem do ambiente**;
+- cria o balde `locais`, onde as imagens ficam guardadas, já com a
+  trava de 8 MB e só formatos de imagem.
+
+No fim tem que aparecer a lista de colunas terminando em `imagem`, e o
+balde `locais` com limite `8`.
 
 ---
 
@@ -77,6 +98,9 @@ Sem este passo o planeta abre, mas não deixa salvar nenhum local.
 - **Arrastar** com o mouse (ou o dedo) para girar o planeta.
 - **Rolar** a rodinha para chegar perto ou se afastar.
 - **Clicar num ponto colorido** para ler o que é aquele lugar.
+- **Parar o giro** no botão `❚❚ parar o giro`, para olhar com calma.
+  O giro também para sozinho assim que você arrasta o planeta — quem
+  pegou o mundo com a mão quer olhar, não ver passar.
 
 **Só você, depois de entrar no painel (`/admin`), pode:**
 
@@ -85,11 +109,15 @@ Sem este passo o planeta abre, mas não deixa salvar nenhum local.
 3. Clicar em **+ novo local** (o botão só aparece para quem está logado).
 4. **Clicar no planeta**, no lugar exato onde o local fica.
 5. Preencher o nome, escolher o tipo e escrever o resumo.
-6. Clicar em **gravar**.
+6. **Escolher a imagem do ambiente**, se quiser (JPG, PNG, WEBP ou GIF,
+   até 8 MB). Ela aparece no topo do painel quando alguém abre o local.
+7. Clicar em **gravar**.
 
 Para mudar ou apagar depois: clique no ponto → **editar** ou **remover**.
+Trocar a imagem apaga a antiga do Storage sozinho; remover o local
+também leva a imagem junto.
 
-### Os seis tipos
+### Os sete tipos
 
 | tipo | para quê |
 |---|---|
@@ -99,10 +127,16 @@ Para mudar ou apagar depois: clique no ponto → **editar** ou **remover**.
 | **quartel-general** | centro de comando |
 | **ruína** | o que sobrou de alguma coisa |
 | **cidadela orbital** | **não fica no chão**: aparece girando em órbita, acima do planeta |
+| **serpente** | a criatura gigante que nada no oceano |
 
-A **cidadela orbital** é a única que se desenha sozinha no céu. Cadastre
-uma e ela aparece como uma estação de anéis orbitando o mundo — e continua
-clicável de lá.
+Dois deles se desenham sozinhos, e não são enfeite — só aparecem se você
+cadastrar:
+
+- A **cidadela orbital** vira uma estação de anéis girando acima do
+  planeta, e continua clicável de lá.
+- A **serpente** vira um corpo enorme serpenteando rente à água, com
+  crista no dorso, cabeça e olhos. Crave ela **em cima do mar** — em
+  terra firme ela aparece do mesmo jeito, mas fica estranho.
 
 ---
 
@@ -125,3 +159,12 @@ clicável de lá.
 - **Se aparecer "este navegador não consegue desenhar o globo"**: o
   computador está com a aceleração 3D desligada. O resto do site continua
   funcionando normalmente.
+
+- **Esta página não é verde.** Ela usa um visual próprio — chapa escura,
+  latão, rebites e a varredura de um tubo cansado. A galeria e as fichas
+  continuam Matrix como sempre foram.
+
+- **No espaço em volta há duas coisas de propósito**: a **Cicatrix
+  Maledictum**, o rasgo em forma de olho de cobra bifurcado, e a névoa
+  com braços e garras que cerca o mundo. São cenário fixo: não têm ficha
+  e não se clica nelas.

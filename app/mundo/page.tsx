@@ -40,6 +40,7 @@ export default function MundoPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">drukale://cartografia/superficie</span>
             <div className="hd-act">
+              <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/">◄ arquivo</Link>
             </div>
           </div>
