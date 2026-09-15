@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import './matrix.css';
 import MatrixRain from './components/MatrixRain';
+import Abertura from './components/Abertura';
 import { useBeep } from './components/useBeep';
 import { supabase, type Character } from './lib/db';
 
@@ -105,6 +106,7 @@ export default function Home() {
 
   return (
     <div className="term">
+      <Abertura />
       <MatrixRain />
 
       <main className="wrap">
