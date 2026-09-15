@@ -24,16 +24,22 @@ const Mundo = dynamic(() => import('../components/Mundo'), {
   ),
 });
 
+/**
+ * Esta página não é verde.
+ *
+ * A classe `gotico` troca o terminal Matrix por um painel de máquina
+ * velha: chapa escura, latão, rebites e a varredura de um tubo
+ * cansado. Vale só aqui — a galeria e as fichas continuam como eram.
+ */
 export default function MundoPage() {
   return (
-    <div className="term">
+    <div className="term gotico">
       <main className="wrap">
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://mundo/superficie</span>
+            <span className="hd-path">drukale://cartografia/superficie</span>
             <div className="hd-act">
-              <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/">◄ arquivo</Link>
             </div>
           </div>
@@ -56,8 +62,7 @@ export default function MundoPage() {
         </div>
 
         <footer className="ft">
-          <span>DRUKALE // CARTOGRAFIA</span>
-          <span>entre pelo painel para cravar novos locais</span>
+          <span>DRUKALE // CARTOGRAFIA · CARTA DE SUPERFÍCIE</span>
         </footer>
       </main>
     </div>

@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/db';
 import { gerarMundo } from './mundo/textura';
-import { criarGlobo, criarCidadela, pintarEspaco, rotacao3 } from './mundo/globo';
+import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
 import {
   TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
-  LIMITES_LOCAL, type Local, type TipoLocal,
+  LIMITES_LOCAL, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
+  type Local, type TipoLocal,
 } from '../lib/mundo';
 
 const FOV = 38;
@@ -43,6 +44,9 @@ export default function Mundo() {
   const arrasto = useRef({ ativo: false, x: 0, y: 0, andou: 0 });
   const pausado = useRef(false);
   const locaisRef = useRef<Local[]>([]);
+  // o laço de desenho nasce uma vez só e não enxerga o estado do React;
+  // por isso a vontade de girar mora aqui, num espelho que ele lê
+  const giraSozinho = useRef(true);
 
   const [locais, setLocais] = useState<Local[]>([]);
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
@@ -52,6 +56,12 @@ export default function Mundo() {
   const [cravando, setCravando] = useState(false);
   const [rascunho, setRascunho] = useState<Local | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const [girando, setGirando] = useState(true);
+  // a imagem do ambiente, enquanto o formulário está aberto
+  const [foto, setFoto] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState('');
+  const [erroFoto, setErroFoto] = useState('');
+  const [tirarFoto, setTirarFoto] = useState(false);
 
   /* ---------- quem está logado pode editar ---------- */
   useEffect(() => {
@@ -101,24 +111,55 @@ export default function Mundo() {
 
         const globo = criarGlobo(tela, mapas);
         if (!globo) { setFase('sem-webgl'); return; }
-        const cidadela = criarCidadela(tela.getContext('webgl')!);
         setFase('pronto');
 
+        // A cidadela só nasce quando existe alguma em órbita. Ela usa
+        // outro programa na placa de vídeo, e criar peça que ninguém
+        // pediu é abrir porta para o desenho de um atrapalhar o do
+        // outro — foi exatamente isso que deixou o planeta invisível
+        // da primeira vez.
+        let cidadela: ReturnType<typeof criarCidadela> | null = null;
+        let serpente: ReturnType<typeof criarSerpente> | null = null;
+
+        let n = 0;
         const quadro = (t: number) => {
           if (!vivo) return;
           raf = requestAnimationFrame(quadro);
 
           // gira sozinho quando ninguém está mexendo nem lendo uma ficha
-          if (!arrasto.current.ativo && !pausado.current) cam.current.giro += 0.0011;
+          if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
+            cam.current.giro += 0.0011;
+          }
 
           const { giro, inclina, dist } = cam.current;
           const cena = globo.desenhar(giro, inclina, dist, 1);
 
           // as cidadelas orbitais são desenhadas por cima do planeta
-          for (const l of locaisRef.current) {
-            if (tipoDe(l.tipo).orbital !== true) continue;
-            const p = paraVetor(l.lat, l.lon, 1 + (l.altitude || 0.55));
-            cidadela.desenhar(cena.proj, cena.vista, cena.r3, p, 0.085, t / 2600);
+          const orbitais = locaisRef.current.filter((l) => tipoDe(l.tipo).orbital === true);
+          if (orbitais.length > 0) {
+            const cid = cidadela ?? (cidadela = criarCidadela(cena.gl));
+            for (const l of orbitais) {
+              const p = paraVetor(l.lat, l.lon, 1 + (l.altitude || 0.55));
+              cid.desenhar(cena.proj, cena.vista, cena.r3, p, 0.085, t / 2600);
+            }
+          }
+
+          // e as serpentes, nadando rente à água
+          const bichos = locaisRef.current.filter((l) => tipoDe(l.tipo).serpente === true);
+          if (bichos.length > 0) {
+            const s = serpente ?? (serpente = criarSerpente(cena.gl));
+            for (const l of bichos) {
+              s.desenhar(cena.proj, cena.vista, cena.r3, l.lat, l.lon, t / 1400);
+            }
+          }
+
+          // depois de meio segundo, conferir se saiu alguma coisa na
+          // tela. Se não saiu, dizer POR QUE em vez de ficar preto.
+          if (++n === 30) {
+            const d = globo.conferir();
+            if (d.acesos === 0) {
+              setErro(`o planeta não desenhou (erro ${d.erro} · ${d.tela} · ${d.placa})`);
+            }
           }
 
           posicionarMarcos(giro, inclina, dist);
@@ -197,9 +238,18 @@ export default function Mundo() {
   /* ============================================================
      MOUSE E DEDO
      ============================================================ */
+  /** Trava ou solta o giro automático. */
+  const mudarGiro = (ligar: boolean) => {
+    giraSozinho.current = ligar;
+    setGirando(ligar);
+  };
+
   const aoDescer = (e: React.PointerEvent) => {
     arrasto.current = { ativo: true, x: e.clientX, y: e.clientY, andou: 0 };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    // quem pegou o planeta com a mão quer olhar, não ver passar:
+    // o giro automático para sozinho e só volta se for pedido
+    if (girando) mudarGiro(false);
   };
 
   const aoMover = (e: React.PointerEvent) => {
@@ -261,8 +311,54 @@ export default function Mundo() {
     const { lat, lon } = paraLatLon(local[0], local[1], local[2]);
 
     setSelecionado(null);
-    setRascunho({ id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0 });
+    limparFoto();
+    setRascunho({
+      id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null,
+    });
     pausado.current = true;
+  }
+
+  /* ============================================================
+     A IMAGEM DO AMBIENTE
+     ============================================================ */
+  const limparFoto = () => {
+    setFoto(null);
+    setFotoPreview((v) => { if (v) URL.revokeObjectURL(v); return ''; });
+    setErroFoto('');
+    setTirarFoto(false);
+  };
+
+  function escolherFoto(f: File | null) {
+    if (!f) { limparFoto(); return; }
+    const reclamacao = conferirImagem(f);
+    if (reclamacao) { setErroFoto(reclamacao); setFoto(null); return; }
+    setErroFoto('');
+    setFoto(f);
+    setTirarFoto(false);
+    setFotoPreview((v) => { if (v) URL.revokeObjectURL(v); return URL.createObjectURL(f); });
+  }
+
+  /**
+   * Manda a imagem para o Storage e devolve o endereço público.
+   *
+   * Vai do navegador DIRETO para o Supabase, sem passar pelo servidor
+   * do site: a Vercel corta requisição acima de 4,5 MB, e uma foto de
+   * ambiente passa disso com facilidade.
+   */
+  async function subirFoto(f: File) {
+    const ext = (/\.([^.]+)$/.exec(f.name)?.[1] ?? 'jpg').toLowerCase();
+    const nome = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage
+      .from(BUCKET_LOCAIS).upload(nome, f, { upsert: false });
+    if (error) throw new Error(error.message);
+    return supabase.storage.from(BUCKET_LOCAIS).getPublicUrl(nome).data.publicUrl;
+  }
+
+  /** Apaga do Storage a imagem que não é mais de ninguém. */
+  async function apagarFoto(url: string | null) {
+    const caminho = caminhoDaImagem(url);
+    if (!caminho) return;
+    await supabase.storage.from(BUCKET_LOCAIS).remove([caminho]);
   }
 
   /* ============================================================
@@ -275,6 +371,19 @@ export default function Mundo() {
 
     setSalvando(true);
     setErro('');
+
+    const antiga = rascunho.imagem;
+    let imagem = antiga;
+    let subiuAgora: string | null = null;
+    try {
+      if (foto) { imagem = await subirFoto(foto); subiuAgora = imagem; }
+      else if (tirarFoto) imagem = null;
+    } catch (e) {
+      setSalvando(false);
+      setErro(e instanceof Error ? e.message : 'não consegui enviar a imagem');
+      return;
+    }
+
     const linha = {
       nome: nome.slice(0, LIMITES_LOCAL.nome),
       tipo: rascunho.tipo,
@@ -282,6 +391,7 @@ export default function Mundo() {
       lat: rascunho.lat,
       lon: rascunho.lon,
       altitude: tipoDe(rascunho.tipo).orbital ? (rascunho.altitude || 0.55) : 0,
+      imagem,
     };
 
     const { error } = rascunho.id
@@ -289,9 +399,19 @@ export default function Mundo() {
       : await supabase.from('locais').insert([linha]);
 
     setSalvando(false);
-    if (error) { setErro(error.message); return; }
+    if (error) {
+      // a gravação falhou depois do envio: a imagem ficaria órfã no
+      // balde para sempre, então ela volta atrás junto
+      if (subiuAgora) await apagarFoto(subiuAgora);
+      setErro(error.message);
+      return;
+    }
+    // deu certo: agora sim a imagem velha pode ir embora
+    if (antiga && antiga !== imagem) await apagarFoto(antiga);
+
     setRascunho(null);
     setCravando(false);
+    limparFoto();
     pausado.current = false;
     await carregar();
   }
@@ -299,8 +419,10 @@ export default function Mundo() {
   async function remover(l: Local) {
     const { error } = await supabase.from('locais').delete().eq('id', l.id);
     if (error) { setErro(error.message); return; }
+    await apagarFoto(l.imagem);
     setSelecionado(null);
     setRascunho(null);
+    limparFoto();
     pausado.current = false;
     await carregar();
   }
@@ -309,7 +431,14 @@ export default function Mundo() {
     setSelecionado(null);
     setRascunho(null);
     setErro('');
+    limparFoto();
     pausado.current = false;
+  };
+
+  /** Abre o formulário já com o que o local tem hoje. */
+  const editar = (l: Local) => {
+    limparFoto();
+    setRascunho({ ...l });
   };
 
   /* ============================================================
@@ -379,6 +508,20 @@ export default function Mundo() {
         <span className="mundo-conta">
           {locais.length} {locais.length === 1 ? 'local' : 'locais'}
         </span>
+        {/* a falha aparece aqui mesmo quando nenhum painel está aberto:
+            uma tela preta sem explicação não ajuda ninguém */}
+        {erro && !selecionado && !rascunho && (
+          <span className="erro mundo-erro">FALHA :: {erro}</span>
+        )}
+
+        <button
+          type="button"
+          className={`mini-btn${girando ? '' : ' on'}`}
+          onClick={() => mudarGiro(!girando)}
+          title={girando ? 'travar o planeta para olhar com calma' : 'deixar o planeta girar de novo'}
+        >
+          {girando ? '❚❚ parar o giro' : '▶ girar de novo'}
+        </button>
         {logado && (
           <button
             type="button"
@@ -397,6 +540,15 @@ export default function Mundo() {
 
           {selecionado && !rascunho && (
             <>
+              {/* a imagem do ambiente abre o painel, como a gravura de
+                  um diário de viagem — depois é que vem o texto */}
+              {selecionado.imagem && (
+                <figure className="painel-foto">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={selecionado.imagem} alt={`o ambiente de ${selecionado.nome}`} />
+                </figure>
+              )}
+
               <span className="painel-tipo" style={{ color: tipoDe(selecionado.tipo).cor }}>
                 {tipoDe(selecionado.tipo).rotulo}
               </span>
@@ -404,7 +556,11 @@ export default function Mundo() {
               <p className="painel-coord">
                 {coordenadaLegivel(selecionado.lat, selecionado.lon)}
                 {tipoDe(selecionado.tipo).orbital && ' · em órbita'}
+                {tipoDe(selecionado.tipo).serpente && ' · nas águas'}
               </p>
+
+              <span className="painel-fio" aria-hidden="true" />
+
               {selecionado.resumo
                 ? <p className="painel-txt">{selecionado.resumo}</p>
                 : <p className="painel-vazio">sem descrição ainda.</p>}
@@ -412,7 +568,7 @@ export default function Mundo() {
               {logado && (
                 <div className="painel-acoes">
                   <button type="button" className="mini-btn"
-                    onClick={() => setRascunho({ ...selecionado })}>editar</button>
+                    onClick={() => editar(selecionado)}>editar</button>
                   <button type="button" className="mini-btn dim"
                     onClick={() => remover(selecionado)}>remover</button>
                 </div>
@@ -461,6 +617,31 @@ export default function Mundo() {
                   onChange={(e) => setRascunho({ ...rascunho, resumo: e.target.value })}
                   placeholder="O que é este lugar, em duas ou três frases."
                 />
+              </div>
+
+              <div className="field">
+                <label>imagem do ambiente</label>
+                {(fotoPreview || (rascunho.imagem && !tirarFoto)) && (
+                  <figure className="painel-foto previa">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={fotoPreview || rascunho.imagem || ''} alt="prévia do ambiente" />
+                  </figure>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  onChange={(e) => escolherFoto(e.target.files?.[0] ?? null)}
+                />
+                {(rascunho.imagem || foto) && (
+                  <button
+                    type="button"
+                    className="mini-btn dim"
+                    onClick={() => { limparFoto(); setTirarFoto(true); }}
+                  >tirar a imagem</button>
+                )}
+                {erroFoto
+                  ? <p className="erro">{erroFoto}</p>
+                  : <p className="dica">JPG, PNG, WEBP ou GIF, até 8 MB.</p>}
               </div>
 
               <div className="painel-acoes">

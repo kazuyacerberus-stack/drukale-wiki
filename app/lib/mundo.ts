@@ -8,13 +8,14 @@
  */
 
 export type TipoLocal =
-  | 'capital' | 'cidade' | 'base' | 'quartel' | 'ruina' | 'orbital';
+  | 'capital' | 'cidade' | 'base' | 'quartel' | 'ruina' | 'orbital' | 'serpente';
 
 export const TIPOS: {
   id: TipoLocal;
   rotulo: string;
   cor: string;
   orbital?: boolean;
+  serpente?: boolean;
   dica: string;
 }[] = [
   { id: 'capital', rotulo: 'capital', cor: '#f4f0e2',
@@ -29,6 +30,8 @@ export const TIPOS: {
     dica: 'o que sobrou de alguma coisa' },
   { id: 'orbital', rotulo: 'cidadela orbital', cor: '#dfe9f5', orbital: true,
     dica: 'não fica no chão: orbita o planeta' },
+  { id: 'serpente', rotulo: 'serpente', cor: '#4fe0a6', serpente: true,
+    dica: 'a criatura gigante que nada no oceano — crave em cima da água' },
 ];
 
 export const tipoDe = (id: string) =>
@@ -42,9 +45,46 @@ export type Local = {
   lat: number;      // -90 (sul) a 90 (norte)
   lon: number;      // -180 a 180
   altitude: number; // 0 no chão; acima disso, em órbita
+  imagem: string | null;   // endereço da foto do ambiente, no Storage
 };
 
 export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300 };
+
+/* ---------- a imagem do ambiente ---------- */
+
+export const BUCKET_LOCAIS = 'locais';
+export const IMAGEM_MAX_BYTES = 8 * 1024 * 1024;   // 8 MB
+export const IMAGEM_TIPOS = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+/**
+ * Diz se o arquivo escolhido serve. Devolve a reclamação em português,
+ * ou null quando está tudo certo.
+ *
+ * Esta é a trava da TELA, para avisar antes de gastar a subida. A trava
+ * de verdade é a do Supabase, que recusa o arquivo mesmo que alguém
+ * passe por cima daqui.
+ */
+export function conferirImagem(f: { type: string; size: number; name: string }) {
+  const tipo = f.type || '';
+  const ext = (/\.([^.]+)$/.exec(f.name)?.[1] ?? '').toLowerCase();
+  const extOk = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+  if (!IMAGEM_TIPOS.includes(tipo) && !extOk) {
+    return 'A imagem precisa ser JPG, PNG, WEBP ou GIF.';
+  }
+  if (f.size > IMAGEM_MAX_BYTES) {
+    return `A imagem tem ${(f.size / 1024 / 1024).toFixed(1)} MB e o limite é 8 MB.`;
+  }
+  return null;
+}
+
+/** O caminho do arquivo dentro do balde, a partir do endereço público. */
+export function caminhoDaImagem(url: string | null) {
+  if (!url) return null;
+  const marca = `/${BUCKET_LOCAIS}/`;
+  const i = url.indexOf(marca);
+  if (i < 0) return null;
+  return decodeURIComponent(url.slice(i + marca.length).split('?')[0]) || null;
+}
 
 /**
  * Latitude/longitude para um ponto na esfera de raio 1.
@@ -96,6 +136,7 @@ export function lerLocais(valor: unknown): Local[] {
       lat: Math.min(90, Math.max(-90, lat)),
       lon: ((((lon + 180) % 360) + 360) % 360) - 180,
       altitude: Number.isFinite(Number(o.altitude)) ? Number(o.altitude) : 0,
+      imagem: typeof o.imagem === 'string' && o.imagem.trim() ? o.imagem : null,
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }

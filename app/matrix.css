@@ -3,7 +3,7 @@
    Todas as páginas importam este arquivo.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cinzel:wght@500;700&display=swap');
 
 html, body { margin: 0; padding: 0; background: #000; }
 * { box-sizing: border-box; }
@@ -746,13 +746,18 @@ html, body { margin: 0; padding: 0; background: #000; }
 
 /* ---------- barra de controle ---------- */
 .mundo-barra {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
   margin-top: 12px;
 }
 .mundo-conta {
   font-size: 11.5px; letter-spacing: 2px; text-transform: uppercase;
   color: rgba(0,255,102,.42);
-  margin-right: auto;
+}
+.mundo-barra .mini-btn:first-of-type { margin-left: auto; }
+.mini-btn.on { border-color: var(--g); color: var(--g); }
+.mundo-erro {
+  font-size: 11px; letter-spacing: 1px; text-transform: none;
+  flex: 1 1 100%; order: 3;
 }
 
 /* ---------- painel lateral ---------- */
@@ -789,7 +794,12 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .painel-txt {
   margin: 0; font-size: 13.5px; line-height: 1.72;
-  color: rgba(138,255,192,.88); white-space: pre-wrap;
+  color: rgba(138,255,192,.88);
+  /* pre-LINE, e não pre-wrap: as quebras de linha que a pessoa
+     escreveu ficam, mas os espaços de sobra somem. Com pre-wrap, o
+     espaço do fim de cada linha era preservado e empurrava a linha
+     seguinte para a direita — ao lado da capitular, ficava torto. */
+  white-space: pre-line;
 }
 .painel-vazio { margin: 0; font-size: 12.5px; color: rgba(138,255,192,.3); font-style: italic; }
 .painel-acoes { display: flex; gap: 9px; margin-top: 18px; flex-wrap: wrap; }
@@ -824,5 +834,284 @@ html, body { margin: 0; padding: 0; background: #000; }
     max-height: 72%;
     background: #020804;
     border-left: 0; border-right: 0; border-bottom: 0;
+  }
+}
+
+/* ============================================================
+   TERMINAL GÓTICO — só a página do mundo
+   ------------------------------------------------------------
+   Um painel de máquina velha: chapa escura, cantoneiras de latão,
+   rebites, texto em âmbar e a varredura de um tubo cansado por
+   cima de tudo. Vale só sob .gotico; o resto da wiki continua
+   verde e Matrix como sempre foi.
+   ============================================================ */
+
+.term.gotico {
+  --osso: #d9d0b6;
+  --latao: #b8883c;
+  --latao-fraco: #6d5a30;
+  --ambar: #e3b169;
+  --ferro: #14120e;
+  --sangue: #a4342a;
+  color: var(--osso);
+  background:
+    radial-gradient(ellipse at 50% 0%, #1d1a14 0%, #0d0b08 60%, #070604 100%);
+}
+
+/* uma sujeira de fundo, para a chapa não parecer plástico novo */
+.gotico::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    repeating-linear-gradient(115deg, rgba(0,0,0,0) 0 7px, rgba(0,0,0,.16) 7px 8px),
+    radial-gradient(circle at 18% 12%, rgba(184,136,60,.05), transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(164,52,42,.05), transparent 48%);
+}
+
+/* ---------- cabeçalho ---------- */
+.gotico .hd { border-bottom: 0; }
+.gotico .hd-bar {
+  border: 1px solid var(--latao-fraco);
+  border-left: 5px solid var(--latao);
+  background: linear-gradient(180deg, rgba(184,136,60,.1), rgba(0,0,0,.4));
+  padding: 9px 14px;
+}
+.gotico .hd-path { color: var(--ambar); }
+.gotico .dot { background: var(--latao); box-shadow: 0 0 8px rgba(184,136,60,.5); }
+.gotico .ico {
+  border-color: var(--latao-fraco); color: var(--ambar);
+  background: rgba(0,0,0,.35);
+}
+.gotico .ico:hover {
+  border-color: var(--latao); color: #ffd79a;
+  box-shadow: 0 0 14px rgba(184,136,60,.35);
+}
+
+.gotico h1 {
+  font-family: Cinzel, 'Times New Roman', serif;
+  font-weight: 700;
+  color: var(--osso);
+  text-shadow: 0 0 18px rgba(184,136,60,.3), 0 2px 0 #000;
+  letter-spacing: 6px;
+}
+.gotico h1::before, .gotico h1::after { display: none; }   /* sem o fantasma do Matrix */
+.gotico .sub { color: rgba(217,208,182,.5); }
+.gotico .cur { background: var(--ambar); }
+
+/* ---------- a moldura em volta do globo ---------- */
+.gotico .palco {
+  border: 3px solid var(--latao-fraco);
+  border-radius: 0;
+  padding: 0;
+  background:
+    linear-gradient(180deg, #100e0a, #08070500),
+    radial-gradient(circle at 50% 46%, #0b0718 0%, #030108 62%, #000 100%);
+  box-shadow:
+    inset 0 0 0 7px #0c0a07,
+    inset 0 0 0 8px var(--latao-fraco),
+    inset 0 0 44px rgba(0,0,0,.9),
+    0 0 0 1px #000,
+    0 10px 34px rgba(0,0,0,.7);
+}
+
+/* Rebites e cantoneiras, numa camada só.
+   São dez desenhos empilhados no mesmo elemento: duas fileiras de
+   rebites que se repetem, e oito riscos de latão formando os quatro
+   cantos. Tudo preso ao PALCO — preso ao bloco inteiro, os cantos de
+   baixo caíam em cima da legenda. */
+.gotico .palco::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 4;
+  pointer-events: none;
+  --rebite: radial-gradient(circle, #c9a15a 0 1.4px, #4a3a1c 1.4px 2.6px, transparent 2.7px);
+  --l: linear-gradient(var(--latao), var(--latao));
+  background-image:
+    var(--rebite), var(--rebite),
+    var(--l), var(--l), var(--l), var(--l),
+    var(--l), var(--l), var(--l), var(--l);
+  background-repeat: repeat-x, repeat-x,
+    no-repeat, no-repeat, no-repeat, no-repeat,
+    no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size:
+    34px 34px, 34px 34px,
+    30px 3px, 3px 30px, 30px 3px, 3px 30px,
+    30px 3px, 3px 30px, 30px 3px, 3px 30px;
+  background-position:
+    6px 4px, 6px calc(100% - 4px),
+    left top, left top, right top, right top,
+    left bottom, left bottom, right bottom, right bottom;
+}
+
+/* a varredura do tubo, e a escuridão nos cantos */
+.gotico .palco::after {
+  content: '';
+  position: absolute; inset: 0; z-index: 4;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 52%, rgba(0,0,0,.72) 100%);
+}
+
+
+
+/* os marcadores e os avisos ficam ACIMA da varredura */
+.gotico .marco { z-index: 6; }
+.gotico .mundo-aviso, .gotico .mundo-dica { z-index: 7; }
+.gotico .painel { z-index: 8; }
+
+.gotico .marco-nome {
+  font-family: Cinzel, 'Times New Roman', serif;
+  letter-spacing: 2.4px;
+  color: var(--osso);
+  background: rgba(8,6,4,.6);
+}
+
+/* ---------- barra, legenda e rodapé ---------- */
+.gotico .mundo-conta { color: rgba(184,136,60,.6); }
+.gotico .mini-btn {
+  border-color: var(--latao-fraco); color: var(--ambar);
+  background: linear-gradient(180deg, rgba(184,136,60,.12), rgba(0,0,0,.4));
+}
+.gotico .mini-btn:hover {
+  border-color: var(--latao); color: #ffd79a;
+  box-shadow: 0 0 12px rgba(184,136,60,.3);
+}
+.gotico .mini-btn.on { border-color: var(--latao); color: #ffd79a; }
+.gotico .mini-btn.perigo {
+  background: rgba(164,52,42,.2); border-color: var(--sangue); color: #ff9b8f;
+}
+.gotico .mini-btn.dim { color: rgba(255,140,130,.6); border-color: rgba(164,52,42,.35); }
+.gotico .legenda { color: rgba(217,208,182,.45); }
+.gotico .ft { color: rgba(184,136,60,.28); }
+.gotico .mundo-dica {
+  border-color: var(--sangue); background: rgba(24,4,2,.8); color: #ff9b8f;
+}
+.gotico .mundo-aviso p { color: var(--ambar); }
+.gotico .mundo-aviso small { color: rgba(217,208,182,.35); }
+.gotico .load span { background: var(--latao); }
+
+/* ---------- o painel do local ---------- */
+.gotico .painel {
+  border: 1px solid var(--latao-fraco);
+  border-top: 3px solid var(--latao);
+  background: linear-gradient(180deg, #14120d 0%, #0b0a07 100%);
+  box-shadow: 0 0 40px rgba(0,0,0,.85), inset 0 0 0 1px rgba(0,0,0,.6);
+  padding: 0 0 20px;
+}
+.gotico .painel-x { color: rgba(184,136,60,.6); top: 10px; right: 12px; }
+.gotico .painel-x:hover { color: #ffd79a; }
+.gotico .painel-tipo, .gotico .painel h2, .gotico .painel-coord,
+.gotico .painel-txt, .gotico .painel-vazio, .gotico .painel-acoes,
+.gotico .painel .field, .gotico .painel-fio, .gotico .painel .erro {
+  margin-left: 20px; margin-right: 20px;
+}
+.gotico .painel-tipo { color: var(--latao); margin-top: 18px; }
+.gotico .painel h2 {
+  font-family: Cinzel, 'Times New Roman', serif;
+  font-size: 23px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--osso);
+  text-shadow: 0 0 16px rgba(184,136,60,.25);
+}
+.gotico .painel-coord { color: rgba(184,136,60,.55); }
+.gotico .painel-txt { color: rgba(217,208,182,.82); }
+.gotico .painel-vazio { color: rgba(217,208,182,.3); }
+.gotico .painel .field label { color: rgba(184,136,60,.75); }
+.gotico .painel .field input[type="text"], .gotico .painel .field input:not([type]),
+.gotico .painel .field textarea {
+  border-color: var(--latao-fraco); color: var(--osso);
+  background: rgba(0,0,0,.45);
+}
+.gotico .painel .aba { border-color: var(--latao-fraco); color: rgba(217,208,182,.6); }
+.gotico .painel .aba.on { border-color: var(--latao); color: #ffd79a; background: rgba(184,136,60,.14); }
+.gotico .painel .dica { color: rgba(217,208,182,.34); }
+
+/* ============================================================
+   A FICHA DO LOCAL — a parte que se lê
+   ------------------------------------------------------------
+   A imagem entra inteira no topo, como a gravura de um diário de
+   viagem; embaixo dela o nome, um fio com losango, e só então o
+   texto — com a primeira letra grande, que é o que tira a cara
+   de formulário e dá cara de página.
+   ============================================================ */
+
+.painel-foto {
+  margin: 0 0 16px;
+  position: relative;
+  overflow: hidden;
+  background: #070604;
+}
+.painel-foto img {
+  display: block;
+  width: 100%;
+  height: 168px;
+  object-fit: cover;
+  filter: saturate(.82) contrast(1.06);
+}
+/* a foto se dissolve no painel em vez de terminar num corte reto */
+.painel-foto::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.25) 0%, transparent 35%, rgba(11,10,7,.95) 100%),
+    radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,.55) 100%);
+}
+.painel-foto.previa { margin: 0 0 10px; border: 1px solid rgba(0,255,102,.2); }
+.painel-foto.previa img { height: 116px; }
+.gotico .painel-foto.previa { border-color: var(--latao-fraco); }
+
+/* o fio que separa o nome do texto */
+.painel-fio {
+  display: block;
+  height: 9px;
+  margin: 14px 0 15px;
+  background:
+    linear-gradient(90deg, transparent, rgba(0,255,102,.35) 18%, rgba(0,255,102,.35) 82%, transparent) center/100% 1px no-repeat;
+  position: relative;
+}
+.painel-fio::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%;
+  width: 7px; height: 7px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: rgba(0,255,102,.55);
+}
+.gotico .painel-fio {
+  background:
+    linear-gradient(90deg, transparent, rgba(184,136,60,.5) 18%, rgba(184,136,60,.5) 82%, transparent) center/100% 1px no-repeat;
+}
+.gotico .painel-fio::after { background: var(--latao); }
+
+/* a capitular */
+.painel-txt::first-letter {
+  float: left;
+  font-size: 2.35em;
+  line-height: .8;
+  padding: 2px 6px 0 0;
+  color: var(--g);
+}
+.gotico .painel-txt::first-letter {
+  font-family: Cinzel, 'Times New Roman', serif;
+  color: var(--latao);
+  text-shadow: 0 0 14px rgba(184,136,60,.35);
+}
+
+.painel .field input[type="file"] {
+  width: 100%;
+  font-size: 11.5px;
+  color: rgba(138,255,192,.6);
+}
+.gotico .painel .field input[type="file"] { color: rgba(217,208,182,.6); }
+.painel .field .mini-btn { margin-top: 9px; }
+
+@media (max-width: 760px) {
+  /* o painel não pode engolir o planeta: foto mais baixa e teto menor */
+  .painel-foto img { height: 96px; }
+  .painel { max-height: 58%; }
+  .painel-acoes { margin-bottom: 4px; }
+  .gotico .palco::before {
+    background-size:
+      34px 34px, 34px 34px,
+      20px 3px, 3px 20px, 20px 3px, 3px 20px,
+      20px 3px, 3px 20px, 20px 3px, 3px 20px;
   }
 }
