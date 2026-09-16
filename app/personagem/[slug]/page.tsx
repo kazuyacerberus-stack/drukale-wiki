@@ -7,6 +7,7 @@ import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
 import { useBeep } from '../../components/useBeep';
 import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
+import { normalizarNome } from '../../lib/faccoes';
 
 export default function PersonagemPage() {
   const params = useParams<{ slug: string }>();
@@ -20,6 +21,7 @@ export default function PersonagemPage() {
   const [loading, setLoading] = useState(true);
   const [quebrada, setQuebrada] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState(0);
+  const [faccoes, setFaccoes] = useState<Map<string, string>>(new Map());
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
@@ -30,10 +32,11 @@ export default function PersonagemPage() {
 
       // busca todos e resolve localmente: funciona por slug ou por id,
       // e já entrega os vizinhos para a navegação do rodapé
-      const { data } = await supabase
-        .from('characters')
-        .select('*')
-        .order('name', { ascending: true });
+      const [{ data }, { data: fac }] = await Promise.all([
+        supabase.from('characters').select('*').order('name', { ascending: true }),
+        supabase.from('faccoes').select('slug,nome'),
+      ]);
+      setFaccoes(new Map((fac ?? []).map((f: { slug: string; nome: string }) => [normalizarNome(f.nome), f.slug])));
 
       const todos = (data ?? []) as Character[];
       const idx = todos.findIndex(
@@ -103,6 +106,7 @@ export default function PersonagemPage() {
   const ativa = secoes.length ? Math.min(abaAtiva, secoes.length - 1) : 0;
 
   const linhas = FICHA.map((f) => ({
+    campo: f.campo,
     rotulo: f.rotulo,
     valor: (alvo[f.campo] as string | null) ?? null,
   })).filter((l) => l.valor);
@@ -203,12 +207,19 @@ export default function PersonagemPage() {
                 <dt>registro</dt>
                 <dd>#{String(alvo.id).replace(/-/g, '').slice(0, 8).toUpperCase()}</dd>
               </div>
-              {linhas.map((l) => (
-                <div className="linha" key={l.rotulo}>
-                  <dt>{l.rotulo}</dt>
-                  <dd>{l.valor}</dd>
-                </div>
-              ))}
+              {linhas.map((l) => {
+                const slugFaccao = l.campo === 'faction' && l.valor ? faccoes.get(normalizarNome(l.valor)) : undefined;
+                return (
+                  <div className="linha" key={l.rotulo}>
+                    <dt>{l.rotulo}</dt>
+                    <dd>
+                      {slugFaccao ? (
+                        <Link href={`/faccoes/${slugFaccao}`} onClick={() => beep('click')}>{l.valor}</Link>
+                      ) : l.valor}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
 
             {alvo.sheet_url && (

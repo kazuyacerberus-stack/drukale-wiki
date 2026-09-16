@@ -353,6 +353,11 @@ html, body { margin: 0; padding: 0; background: #000; }
 .field:last-child { margin-bottom: 0; }
 .field label { display: block; font-size: 12px; letter-spacing: 2px; color: rgba(0,255,102,.68); margin-bottom: 8px; text-transform: uppercase; }
 .field .dica { font-size: 11px; letter-spacing: .5px; color: rgba(138,255,192,.3); margin-top: 6px; text-transform: none; }
+.field input[type=color] {
+  width: 56px; height: 38px; padding: 3px; cursor: pointer;
+  border: 1px solid rgba(0,255,102,.22); border-radius: 2px;
+  background: rgba(0,255,102,.035);
+}
 
 .panel input[type=text], .panel input:not([type]), .panel textarea, .panel select {
   width: 100%; padding: 12px 14px;
