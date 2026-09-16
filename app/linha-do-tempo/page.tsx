@@ -38,6 +38,7 @@ export default function LinhaDoTempoPage() {
               </button>
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/faccoes">facções</Link>
+              <Link className="ico" href="/glossario">glossário</Link>
               <Link className="ico" href="/admin/linha-do-tempo">+ novo</Link>
             </div>
           </div>
