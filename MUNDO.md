@@ -3,8 +3,9 @@
 Leia uma vez inteiro antes de começar. São 4 passos e leva uns 10 minutos.
 
 > **Já instalou uma vez?** Então pule direto para o
-> **[PASSO 1B](#passo-1b--a-serpente-e-a-imagem-do-ambiente)** e o
-> **[PASSO 1C](#passo-1c--comunidade-contas-apelido-avatar-e-chat)**,
+> **[PASSO 1B](#passo-1b--a-serpente-e-a-imagem-do-ambiente)**, o
+> **[PASSO 1C](#passo-1c--comunidade-contas-apelido-avatar-e-chat)** e o
+> **[PASSO 1D](#passo-1d--facções-linha-do-tempo-glossário-e-mapa-político)**,
 > que são o SQL novo. Depois siga os passos 2, 3 e 4 normalmente.
 
 ---
@@ -79,6 +80,27 @@ de uma chavinha grátis:
 
 Sem essa chave o resto do site funciona normalmente — só o botão de
 GIF/figurinha do chat avisa que ainda falta configurar.
+
+---
+
+## PASSO 1D — Facções, linha do tempo, glossário e mapa político
+
+São quatro arquivos novos, um por cima do outro — rode os quatro, nessa
+ordem, do mesmo jeito de sempre (SQL Editor → colar o arquivo inteiro →
+Run):
+
+1. `sql/10-faccoes.sql` — cria a tabela de **facções** (casas, ordens,
+   organizações) e o balde `faccoes`, onde fica o símbolo de cada uma.
+2. `sql/11-eventos.sql` — cria a tabela da **linha do tempo**. Sem balde
+   novo, não tem imagem.
+3. `sql/12-glossario.sql` — cria a tabela do **glossário**. Também sem
+   balde novo.
+4. `sql/13-mapa-politico.sql` — só adiciona uma coluna (`faccao`) na
+   tabela de locais que já existia; é o que liga cada local do mundo a
+   uma facção dona, pro mapa político funcionar.
+
+Cada um mostra sua própria consulta de verificação no fim — confira que
+nenhum deles deu erro vermelho antes de seguir para o próximo.
 
 ---
 
@@ -183,6 +205,44 @@ administrador — os outros membros só veem o apelido.
 - Atalhos rápidos também aparecem direto no chat e nas cenas, ao lado do
   nome de quem postou, quando você está logado como administrador.
 
+### Facções
+
+Cada casa, ordem ou organização do império ganha sua própria página, em
+`/faccoes` (a lista) e `/faccoes/nome-da-facção` (a página dela).
+
+- **Qualquer visitante** pode ler: símbolo, resumo, história, território
+  em texto, e duas listas que se preenchem sozinhas — **membros**
+  (personagens cujo campo "facção" na ficha bate com o nome dela) e
+  **locais no mapa** (locais do mundo atribuídos a ela — ver "mapa
+  político" abaixo).
+- **Só você**, logado, cria/edita/apaga em `/admin/faccoes`. O nome que
+  você escolhe ali é o que casa com o campo "facção" da ficha do
+  personagem — escreva igual (maiúscula/minúscula e acento não importam,
+  mas o nome tem que ser o mesmo) para o link e a lista de membros
+  funcionarem.
+
+### Linha do tempo
+
+Os grandes marcos do império, em ordem, em `/linha-do-tempo`.
+
+- Cada evento tem um **título**, uma **data** (texto livre — o império
+  não tem calendário fixo, então escreva o que fizer sentido: "Ano 12
+  depois da Queda", "Terceira Era", ou deixe em branco) e um resumo/
+  descrição.
+- A **ordem em que aparecem não segue a data escrita** — ela é ajustada
+  à mão, em `/admin/linha-do-tempo`, com os botões **↑** e **↓** ao lado
+  de cada evento. Um evento novo sempre nasce no fim da lista.
+
+### Glossário
+
+Termos do mundo — raças, magia, tecnologia, organizações, lugares — em
+`/glossario`, com busca por nome e filtro por categoria.
+
+- Criar/editar/apagar, como sempre, em `/admin/glossario`.
+- Por enquanto o glossário é uma página à parte: um termo cadastrado
+  ali **não** vira link automático dentro do texto das fichas, cenas ou
+  eventos. Fica pra depois.
+
 ### Os sete tipos
 
 | tipo | para quê |
@@ -203,6 +263,25 @@ cadastrar:
 - A **serpente** vira um corpo enorme serpenteando rente à água, com
   crista no dorso, cabeça e olhos. Crave ela **em cima do mar** — em
   terra firme ela aparece do mesmo jeito, mas fica estranho.
+
+### Mapa político
+
+O botão **◑ mapa político**, na barra embaixo do planeta, pinta o
+território de cada facção sobre o globo, com fronteira entre elas — não
+é um desenho fixo: é calculado na hora a partir de qual local pertence a
+qual facção, então se atualiza sozinho sempre que você muda um dono.
+
+- **Atribuir dono**: edite um local (clique no ponto → **editar**, ou
+  **+ novo local**) e escolha a facção no campo **"facção dona"**. Vazio
+  = "nenhuma", esse local não pinta território nenhum.
+- Com **um só** local tendo dono, o planeta inteiro fica da cor daquela
+  facção — é o comportamento certo (não tem ninguém mais perto pra
+  disputar território). A fronteira só aparece quando **dois ou mais**
+  locais de facções diferentes existem.
+- Clicar de novo no botão (agora **🌐 mapa por tipo**) volta pro globo
+  normal, colorido por tipo de local.
+- Se nenhum local tiver facção ainda, o botão liga mas avisa que falta
+  atribuir — não é erro.
 
 ---
 
