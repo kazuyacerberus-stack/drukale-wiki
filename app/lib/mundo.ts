@@ -46,6 +46,7 @@ export type Local = {
   lon: number;      // -180 a 180
   altitude: number; // 0 no chão; acima disso, em órbita
   imagem: string | null;   // endereço da foto do ambiente, no Storage
+  faccao: string | null;   // nome da facção dona deste local, para o mapa político
 };
 
 export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300 };
@@ -137,6 +138,7 @@ export function lerLocais(valor: unknown): Local[] {
       lon: ((((lon + 180) % 360) + 360) % 360) - 180,
       altitude: Number.isFinite(Number(o.altitude)) ? Number(o.altitude) : 0,
       imagem: typeof o.imagem === 'string' && o.imagem.trim() ? o.imagem : null,
+      faccao: typeof o.faccao === 'string' && o.faccao.trim() ? o.faccao : null,
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }

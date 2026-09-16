@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import '../matrix.css';
-import { TIPOS } from '../lib/mundo';
 
 /**
  * O globo é WebGL puro: só existe dentro do navegador. Carregar o
@@ -55,15 +54,6 @@ export default function MundoPage() {
         </header>
 
         <Mundo />
-
-        <div className="legenda">
-          {TIPOS.map((t) => (
-            <span className="legenda-item" key={t.id} title={t.dica}>
-              <i style={{ background: t.cor }} />
-              {t.rotulo}
-            </span>
-          ))}
-        </div>
 
         <footer className="ft">
           <span>DRUKALE // CARTOGRAFIA · CARTA DE SUPERFÍCIE</span>

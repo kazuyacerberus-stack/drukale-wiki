@@ -110,8 +110,10 @@ varying vec3 vB;
 uniform sampler2D mapa;
 uniform sampler2D mapaN;
 uniform sampler2D mapaE;
+uniform sampler2D mapaP;
 uniform vec3 luz;
 uniform float brilhoLava;
+uniform float uPolitico;
 
 void main() {
   vec3 alb = texture2D(mapa, vUv).rgb;
@@ -146,6 +148,11 @@ void main() {
   cor += vec3(0.40, 0.14, 0.44) * pow(borda, 9.0) * 0.85;
   cor += vec3(0.60, 0.26, 0.07) * pow(borda, 14.0) * solLiso * 1.6;
 
+  // mapa político: sobreposto por cima de tudo, só quando ligado —
+  // com uPolitico em 0 (padrão) isto não muda nada no resultado
+  vec4 pol = texture2D(mapaP, vUv);
+  cor = mix(cor, pol.rgb, pol.a * uPolitico);
+
   gl_FragColor = vec4(cor, 1.0);
 }`;
 
@@ -157,6 +164,13 @@ function compilar(gl: WebGLRenderingContext, tipo: number, fonte: string) {
     throw new Error('shader: ' + gl.getShaderInfoLog(s));
   }
   return s;
+}
+
+/** Um canvas 1x1 totalmente transparente — placeholder seguro de textura. */
+function tela1x1Transparente(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 1; c.height = 1;
+  return c;
 }
 
 /**
@@ -208,19 +222,27 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
     gl.generateMipmap(gl.TEXTURE_2D);
     return t;
   }
+  // pixel 1x1 transparente: placeholder seguro pro mapa político antes
+  // de existir dado nenhum — sem isto o sampler fica indefinido e
+  // alguns navegadores simplesmente recusam desenhar a cena inteira
+  const semPolitico = tela1x1Transparente();
+
   const texturas = [
     subirTextura(mapas.cor, 0),
     subirTextura(mapas.normal, 1),
     subirTextura(mapas.emissivo, 2),
+    subirTextura(semPolitico, 3),
   ];
   gl.uniform1i(gl.getUniformLocation(prog, 'mapa'), 0);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaN'), 1);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaE'), 2);
+  gl.uniform1i(gl.getUniformLocation(prog, 'mapaP'), 3);
 
   const uMvp = gl.getUniformLocation(prog, 'mvp');
   const uGiro = gl.getUniformLocation(prog, 'giro');
   const uLuz = gl.getUniformLocation(prog, 'luz');
   const uLava = gl.getUniformLocation(prog, 'brilhoLava');
+  const uPol = gl.getUniformLocation(prog, 'uPolitico');
 
   gl.enable(gl.DEPTH_TEST);
   // sem descarte de faces de proposito: se a orientacao dos triangulos
@@ -230,8 +252,11 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   gl.clearColor(0, 0, 0, 0);
 
   return {
-    /** @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera */
-    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1) {
+    /**
+     * @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera
+     * @param politico 0 a 1 — o quanto o mapa político aparece por cima do terreno
+     */
+    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0) {
       const L = canvas.width, A = canvas.height;
       gl.viewport(0, 0, L, A);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -259,7 +284,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, texturas[i]);
       }
@@ -274,9 +299,26 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.uniformMatrix3fv(uGiro, false, r3);
       gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
       gl.uniform1f(uLava, brilhoLava);
+      gl.uniform1f(uPol, politico);
 
       gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_SHORT, 0);
       return { gl, proj, vista, r3 };   // a cidadela desenha por cima
+    },
+
+    /**
+     * Troca a textura do mapa político (ou volta ao vazio, com `null`).
+     * Não faz parte do desenho de cada quadro — só é chamado de fora
+     * quando os dados de facção dos locais mudam.
+     */
+    atualizarMapaPolitico(cv: HTMLCanvasElement | null) {
+      gl.activeTexture(gl.TEXTURE0 + 3);
+      gl.bindTexture(gl.TEXTURE_2D, texturas[3]);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv ?? semPolitico);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.generateMipmap(gl.TEXTURE_2D);
     },
 
     /**
