@@ -122,12 +122,8 @@ export default function Home() {
               >
                 {muted ? '♪ off' : '♪ on'}
               </button>
-              <Link className="ico" href="/faccoes" title="casas e organizações do império">⌂ facções</Link>
-              <Link className="ico" href="/linha-do-tempo" title="os grandes marcos do império">⏱ linha do tempo</Link>
-              <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
               <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
-              <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>
               <Link className="ico" href="/admin">+ novo</Link>
             </div>
           </div>

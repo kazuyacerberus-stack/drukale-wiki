@@ -46,7 +46,7 @@ export type Local = {
   lon: number;      // -180 a 180
   altitude: number; // 0 no chão; acima disso, em órbita
   imagem: string | null;   // endereço da foto do ambiente, no Storage
-  faccao: string | null;   // nome da facção dona deste local, para o mapa político
+  faccao: string | null;   // de quem é este lugar — usado pela página /faccoes
 };
 
 export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300 };
@@ -113,6 +113,29 @@ export function paraLatLon(x: number, y: number, z: number) {
   };
 }
 
+/**
+ * Onde a câmera tem que ficar para um ponto vir parar no MEIO da tela.
+ *
+ * É a conta inversa do desenho: em vez de "dado o giro, onde o ponto
+ * aparece", ela responde "dado o ponto, qual giro o traz para a frente".
+ *
+ * A matriz do globo é uma rotação em Y (giro) seguida de uma em X
+ * (inclinação). Querendo que o ponto acabe olhando para a câmera, a
+ * primeira rotação zera a componente horizontal e a segunda levanta ou
+ * abaixa o que sobrou. Daí saem estas duas linhas.
+ */
+export function olharPara(lat: number, lon: number) {
+  const [px, py, pz] = paraVetor(lat, lon);
+  const giro = Math.atan2(-px, pz);
+  const horizontal = Math.hypot(px, pz);
+  // Trava um pouco antes do polo (88,8°), onde o "para cima" da câmera
+  // deixa de existir e o mundo capota. É mais folgada que a trava do
+  // arrasto de propósito: arrastando ninguém quer chegar ao polo, mas
+  // um local cravado lá precisa vir para o centro assim mesmo.
+  const inclina = Math.max(-1.55, Math.min(1.55, Math.atan2(py, horizontal)));
+  return { giro, inclina };
+}
+
 /** "12.34° S, 56.78° O" — como o painel mostra a coordenada. */
 export function coordenadaLegivel(lat: number, lon: number) {
   const ns = lat >= 0 ? 'N' : 'S';
@@ -138,7 +161,7 @@ export function lerLocais(valor: unknown): Local[] {
       lon: ((((lon + 180) % 360) + 360) % 360) - 180,
       altitude: Number.isFinite(Number(o.altitude)) ? Number(o.altitude) : 0,
       imagem: typeof o.imagem === 'string' && o.imagem.trim() ? o.imagem : null,
-      faccao: typeof o.faccao === 'string' && o.faccao.trim() ? o.faccao : null,
+      faccao: typeof o.faccao === 'string' && o.faccao.trim() ? o.faccao.trim() : null,
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }

@@ -24,13 +24,30 @@ export async function entrar(email: string, senha: string) {
 }
 
 /**
- * Cria a conta. Devolve `true` se já veio com sessão ativa (login
- * automático), ou `false` se o Supabase exige confirmar o e-mail antes.
+ * Cria uma conta nova.
+ *
+ * O terceiro argumento é opcional e vai para os metadados do usuário
+ * no Supabase — é por onde passam coisas como apelido, que a tela de
+ * cadastro pode querer guardar já na criação.
+ *
+ * Devolve o que o Supabase devolveu (`user` e `session`), para quem
+ * chamou poder seguir direto com o perfil. Quando a confirmação por
+ * e-mail está ligada no projeto, `session` vem nula e a pessoa só
+ * entra depois de clicar no link — isso é decisão do Supabase, não
+ * daqui.
  */
-export async function cadastrar(email: string, senha: string): Promise<boolean> {
-  const { data, error } = await supabase.auth.signUp({ email, password: senha });
+export async function cadastrar(
+  email: string,
+  senha: string,
+  extras?: Record<string, unknown>,
+) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: senha,
+    ...(extras ? { options: { data: extras } } : {}),
+  });
   if (error) throw new Error(traduz(error.message));
-  return Boolean(data.session);
+  return data;
 }
 
 export async function sair() {
@@ -42,10 +59,6 @@ function traduz(msg: string): string {
   const m = msg.toLowerCase();
   if (m.includes('invalid login credentials')) return 'E-mail ou senha incorretos';
   if (m.includes('email not confirmed')) return 'E-mail ainda não confirmado';
-  if (m.includes('user already registered') || m.includes('already registered'))
-    return 'Já existe uma conta com este e-mail';
-  if (m.includes('password') && (m.includes('short') || m.includes('at least')))
-    return 'A senha é curta demais';
   if (m.includes('too many requests') || m.includes('rate limit'))
     return 'Tentativas demais — espere um minuto';
   if (m.includes('failed to fetch') || m.includes('network'))

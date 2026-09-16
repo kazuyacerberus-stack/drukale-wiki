@@ -1,16 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/db';
 import { gerarMundo } from './mundo/textura';
-import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
-import { gerarMapaPolitico } from './mundo/politico';
 import {
-  TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
+  criarGlobo, criarCidadela, criarSerpente, criarLuzes, pintarEspaco, rotacao3,
+} from './mundo/globo';
+
+import {
+  TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais, olharPara,
   LIMITES_LOCAL, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
   type Local, type TipoLocal,
 } from '../lib/mundo';
-import { normalizarNome } from '../lib/faccoes';
+
+/** Quanta luz cada tipo de local acende no chão do planeta. */
+const BRILHO: Partial<Record<TipoLocal, { raio: number; pontos: number; tam: number }>> = {
+  capital: { raio: 0.075, pontos: 320, tam: 7.5 },
+  cidade: { raio: 0.05, pontos: 180, tam: 6.4 },
+  quartel: { raio: 0.036, pontos: 90, tam: 5.6 },
+  base: { raio: 0.03, pontos: 60, tam: 5.2 },
+  ruina: { raio: 0.042, pontos: 30, tam: 4.4 },
+};
+
+/** Converte '#rrggbb' para os três números que o shader espera. */
+function corDoTipo(hex: string): number[] {
+  const n = parseInt(hex.slice(1), 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
 
 const FOV = 38;
 const PERTO = 1.6;    // aproximação máxima
@@ -34,32 +50,6 @@ function aplicar3T(m: Float32Array, v: number[]): [number, number, number] {
   ];
 }
 
-/**
- * Acha o giro/inclinação da câmera que deixam um ponto (lat, lon) bem de
- * frente, no centro da tela — é a matemática inversa do desenho: em vez
- * de girar o mundo e ver onde o ponto cai, parte de "quero este ponto no
- * centro" e resolve os dois ângulos que fazem isso acontecer.
- */
-function mirarPara(lat: number, lon: number): { giro: number; inclina: number } {
-  const v = paraVetor(lat, lon, 1);
-  let giro = Math.atan2(-v[0], v[2]);
-  let uz = -v[0] * Math.sin(giro) + v[2] * Math.cos(giro);
-  const uy = v[1];
-  let inclina = Math.atan2(-uy, -uz);
-  // duas soluções existem (giro girado 180°, cada uma com sua própria
-  // inclinação — não é só "inclina ± 180°", que é a conta errada que
-  // este arquivo tinha antes e mandava a câmera para o ponto errado).
-  // Troca de giro inverte o sinal de uz, e a inclinação certa para essa
-  // outra volta tem que ser recalculada com esse uz invertido, não só
-  // deslocada — por isso o atan2 roda de novo aqui embaixo.
-  if (inclina > Math.PI / 2 || inclina < -Math.PI / 2) {
-    giro += Math.PI;
-    uz = -uz;
-    inclina = Math.atan2(-uy, -uz);
-  }
-  return { giro, inclina: Math.max(-1.35, Math.min(1.35, inclina)) };
-}
-
 export default function Mundo() {
   const telaRef = useRef<HTMLCanvasElement>(null);
   const fundoRef = useRef<HTMLCanvasElement>(null);
@@ -75,24 +65,10 @@ export default function Mundo() {
   // o laço de desenho nasce uma vez só e não enxerga o estado do React;
   // por isso a vontade de girar mora aqui, num espelho que ele lê
   const giraSozinho = useRef(true);
-  // qual botão de zoom/giro está sendo segurado agora, se algum
-  const segurando = useRef<null | 'zoomMais' | 'zoomMenos' | 'giroEsq' | 'giroDir' | 'inclinaCima' | 'inclinaBaixo'>(null);
-  // para onde a câmera está viajando sozinha, quando alguém clica um local na lista
-  const alvoCam = useRef<{ giro: number; inclina: number } | null>(null);
-  // o objeto do globo, guardado pra poder trocar a textura política de fora do laço de desenho
-  const globoRef = useRef<ReturnType<typeof criarGlobo> | null>(null);
-  const tamRef = useRef({ L: 2048, A: 1024 });
-  // 0..1: o quanto o mapa político aparece por cima do terreno agora / pra onde ele está indo
-  const politicoAtual = useRef(0);
-  const politicoAlvo = useRef(0);
+  // o laço de desenho também não enxerga qual local está aberto
+  const abertoRef = useRef<string | null>(null);
 
   const [locais, setLocais] = useState<Local[]>([]);
-  const [faccoes, setFaccoes] = useState<{ nome: string; cor: string }[]>([]);
-  const [modoPolitico, setModoPolitico] = useState(false);
-  const [gerandoPolitico, setGerandoPolitico] = useState(false);
-  const [mostrarLista, setMostrarLista] = useState(true);
-  const [filtroTipo, setFiltroTipo] = useState<Set<TipoLocal>>(new Set());
-  const [buscaLocal, setBuscaLocal] = useState('');
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
   const [erro, setErro] = useState('');
   const [logado, setLogado] = useState(false);
@@ -106,6 +82,9 @@ export default function Mundo() {
   const [fotoPreview, setFotoPreview] = useState('');
   const [erroFoto, setErroFoto] = useState('');
   const [tirarFoto, setTirarFoto] = useState(false);
+  const [tipoFiltro, setTipoFiltro] = useState<TipoLocal | ''>('');
+  // o voo da câmera até um ponto: começo, destino e quanto já andou
+  const voo = useRef<{ de: typeof cam.current; para: typeof cam.current; t: number } | null>(null);
 
   /* ---------- quem está logado pode editar ---------- */
   useEffect(() => {
@@ -114,32 +93,19 @@ export default function Mundo() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  /* ---------- os locais e as facções donas deles ---------- */
+  /* o espelho do que está aberto, para o laço de desenho ler */
+  useEffect(() => { abertoRef.current = selecionado?.id ?? null; }, [selecionado]);
+
+  /* ---------- os locais ---------- */
   const carregar = async () => {
-    const [{ data, error }, { data: fac }] = await Promise.all([
-      supabase.from('locais').select('*').order('nome', { ascending: true }),
-      supabase.from('faccoes').select('nome,cor'),
-    ]);
+    const { data, error } = await supabase
+      .from('locais').select('*').order('nome', { ascending: true });
     if (error) { setErro(error.message); return; }
     const lista = lerLocais(data);
     locaisRef.current = lista;
     setLocais(lista);
-    setFaccoes((fac ?? []) as { nome: string; cor: string }[]);
   };
   useEffect(() => { carregar(); }, []);
-
-  /** normalizarNome(nome da facção) -> cor, pra pintar o mapa político */
-  const faccoesCores = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const f of faccoes) m.set(normalizarNome(f.nome), f.cor);
-    return m;
-  }, [faccoes]);
-
-  /** só os locais com uma facção cadastrada de verdade — é isto que vira território */
-  const pontosPoliticos = useMemo(
-    () => locais.filter((l) => l.faccao && faccoesCores.has(normalizarNome(l.faccao))),
-    [locais, faccoesCores],
-  );
 
   /* ============================================================
      O GLOBO
@@ -159,7 +125,6 @@ export default function Mundo() {
         const largo = palco.clientWidth;
         // no celular a textura grande custa caro e nem se enxerga
         const TAM = largo < 700 ? 1024 : 2048;
-        tamRef.current = { L: TAM, A: TAM / 2 };
         const mapas = gerarMundo(TAM, TAM / 2, {});
 
         const fundo = fundoRef.current;
@@ -172,7 +137,6 @@ export default function Mundo() {
 
         const globo = criarGlobo(tela, mapas);
         if (!globo) { setFase('sem-webgl'); return; }
-        globoRef.current = globo;
         setFase('pronto');
 
         // A cidadela só nasce quando existe alguma em órbita. Ela usa
@@ -182,45 +146,35 @@ export default function Mundo() {
         // da primeira vez.
         let cidadela: ReturnType<typeof criarCidadela> | null = null;
         let serpente: ReturnType<typeof criarSerpente> | null = null;
+        let luzes: ReturnType<typeof criarLuzes> | null = null;
 
         let n = 0;
         const quadro = (t: number) => {
           if (!vivo) return;
           raf = requestAnimationFrame(quadro);
 
-          // gira sozinho quando ninguém está mexendo nem lendo uma ficha
-          if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
+          // o voo até um ponto manda em tudo enquanto dura
+          if (voo.current) {
+            const v = voo.current;
+            v.t = Math.min(1, v.t + 0.022);
+            // desacelera no fim, para não parar com solavanco
+            const s = 1 - Math.pow(1 - v.t, 3);
+            // pelo caminho mais curto: girar 350° para a direita é o
+            // mesmo que girar 10° para a esquerda, e o olho percebe
+            let volta = (v.para.giro - v.de.giro) % (Math.PI * 2);
+            if (volta > Math.PI) volta -= Math.PI * 2;
+            if (volta < -Math.PI) volta += Math.PI * 2;
+            cam.current.giro = v.de.giro + volta * s;
+            cam.current.inclina = v.de.inclina + (v.para.inclina - v.de.inclina) * s;
+            cam.current.dist = v.de.dist + (v.para.dist - v.de.dist) * s;
+            if (v.t >= 1) voo.current = null;
+          } else if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
+            // gira sozinho quando ninguém está mexendo nem lendo uma ficha
             cam.current.giro += 0.0011;
           }
 
-          // segurando um botão de zoom ou de giro: ajusta a câmera a cada quadro
-          if (segurando.current) {
-            const s = segurando.current;
-            if (s === 'zoomMais') cam.current.dist = Math.max(PERTO, cam.current.dist * 0.985);
-            else if (s === 'zoomMenos') cam.current.dist = Math.min(LONGE, cam.current.dist * 1.015);
-            else if (s === 'giroEsq') cam.current.giro -= 0.022;
-            else if (s === 'giroDir') cam.current.giro += 0.022;
-            else if (s === 'inclinaCima') cam.current.inclina = Math.max(-1.35, cam.current.inclina - 0.016);
-            else if (s === 'inclinaBaixo') cam.current.inclina = Math.min(1.35, cam.current.inclina + 0.016);
-          }
-
-          // viajando sozinha até o local que alguém escolheu na lista
-          if (alvoCam.current) {
-            const a = alvoCam.current;
-            cam.current.giro += (a.giro - cam.current.giro) * 0.08;
-            cam.current.inclina += (a.inclina - cam.current.inclina) * 0.08;
-            if (Math.abs(a.giro - cam.current.giro) < 0.002 && Math.abs(a.inclina - cam.current.inclina) < 0.002) {
-              cam.current.giro = a.giro;
-              cam.current.inclina = a.inclina;
-              alvoCam.current = null;
-            }
-          }
-
-          // transição suave entre o globo por tipo e o mapa político
-          politicoAtual.current += (politicoAlvo.current - politicoAtual.current) * 0.08;
-
           const { giro, inclina, dist } = cam.current;
-          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current);
+          const cena = globo.desenhar(giro, inclina, dist, 1);
 
           // as cidadelas orbitais são desenhadas por cima do planeta
           const orbitais = locaisRef.current.filter((l) => tipoDe(l.tipo).orbital === true);
@@ -229,6 +183,25 @@ export default function Mundo() {
             for (const l of orbitais) {
               const p = paraVetor(l.lat, l.lon, 1 + (l.altitude || 0.55));
               cid.desenhar(cena.proj, cena.vista, cena.r3, p, 0.085, t / 2600);
+            }
+          }
+
+          // as luzes das cidades, acesas no chão do planeta. São luz de
+          // verdade no globo, não o marcador: giram junto com o mundo e
+          // somem quando a região passa para o outro lado.
+          const habitados = locaisRef.current.filter((l) => BRILHO[l.tipo]);
+          if (habitados.length > 0) {
+            const lz = luzes ?? (luzes = criarLuzes(cena.gl));
+            for (const l of habitados) {
+              const b = BRILHO[l.tipo]!;
+              // a cidade escolhida pulsa de leve, para o olho achá-la
+              const viva = abertoRef.current === l.id
+                ? 1.25 + Math.sin(t / 340) * 0.3 : 1;
+              lz.desenhar(cena.proj, cena.vista, cena.r3, l.id,
+                paraVetor(l.lat, l.lon, 1), b.raio, b.pontos,
+                // as luzes crescem quando a câmera chega perto: de longe
+                // são poeira, de perto viram uma cidade acesa
+                corDoTipo(tipoDe(l.tipo).cor), b.tam * viva * (3.4 / dist));
             }
           }
 
@@ -259,7 +232,7 @@ export default function Mundo() {
       }
     });
 
-    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf); globoRef.current = null; };
+    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf); };
   }, []);
 
   /* ---------- redimensionar ---------- */
@@ -280,39 +253,6 @@ export default function Mundo() {
     window.addEventListener('resize', ajustar);
     return () => window.removeEventListener('resize', ajustar);
   }, []);
-
-  /**
-   * Recalcula o mapa político sempre que os locais ou as cores das
-   * facções mudam. A conta é pesada (um diagrama de Voronoi pixel a
-   * pixel), então corre num `setTimeout` — o quadro seguinte pinta o
-   * aviso de "gerando..." antes de travar a aba, do mesmo jeito que a
-   * textura do planeta já faz na criação do globo.
-   */
-  useEffect(() => {
-    if (fase !== 'pronto') return;
-    const globo = globoRef.current;
-    if (!globo) return;
-
-    let vivo = true;
-    setGerandoPolitico(true);
-    const id = window.setTimeout(() => {
-      if (!vivo) return;
-      const { L, A } = tamRef.current;
-      const pontos = pontosPoliticos.map((l) => ({
-        lat: l.lat, lon: l.lon, cor: faccoesCores.get(normalizarNome(l.faccao as string)) as string,
-      }));
-      globo.atualizarMapaPolitico(gerarMapaPolitico(L, A, pontos));
-      setGerandoPolitico(false);
-    }, 0);
-    return () => { vivo = false; window.clearTimeout(id); };
-  }, [fase, pontosPoliticos, faccoesCores]);
-
-  /** Liga/desliga o mapa político — a transição em si acontece suave, dentro do laço de desenho. */
-  const alternarPolitico = () => {
-    const novo = !modoPolitico;
-    setModoPolitico(novo);
-    politicoAlvo.current = novo ? 1 : 0;
-  };
 
   /**
    * Põe cada marcador no lugar certo da tela.
@@ -365,13 +305,57 @@ export default function Mundo() {
     setGirando(ligar);
   };
 
+  /**
+   * Vira o planeta até o local ficar no meio da tela, e para o giro.
+   *
+   * Sem parar o giro automático, o ponto chegaria ao centro e sairia
+   * andando logo em seguida — que é exatamente a queixa de quem clica
+   * e vê o mundo passar direto pelo lugar.
+   */
+  function irAte(l: Local) {
+    const alvo = olharPara(l.lat, l.lon);
+    const perto = tipoDe(l.tipo).orbital ? 3.2 : 2.4;
+    voo.current = {
+      de: { ...cam.current },
+      para: { giro: alvo.giro, inclina: alvo.inclina, dist: perto },
+      t: 0,
+    };
+    mudarGiro(false);
+  }
+
+  /** Abre o local e leva o planeta até ele. */
+  function abrir(l: Local) {
+    setRascunho(null);
+    limparFoto();
+    setSelecionado(l);
+    pausado.current = true;
+    irAte(l);
+  }
+
+  /**
+   * A legenda é filtro E atalho: clicar num tipo deixa só ele à mostra
+   * e voa até um local daquele tipo. Clicando de novo, vai para o
+   * próximo do mesmo tipo — é assim que se percorre todas as bases sem
+   * precisar caçar cada uma girando o globo na mão.
+   */
+  function filtrarTipo(t: TipoLocal) {
+    const doTipo = locais.filter((l) => l.tipo === t);
+    if (tipoFiltro !== t) {
+      setTipoFiltro(t);
+      if (doTipo.length > 0) abrir(doTipo[0]);
+      return;
+    }
+    if (doTipo.length === 0) { setTipoFiltro(''); return; }
+    const atual = doTipo.findIndex((l) => l.id === selecionado?.id);
+    abrir(doTipo[(atual + 1) % doTipo.length]);
+  }
+
   const aoDescer = (e: React.PointerEvent) => {
     arrasto.current = { ativo: true, x: e.clientX, y: e.clientY, andou: 0 };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     // quem pegou o planeta com a mão quer olhar, não ver passar:
     // o giro automático para sozinho e só volta se for pedido
     if (girando) mudarGiro(false);
-    alvoCam.current = null;
   };
 
   const aoMover = (e: React.PointerEvent) => {
@@ -397,32 +381,9 @@ export default function Mundo() {
   };
 
   const aoRolar = (e: React.WheelEvent) => {
-    // rolar é só para aproximar — sem isto, o planeta continuava girando
-    // sozinho embaixo de quem só queria dar zoom num ponto parado
-    if (girando) mudarGiro(false);
-    alvoCam.current = null;
     const fator = Math.exp(e.deltaY * 0.0013);
     cam.current.dist = Math.max(PERTO, Math.min(LONGE, cam.current.dist * fator));
   };
-
-  /** Segura um botão de zoom ou de giro: o laço de desenho lê isto a cada quadro. */
-  const segurar = (tipo: NonNullable<typeof segurando.current>) => (e: React.PointerEvent) => {
-    e.stopPropagation();
-    if (girando) mudarGiro(false);
-    alvoCam.current = null;
-    segurando.current = tipo;
-  };
-  const soltar = (e: React.PointerEvent) => { e.stopPropagation(); segurando.current = null; };
-
-  /** Gira a câmera sozinha até deixar o local de frente, pelo caminho mais curto. */
-  function focarLocal(l: Local) {
-    if (girando) mudarGiro(false);
-    const alvo = mirarPara(l.lat, l.lon);
-    let giro = alvo.giro;
-    while (giro - cam.current.giro > Math.PI) giro -= Math.PI * 2;
-    while (giro - cam.current.giro < -Math.PI) giro += Math.PI * 2;
-    alvoCam.current = { giro, inclina: alvo.inclina };
-  }
 
   /**
    * Descobre em que ponto do planeta o clique caiu.
@@ -458,7 +419,8 @@ export default function Mundo() {
     setSelecionado(null);
     limparFoto();
     setRascunho({
-      id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null, faccao: null,
+      id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0,
+      imagem: null, faccao: null,
     });
     pausado.current = true;
   }
@@ -537,7 +499,6 @@ export default function Mundo() {
       lon: rascunho.lon,
       altitude: tipoDe(rascunho.tipo).orbital ? (rascunho.altitude || 0.55) : 0,
       imagem,
-      faccao: rascunho.faccao || null,
     };
 
     const { error } = rascunho.id
@@ -592,15 +553,7 @@ export default function Mundo() {
      ============================================================ */
   const emEdicao = rascunho !== null;
 
-  const locaisFiltrados = useMemo(() => {
-    const q = buscaLocal.trim().toLowerCase();
-    return locais
-      .filter((l) => (filtroTipo.size === 0 || filtroTipo.has(l.tipo)) && (!q || l.nome.toLowerCase().includes(q)))
-      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  }, [locais, filtroTipo, buscaLocal]);
-
   return (
-    <>
     <div className="mundo">
       <div
         className={`palco${cravando ? ' cravando' : ''}`}
@@ -615,7 +568,12 @@ export default function Mundo() {
         <canvas ref={telaRef} className="globo" />
 
         {/* os marcadores: o React cria, o laço de desenho posiciona */}
-        {fase === 'pronto' && locais.map((l) => (
+        {/* com um tipo escolhido na legenda, só ele fica à mostra. O laço
+            de desenho continua percorrendo a lista inteira e simplesmente
+            não acha o elemento dos que sumiram — por isso nada quebra. */}
+        {fase === 'pronto' && locais
+          .filter((l) => !tipoFiltro || l.tipo === tipoFiltro)
+          .map((l) => (
           <button
             key={l.id}
             type="button"
@@ -624,17 +582,8 @@ export default function Mundo() {
               else marcosRef.current.delete(l.id);
             }}
             className={`marco${selecionado?.id === l.id ? ' on' : ''}`}
-            style={{
-              opacity: 0,
-              '--cor': (modoPolitico && l.faccao && faccoesCores.get(normalizarNome(l.faccao))) || tipoDe(l.tipo).cor,
-            } as CSSProperties}
-            onClick={(ev) => {
-              ev.stopPropagation();
-              setRascunho(null);
-              setSelecionado(l);
-              pausado.current = true;
-              focarLocal(l);
-            }}
+            style={{ opacity: 0, '--cor': tipoDe(l.tipo).cor } as CSSProperties}
+            onClick={(ev) => { ev.stopPropagation(); abrir(l); }}
           >
             <span className="marco-ponto" />
             <span className="marco-nome">{l.nome}</span>
@@ -659,32 +608,6 @@ export default function Mundo() {
         {fase === 'pronto' && cravando && !emEdicao && (
           <div className="mundo-dica">clique no planeta para cravar o ponto</div>
         )}
-
-        {fase === 'pronto' && modoPolitico && !gerandoPolitico && pontosPoliticos.length === 0 && (
-          <div className="mundo-dica">nenhum local tem facção definida ainda — edite um local e escolha uma</div>
-        )}
-
-        {/* ---------- zoom e giro por botão ---------- */}
-        {fase === 'pronto' && (
-          <div className="mundo-controles" aria-label="Controles de zoom e giro">
-            <div className="giro-pad">
-              <button type="button" className="giro-cima" title="inclinar para cima"
-                onPointerDown={segurar('inclinaCima')} onPointerUp={soltar} onPointerLeave={soltar}>▲</button>
-              <button type="button" className="giro-esq" title="girar para a esquerda"
-                onPointerDown={segurar('giroEsq')} onPointerUp={soltar} onPointerLeave={soltar}>◀</button>
-              <button type="button" className="giro-dir" title="girar para a direita"
-                onPointerDown={segurar('giroDir')} onPointerUp={soltar} onPointerLeave={soltar}>▶</button>
-              <button type="button" className="giro-baixo" title="inclinar para baixo"
-                onPointerDown={segurar('inclinaBaixo')} onPointerUp={soltar} onPointerLeave={soltar}>▼</button>
-            </div>
-            <div className="zoom-pad">
-              <button type="button" title="aproximar"
-                onPointerDown={segurar('zoomMais')} onPointerUp={soltar} onPointerLeave={soltar}>＋</button>
-              <button type="button" title="afastar"
-                onPointerDown={segurar('zoomMenos')} onPointerUp={soltar} onPointerLeave={soltar}>－</button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ---------- barra de controle ---------- */}
@@ -698,22 +621,6 @@ export default function Mundo() {
           <span className="erro mundo-erro">FALHA :: {erro}</span>
         )}
 
-        <button
-          type="button"
-          className={`mini-btn${mostrarLista ? ' on' : ''}`}
-          onClick={() => setMostrarLista((v) => !v)}
-        >
-          ▤ locais
-        </button>
-        <button
-          type="button"
-          className={`mini-btn${modoPolitico ? ' on' : ''}`}
-          onClick={alternarPolitico}
-          disabled={gerandoPolitico}
-          title="pinta o território de cada facção sobre o globo"
-        >
-          {gerandoPolitico ? 'calculando território...' : modoPolitico ? '🌐 mapa por tipo' : '◑ mapa político'}
-        </button>
         <button
           type="button"
           className={`mini-btn${girando ? '' : ' on'}`}
@@ -733,64 +640,32 @@ export default function Mundo() {
         )}
       </div>
 
-      {/* ---------- lista e filtro de locais ---------- */}
-      {mostrarLista && (
-        <aside className="painel painel-locais" aria-label="Lista de locais">
-          <button type="button" className="painel-x" onClick={() => setMostrarLista(false)}>✕</button>
-          <span className="painel-tipo">buscar no mapa</span>
-          <h2>Locais</h2>
-
-          <input
-            className="lista-busca"
-            type="search"
-            value={buscaLocal}
-            onChange={(e) => setBuscaLocal(e.target.value)}
-            placeholder="buscar pelo nome..."
-          />
-
-          <div className="tipos">
-            {TIPOS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                title={t.dica}
-                className={`aba${filtroTipo.has(t.id) ? ' on' : ''}`}
-                onClick={() => setFiltroTipo((prev) => {
-                  const novo = new Set(prev);
-                  if (novo.has(t.id)) novo.delete(t.id); else novo.add(t.id);
-                  return novo;
-                })}
-              >{t.rotulo}</button>
-            ))}
-            {filtroTipo.size > 0 && (
-              <button type="button" className="aba" onClick={() => setFiltroTipo(new Set())}>limpar</button>
-            )}
-          </div>
-
-          <ul className="lista-locais">
-            {locaisFiltrados.length === 0 && <li className="lista-vazia">nenhum local encontrado</li>}
-            {locaisFiltrados.map((l) => (
-              <li key={l.id}>
-                <button
-                  type="button"
-                  className={selecionado?.id === l.id ? 'on' : ''}
-                  onClick={() => {
-                    setRascunho(null);
-                    setSelecionado(l);
-                    pausado.current = true;
-                    focarLocal(l);
-                    setMostrarLista(false);
-                  }}
-                >
-                  <i style={{ background: tipoDe(l.tipo).cor }} />
-                  <span className="lista-nome">{l.nome}</span>
-                  <span className="lista-tipo">{tipoDe(l.tipo).rotulo}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
+      {/* ---------- a legenda, que também é o atalho ----------
+          Clicar num tipo deixa só ele à mostra e vira o planeta até um
+          local daquele tipo. Clicando de novo, vai para o próximo. */}
+      <div className="legenda">
+        {TIPOS.map((t) => {
+          const quantos = locais.filter((l) => l.tipo === t.id).length;
+          return (
+            <button
+              type="button"
+              key={t.id}
+              title={quantos === 0 ? `${t.dica} — nenhum cadastrado` : `${t.dica} — ir até`}
+              disabled={quantos === 0}
+              className={`legenda-item${tipoFiltro === t.id ? ' on' : ''}`}
+              onClick={() => filtrarTipo(t.id)}
+            >
+              <i style={{ background: t.cor }} />
+              {t.rotulo}
+              {quantos > 0 && <b>{quantos}</b>}
+            </button>
+          );
+        })}
+        {tipoFiltro && (
+          <button type="button" className="legenda-limpar"
+            onClick={() => setTipoFiltro('')}>mostrar todos</button>
+        )}
+      </div>
 
       {/* ---------- painel lateral ---------- */}
       {(selecionado || rascunho) && (
@@ -868,18 +743,6 @@ export default function Mundo() {
               </div>
 
               <div className="field">
-                <label>facção dona</label>
-                <select
-                  value={rascunho.faccao ?? ''}
-                  onChange={(e) => setRascunho({ ...rascunho, faccao: e.target.value || null })}
-                >
-                  <option value="">nenhuma</option>
-                  {faccoes.map((f) => <option key={f.nome} value={f.nome}>{f.nome}</option>)}
-                </select>
-                <p className="dica">é o que pinta o território dela no mapa político</p>
-              </div>
-
-              <div className="field">
                 <label>resumo</label>
                 <textarea
                   rows={5}
@@ -929,24 +792,5 @@ export default function Mundo() {
         </aside>
       )}
     </div>
-
-    <div className="legenda">
-      {modoPolitico
-        ? (faccoes.length > 0
-          ? faccoes.map((f) => (
-            <span className="legenda-item" key={f.nome}>
-              <i style={{ background: f.cor }} />
-              {f.nome}
-            </span>
-          ))
-          : <span className="legenda-item">nenhuma facção cadastrada ainda</span>)
-        : TIPOS.map((t) => (
-          <span className="legenda-item" key={t.id} title={t.dica}>
-            <i style={{ background: t.cor }} />
-            {t.rotulo}
-          </span>
-        ))}
-    </div>
-    </>
   );
 }
