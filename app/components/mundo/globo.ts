@@ -110,8 +110,10 @@ varying vec3 vB;
 uniform sampler2D mapa;
 uniform sampler2D mapaN;
 uniform sampler2D mapaE;
+uniform sampler2D mapaP;
 uniform vec3 luz;
 uniform float brilhoLava;
+uniform float uPolitico;
 
 void main() {
   vec3 alb = texture2D(mapa, vUv).rgb;
@@ -146,6 +148,11 @@ void main() {
   cor += vec3(0.40, 0.14, 0.44) * pow(borda, 9.0) * 0.85;
   cor += vec3(0.60, 0.26, 0.07) * pow(borda, 14.0) * solLiso * 1.6;
 
+  // mapa político: sobreposto por cima de tudo, só quando ligado —
+  // com uPolitico em 0 (padrão) isto não muda nada no resultado
+  vec4 pol = texture2D(mapaP, vUv);
+  cor = mix(cor, pol.rgb, pol.a * uPolitico);
+
   gl_FragColor = vec4(cor, 1.0);
 }`;
 
@@ -157,6 +164,13 @@ function compilar(gl: WebGLRenderingContext, tipo: number, fonte: string) {
     throw new Error('shader: ' + gl.getShaderInfoLog(s));
   }
   return s;
+}
+
+/** Um canvas 1x1 totalmente transparente — placeholder seguro de textura. */
+function tela1x1Transparente(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 1; c.height = 1;
+  return c;
 }
 
 /**
@@ -208,19 +222,27 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
     gl.generateMipmap(gl.TEXTURE_2D);
     return t;
   }
+  // pixel 1x1 transparente: placeholder seguro pro mapa político antes
+  // de existir dado nenhum — sem isto o sampler fica indefinido e
+  // alguns navegadores simplesmente recusam desenhar a cena inteira
+  const semPolitico = tela1x1Transparente();
+
   const texturas = [
     subirTextura(mapas.cor, 0),
     subirTextura(mapas.normal, 1),
     subirTextura(mapas.emissivo, 2),
+    subirTextura(semPolitico, 3),
   ];
   gl.uniform1i(gl.getUniformLocation(prog, 'mapa'), 0);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaN'), 1);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaE'), 2);
+  gl.uniform1i(gl.getUniformLocation(prog, 'mapaP'), 3);
 
   const uMvp = gl.getUniformLocation(prog, 'mvp');
   const uGiro = gl.getUniformLocation(prog, 'giro');
   const uLuz = gl.getUniformLocation(prog, 'luz');
   const uLava = gl.getUniformLocation(prog, 'brilhoLava');
+  const uPol = gl.getUniformLocation(prog, 'uPolitico');
 
   gl.enable(gl.DEPTH_TEST);
   // sem descarte de faces de proposito: se a orientacao dos triangulos
@@ -230,8 +252,11 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   gl.clearColor(0, 0, 0, 0);
 
   return {
-    /** @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera */
-    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1) {
+    /**
+     * @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera
+     * @param politico 0 a 1 — o quanto o mapa político aparece por cima do terreno
+     */
+    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0) {
       const L = canvas.width, A = canvas.height;
       gl.viewport(0, 0, L, A);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -259,7 +284,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
 
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 4; i++) {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, texturas[i]);
       }
@@ -274,9 +299,26 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.uniformMatrix3fv(uGiro, false, r3);
       gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
       gl.uniform1f(uLava, brilhoLava);
+      gl.uniform1f(uPol, politico);
 
       gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_SHORT, 0);
       return { gl, proj, vista, r3 };   // a cidadela desenha por cima
+    },
+
+    /**
+     * Troca a textura do mapa político (ou volta ao vazio, com `null`).
+     * Não faz parte do desenho de cada quadro — só é chamado de fora
+     * quando os dados de facção dos locais mudam.
+     */
+    atualizarMapaPolitico(cv: HTMLCanvasElement | null) {
+      gl.activeTexture(gl.TEXTURE0 + 3);
+      gl.bindTexture(gl.TEXTURE_2D, texturas[3]);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cv ?? semPolitico);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.generateMipmap(gl.TEXTURE_2D);
     },
 
     /**
@@ -654,22 +696,6 @@ function transladar(x: number, y: number, z: number) {
 function escalar(s: number) {
   return new Float32Array([s,0,0,0, 0,s,0,0, 0,0,s,0, 0,0,0,1]);
 }
-/**
- * Giro em torno de Z, que o `rotacao3` não sabe fazer.
- *
- * É ele que levanta da linha do equador um corpo deitado em +X: girar
- * em X não mexe em quem está exatamente sobre o eixo X.
- */
-function rotZ4(a: number) {
-  const c = Math.cos(a), s = Math.sin(a);
-  return new Float32Array([
-    c, s, 0, 0,
-   -s, c, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1,
-  ]);
-}
-
 function rot4(m3: Float32Array) {
   return new Float32Array([
     m3[0], m3[1], m3[2], 0,
@@ -883,23 +909,17 @@ function naEsfera(lat: number, lon: number, raio: number): [number, number, numb
 function malhaSerpente(nos: number, lados: number, vao: number, grossura: number) {
   const pos: number[] = [], nor: number[] = [], idx: number[] = [];
   const MERGULHOS = 3;               // quantas vezes ela afunda e volta
+  const SOBE = grossura * 2.2;       // o quanto ela emerge da água
 
   const eixo = (t: number): [number, number, number] => {
     const lon = (t - 0.5) * vao;
     // o serpentear de lado é o movimento PRINCIPAL: é ele que faz o
-    // corpo desenhar um S reconhecível.
+    // corpo desenhar um S reconhecível. O sobe-e-desce é só um
+    // tempero; quando ele mandava, o bicho sumia na água e sobravam
+    // tocos soltos, que não pareciam serpente nenhuma.
     const lat = Math.sin(t * Math.PI * 2.6 + 0.4) * vao * 0.34;
-    // A LINHA DO CORPO CORRE DEBAIXO D'ÁGUA.
-    // Antes ela corria ACIMA do raio 1 e o bicho parecia voar rente ao
-    // chão. Agora o eixo fica afundado o tempo todo e só as lombadas
-    // rompem a superfície — que é como serpente de mar aparece: um
-    // pedaço de dorso de cada vez, o resto submerso.
-    // Fundo de verdade. Com pouco afundamento o corpo inteiro ficava
-    // acima da linha d'água e o bicho parecia voar rente ao mar; aqui
-    // os vales somem sob a superfície e só as lombadas rompem.
-    const onda = Math.cos(t * Math.PI * MERGULHOS);
-    const afunda = grossura * (-2.2 + Math.max(0, onda) * 3.0);
-    return naEsfera(lat, lon, 1 + afunda);
+    const fora = 0.5 + 0.5 * Math.cos(t * Math.PI * MERGULHOS);
+    return naEsfera(lat, lon, 1 + fora * SOBE - grossura * 0.25);
   };
 
   for (let i = 0; i <= nos; i++) {
@@ -930,13 +950,8 @@ function malhaSerpente(nos: number, lados: number, vao: number, grossura: number
       // a crista do dorso não é peça colada: é a própria seção do corpo
       // que sobe num gume por cima. Colada, virava uma fila de bolinhas
       // e o bicho parecia lagarta.
-      // a crista do dorso, um gume que corre do pescoço à cauda
-      const gume = 1 + 0.62 * Math.pow(Math.max(0, Math.sin(a)), 6) * (1 - t * 0.25);
-      // e a barriga achatada: bicho de mar não é cano redondo
-      const barriga = 1 - 0.22 * Math.pow(Math.max(0, -Math.sin(a)), 2);
-      // anéis ao longo do corpo, como as placas de uma cobra
-      const aneis = 1 + 0.045 * Math.sin(t * Math.PI * 2 * 46);
-      const rr = r * gume * barriga * aneis;
+      const gume = 1 + 0.45 * Math.pow(Math.max(0, Math.sin(a)), 8) * (1 - t * 0.3);
+      const rr = r * gume;
       pos.push(c[0] + nx * rr, c[1] + ny * rr, c[2] + nz * rr);
       nor.push(nx / nn, ny / nn, nz / nn);
     }
@@ -946,25 +961,9 @@ function malhaSerpente(nos: number, lados: number, vao: number, grossura: number
       const a = i * (lados + 1) + j, b = a + lados + 1;
       idx.push(a, b, a + 1, b, b + 1, a + 1);
     }
-  // onde entram as barbatanas: pares ao longo do corpo, com a direcao
-  // em que cada uma aponta para fora
-  const barbatanas: { p: [number, number, number]; lado: number[]; t: number }[] = [];
-  for (let i = 1; i <= 5; i++) {
-    const t = i / 6.5;
-    const c = eixo(t);
-    const f = eixo(Math.min(1, t + 0.01)), a = eixo(Math.max(0, t - 0.01));
-    let dx = f[0] - a[0], dy = f[1] - a[1], dz = f[2] - a[2];
-    const dn = Math.hypot(dx, dy, dz) || 1; dx /= dn; dy /= dn; dz /= dn;
-    const cn = Math.hypot(c[0], c[1], c[2]) || 1;
-    const ux = c[0] / cn, uy = c[1] / cn, uz = c[2] / cn;
-    let sx = dy * uz - dz * uy, sy = dz * ux - dx * uz, sz = dx * uy - dy * ux;
-    const sn = Math.hypot(sx, sy, sz) || 1;
-    barbatanas.push({ p: c, lado: [sx / sn, sy / sn, sz / sn], t });
-  }
-
   return {
     pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint16Array(idx),
-    cabeca: eixo(0), rumo: eixo(0.02), barbatanas,
+    cabeca: eixo(0),
   };
 }
 
@@ -984,21 +983,9 @@ void main() {
 
   vec3 c = corBase * (0.26 + 0.95 * s);
 
-  // escamas: duas camadas cruzadas, uma fina por cima de uma grossa.
-  // Uma so dava xadrez de toalha; duas em frequencias diferentes dao
-  // a irregularidade que faz parecer couro de bicho.
-  float e1 = sin(vLocal.x * 900.0) * sin(vLocal.y * 900.0) * sin(vLocal.z * 900.0);
-  float e2 = sin(vLocal.x * 310.0 + 1.7) * sin(vLocal.z * 310.0);
-  float escama = smoothstep(0.05, 0.75, e1) * 0.30 + smoothstep(-0.2, 0.9, e2) * 0.22;
-  c *= 1.0 + escama * janelas;
-
-  // o dorso e escuro e a barriga clara, como em quase todo bicho
-  float cima = dot(normalize(vN), normalize(vLocal));
-  c *= mix(0.72, 1.35, smoothstep(-0.7, 0.9, -cima)) * (0.55 + 0.45 * janelas);
-
-  // veias acesas correndo pelo corpo
-  float veia = smoothstep(0.93, 1.0, sin(vLocal.x * 120.0 + vLocal.z * 96.0));
-  c += vec3(0.25, 1.0, 0.65) * veia * 0.5 * janelas;
+  // escamas: um xadrez fino acompanhando o corpo
+  float e = sin(vLocal.y * 620.0) * sin(vLocal.x * 620.0) * sin(vLocal.z * 620.0);
+  c *= 1.0 + smoothstep(0.1, 0.8, e) * 0.4 * janelas;
 
   // umida: reflexo largo e macio, nada de metal
   vec3 H = normalize(L + V);
@@ -1019,9 +1006,9 @@ export function criarSerpente(gl: WebGLRenderingContext) {
     throw new Error('serpente: ' + gl.getProgramInfoLog(prog));
   }
 
-  const VAO = 0.46;          // quanto do mundo ela atravessa, em radianos
-  const GROSSURA = 0.017;    // raio do corpo, em raios de planeta
-  const corpo = malhaSerpente(200, 18, VAO, GROSSURA);
+  const VAO = 0.82;          // quanto do mundo ela atravessa, em radianos
+  const GROSSURA = 0.034;    // raio do corpo, em raios de planeta
+  const corpo = malhaSerpente(140, 12, VAO, GROSSURA);
   const bola = malhaEsfera(18, 12);
 
   function subir(dados: Float32Array) {
@@ -1072,36 +1059,22 @@ export function criarSerpente(gl: WebGLRenderingContext) {
       gl.uniformMatrix3fv(uRot, false, r3);
       gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
 
-      // O corpo nasce deitado no equador, apontando para +X. Levá-lo até
-      // (lat, lon) é girar em Z para subir a latitude e depois em Y para
-      // rodar a longitude — nessa ordem.
-      //
-      // Estava errado das duas maneiras possíveis. O giro da longitude
-      // ia para o lado contrário, e o da latitude era feito em X, eixo
-      // que NÃO mexe num ponto deitado em +X — ou seja, a latitude era
-      // simplesmente ignorada e a serpente nascia sempre no equador, na
-      // longitude espelhada. Daí ela aparecer longe de onde foi cravada.
-      const teta = ((lon + 180) * Math.PI) / 180 + Math.sin(onda) * 0.035;
-      const fi = (lat * Math.PI) / 180;
+      // o corpo nasce em volta do equador, na longitude 0. Duas rotações
+      // o levam até onde a serpente foi cravada — e um balanço pequeno
+      // em longitude faz parecer que ela está nadando.
+      const paraLon = ((lon + 180) * Math.PI) / 180 + Math.sin(onda) * 0.035;
+      const paraLat = (lat * Math.PI) / 180;
       const base = multiplicar(
         rot4(r3),
-        multiplicar(rot4(rotacao3(-teta, 0)), rotZ4(fi)),
+        multiplicar(rot4(rotacao3(paraLon, 0)), rot4(rotacao3(0, -paraLat))),
       );
 
       const cb = corpo.cabeca;
       const olho: [number, number, number] = [cb[0] * 0.02, cb[1] * 0.02, cb[2] * 0.02];
       const partes: [Peca, Float32Array, number[], number][] = [
-        [pecas.corpo, new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]), [0.2, 0.62, 0.45], 1],
+        [pecas.corpo, new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]), [0.13, 0.4, 0.31], 1],
         // a cabeça: uma bola achatada e puxada para a frente
-        [pecas.bola, emCima(cb, GROSSURA * 2.2, GROSSURA * 1.1, GROSSURA * 1.35), [0.17, 0.48, 0.37], 0],
-        // a mandíbula, um pouco abaixo e adiantada
-        [pecas.bola, emCima(cb, GROSSURA * 1.5, GROSSURA * 0.45, GROSSURA * 0.95,
-                            [0, -GROSSURA * 0.45, 0]), [0.22, 0.55, 0.42], 0],
-        // duas presas de chifre em cima do crânio
-        [pecas.bola, emCima(cb, GROSSURA * 0.16, GROSSURA * 1.0, GROSSURA * 0.16,
-                            [0, GROSSURA * 0.95, GROSSURA * 0.5]), [0.75, 0.9, 0.7], 0],
-        [pecas.bola, emCima(cb, GROSSURA * 0.16, GROSSURA * 1.0, GROSSURA * 0.16,
-                            [0, GROSSURA * 0.95, -GROSSURA * 0.5]), [0.75, 0.9, 0.7], 0],
+        [pecas.bola, emCima(cb, GROSSURA * 2.0, GROSSURA * 1.15, GROSSURA * 1.25), [0.17, 0.48, 0.37], 0],
         // dois olhos acesos, para saber de que lado ela está olhando
         [pecas.bola, emCima(cb, GROSSURA * 0.22, GROSSURA * 0.22, GROSSURA * 0.22,
                             [olho[0] + GROSSURA * 0.5, olho[1] + GROSSURA * 0.5, olho[2]]),
@@ -1111,19 +1084,6 @@ export function criarSerpente(gl: WebGLRenderingContext) {
          [1.0, 0.85, 0.2], 0],
       ];
 
-
-      // as barbatanas, pares achatados saindo dos lados do corpo
-      for (const b of corpo.barbatanas) {
-        const tam = GROSSURA * (2.4 - b.t * 1.4);
-        for (const dir of [1, -1]) {
-          partes.push([pecas.bola,
-            emCima(b.p, tam * 1.1, GROSSURA * 0.14, tam * 0.55,
-                   [b.lado[0] * tam * 0.55 * dir,
-                    b.lado[1] * tam * 0.55 * dir,
-                    b.lado[2] * tam * 0.55 * dir]),
-            [0.28, 0.66, 0.5], 0]);
-        }
-      }
 
       for (const [peca, local, cor, esc] of partes) {
         gl.bindBuffer(gl.ARRAY_BUFFER, peca.pos);
@@ -1140,164 +1100,6 @@ export function criarSerpente(gl: WebGLRenderingContext) {
         gl.uniform1f(uEsc, esc);
         gl.drawElements(gl.TRIANGLES, peca.n, gl.UNSIGNED_SHORT, 0);
       }
-    },
-  };
-}
-
-/* ============================================================
-   AS LUZES DA CIDADE
-   ------------------------------------------------------------
-   Um punhado de pontos acesos grudados na superfície, no lugar
-   onde um local foi cravado. Não é o marcador (aquele é HTML, e
-   fica por cima de tudo): isto é luz no planeta, que some quando
-   a região gira para o lado escuro e reaparece do outro lado.
-
-   O desenho é sempre o mesmo, sorteado uma vez só a partir de um
-   número fixo. Assim a cidade não pisca de lugar a cada quadro.
-   ============================================================ */
-
-const VS_LUZ = `
-attribute vec3 pos;
-attribute float brilho;
-uniform mat4 mvp;
-uniform mat3 rot;
-uniform float tamanho;
-varying float vBrilho;
-varying float vFrente;
-void main() {
-  // a luz so aparece no lado virado para quem olha
-  vec3 n = rot * normalize(pos);
-  vFrente = n.z;
-  vBrilho = brilho;
-  gl_Position = mvp * vec4(pos, 1.0);
-  gl_PointSize = tamanho * brilho;
-}`;
-
-const FS_LUZ = `
-precision mediump float;
-varying float vBrilho;
-varying float vFrente;
-uniform vec3 cor;
-void main() {
-  if (vFrente < 0.06) discard;                 // do outro lado do mundo
-  vec2 d = gl_PointCoord - vec2(0.5);
-  float r = length(d);
-  if (r > 0.5) discard;                        // ponto redondo, nao quadrado
-  // halo largo e fraco, miolo pequeno e forte: e o que faz um ponto
-  // parecer lampada acesa em vez de bolinha pintada
-  float halo = pow(smoothstep(0.5, 0.0, r), 1.6);
-  float miolo = smoothstep(0.16, 0.0, r);
-  float borda = smoothstep(0.06, 0.35, vFrente);
-  vec3 quente = mix(cor, vec3(1.0, 0.93, 0.78), 0.35);
-  gl_FragColor = vec4((cor * halo * 0.9 + quente * miolo * 2.4) * vBrilho * borda, 1.0);
-}`;
-
-export function criarLuzes(gl: WebGLRenderingContext) {
-  const prog = gl.createProgram()!;
-  gl.attachShader(prog, compilar(gl, gl.VERTEX_SHADER, VS_LUZ));
-  gl.attachShader(prog, compilar(gl, gl.FRAGMENT_SHADER, FS_LUZ));
-  gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    throw new Error('luzes: ' + gl.getProgramInfoLog(prog));
-  }
-
-  const aPos = gl.getAttribLocation(prog, 'pos');
-  const aBrilho = gl.getAttribLocation(prog, 'brilho');
-  const uMvp = gl.getUniformLocation(prog, 'mvp');
-  const uRot = gl.getUniformLocation(prog, 'rot');
-  const uCor = gl.getUniformLocation(prog, 'cor');
-  const uTam = gl.getUniformLocation(prog, 'tamanho');
-
-  const bufPos = gl.createBuffer()!;
-  const bufBri = gl.createBuffer()!;
-  // cada cidade tem o seu desenho, guardado para nao ser refeito
-  const feitas = new Map<string, { pos: Float32Array; bri: Float32Array; n: number }>();
-
-  /**
-   * Espalha as luzes em volta do ponto, na superfície da esfera.
-   *
-   * Mais densas no meio e ralas na borda, como cidade de verdade
-   * vista de cima: um miolo aceso e subúrbios se apagando.
-   */
-  function espalhar(centro: number[], raio: number, quantas: number, semente: number) {
-    // o "leste" e o "norte" daquele ponto: e sobre esses dois eixos
-    // que as luzes se espalham, para ficarem deitadas no chao
-    const cn = Math.hypot(centro[0], centro[1], centro[2]) || 1;
-    const u = [centro[0] / cn, centro[1] / cn, centro[2] / cn];
-    let lx = -u[2], ly = 0, lz = u[0];
-    const ln = Math.hypot(lx, ly, lz) || 1;
-    lx /= ln; ly /= ln; lz /= ln;
-    const nx = u[1] * lz - u[2] * ly;
-    const ny = u[2] * lx - u[0] * lz;
-    const nz = u[0] * ly - u[1] * lx;
-
-    let s = semente || 1;
-    const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
-
-    const pos: number[] = [], bri: number[] = [];
-    for (let i = 0; i < quantas; i++) {
-      // raiz quarta junta as luzes no centro; raiz quadrada espalharia
-      // por igual e a cidade sairia com cara de nuvem de mosquito
-      const d = raio * Math.pow(rnd(), 0.75);
-      const a = rnd() * Math.PI * 2;
-      const du = Math.cos(a) * d, dv = Math.sin(a) * d;
-      const p = [
-        u[0] + lx * du + nx * dv,
-        u[1] + ly * du + ny * dv,
-        u[2] + lz * du + nz * dv,
-      ];
-      // de volta para a superficie, senao as luzes flutuam
-      const pn = Math.hypot(p[0], p[1], p[2]) || 1;
-      const alt = 1.004;
-      pos.push(p[0] / pn * alt, p[1] / pn * alt, p[2] / pn * alt);
-      bri.push(0.35 + (1 - d / raio) * 0.65 * (0.5 + rnd() * 0.5));
-    }
-    return { pos: new Float32Array(pos), bri: new Float32Array(bri), n: quantas };
-  }
-
-  return {
-    /**
-     * @param chave  identidade da cidade, para o desenho não mudar
-     * @param centro ponto na esfera de raio 1
-     * @param raio   espalhamento, em raios de planeta
-     */
-    desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array,
-             chave: string, centro: number[], raio: number, quantas: number,
-             cor: number[], escala: number) {
-      let nuvem = feitas.get(chave);
-      if (!nuvem) {
-        // a semente sai do proprio nome: mesma cidade, mesmas luzes
-        let h = 2166136261;
-        for (let i = 0; i < chave.length; i++) h = (h ^ chave.charCodeAt(i)) * 16777619 >>> 0;
-        nuvem = espalhar(centro, raio, quantas, h % 2147483646 + 1);
-        feitas.set(chave, nuvem);
-      }
-
-      gl.useProgram(prog);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
-      gl.enable(gl.DEPTH_TEST);
-      // luz se SOMA ao que ja esta pintado, nao tapa
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-      gl.depthMask(false);
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
-      gl.bufferData(gl.ARRAY_BUFFER, nuvem.pos, gl.DYNAMIC_DRAW);
-      gl.enableVertexAttribArray(aPos);
-      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
-      gl.bindBuffer(gl.ARRAY_BUFFER, bufBri);
-      gl.bufferData(gl.ARRAY_BUFFER, nuvem.bri, gl.DYNAMIC_DRAW);
-      gl.enableVertexAttribArray(aBrilho);
-      gl.vertexAttribPointer(aBrilho, 1, gl.FLOAT, false, 0, 0);
-
-      gl.uniformMatrix4fv(uMvp, false, multiplicar(proj, multiplicar(vista, rot4(r3))));
-      gl.uniformMatrix3fv(uRot, false, r3);
-      gl.uniform3f(uCor, cor[0], cor[1], cor[2]);
-      gl.uniform1f(uTam, escala);
-      gl.drawArrays(gl.POINTS, 0, nuvem.n);
-
-      gl.depthMask(true);
-      gl.disable(gl.BLEND);
     },
   };
 }

@@ -39,6 +39,9 @@ export default function MundoPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">drukale://cartografia/superficie</span>
             <div className="hd-act">
+              <Link className="ico" href="/faccoes">facções</Link>
+              <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
+              <Link className="ico" href="/glossario">glossário</Link>
               <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/">◄ arquivo</Link>
             </div>
@@ -50,9 +53,6 @@ export default function MundoPage() {
           </p>
         </header>
 
-        {/* a legenda mora DENTRO do Mundo: lá ela enxerga os locais e
-            consegue filtrar e virar o planeta, coisa que aqui fora,
-            separada do componente, ela nunca conseguiria fazer */}
         <Mundo />
 
         <footer className="ft">
