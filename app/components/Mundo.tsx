@@ -43,14 +43,20 @@ function aplicar3T(m: Float32Array, v: number[]): [number, number, number] {
 function mirarPara(lat: number, lon: number): { giro: number; inclina: number } {
   const v = paraVetor(lat, lon, 1);
   let giro = Math.atan2(-v[0], v[2]);
-  const uz = -v[0] * Math.sin(giro) + v[2] * Math.cos(giro);
+  let uz = -v[0] * Math.sin(giro) + v[2] * Math.cos(giro);
   const uy = v[1];
   let inclina = Math.atan2(-uy, -uz);
-  // duas soluções existem (giradas 180° uma da outra); esta fica com o
-  // planeta na posição natural, polo norte para cima, em vez de de cabeça
-  // para baixo
-  if (inclina > Math.PI / 2) { inclina -= Math.PI; giro += Math.PI; }
-  else if (inclina < -Math.PI / 2) { inclina += Math.PI; giro += Math.PI; }
+  // duas soluções existem (giro girado 180°, cada uma com sua própria
+  // inclinação — não é só "inclina ± 180°", que é a conta errada que
+  // este arquivo tinha antes e mandava a câmera para o ponto errado).
+  // Troca de giro inverte o sinal de uz, e a inclinação certa para essa
+  // outra volta tem que ser recalculada com esse uz invertido, não só
+  // deslocada — por isso o atan2 roda de novo aqui embaixo.
+  if (inclina > Math.PI / 2 || inclina < -Math.PI / 2) {
+    giro += Math.PI;
+    uz = -uz;
+    inclina = Math.atan2(-uy, -uz);
+  }
   return { giro, inclina: Math.max(-1.35, Math.min(1.35, inclina)) };
 }
 
