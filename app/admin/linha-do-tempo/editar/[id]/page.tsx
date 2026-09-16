@@ -1,0 +1,64 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import '../../../../matrix.css';
+import MatrixRain from '../../../../components/MatrixRain';
+import Protegido from '../../../../components/Protegido';
+import EventoForm from '../../../../components/EventoForm';
+import { supabase } from '../../../../lib/db';
+import { type Evento } from '../../../../lib/eventos';
+
+export default function EditarEvento() {
+  const params = useParams<{ id: string }>();
+  const id = decodeURIComponent(String(params?.id ?? ''));
+
+  const [alvo, setAlvo] = useState<Evento | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase.from('eventos').select('*').eq('id', id).maybeSingle();
+      setAlvo((data as Evento) ?? null);
+      setLoading(false);
+    })();
+  }, [id]);
+
+  return (
+    <div className="term">
+      <MatrixRain />
+
+      <main className="wrap narrow">
+       <Protegido>
+        <header className="hd">
+          <div className="hd-bar">
+            <span className="dot" /><span className="dot" /><span className="dot" />
+            <span className="hd-path">drukale://admin/linha-do-tempo/editar</span>
+            <div className="hd-act">
+              <Link className="ico" href="/admin/linha-do-tempo">← linha do tempo</Link>
+            </div>
+          </div>
+          <h1 data-txt="EDITAR EVENTO">EDITAR EVENTO</h1>
+          <p className="sub">&gt; {loading ? 'carregando...' : alvo?.titulo ?? 'não encontrado'} <span className="cur" /></p>
+        </header>
+
+        {loading ? (
+          <div className="load"><span /><span /><span /><p>acessando registro...</p></div>
+        ) : !alvo ? (
+          <p className="vazio">
+            nenhum evento encontrado —{' '}
+            <Link href="/admin/linha-do-tempo" style={{ color: 'var(--g)' }}>voltar à lista</Link>
+          </p>
+        ) : (
+          <EventoForm inicial={alvo} />
+        )}
+
+        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </Protegido>
+      </main>
+    </div>
+  );
+}

@@ -41,6 +41,7 @@ export default function MundoPage() {
             <span className="hd-path">drukale://cartografia/superficie</span>
             <div className="hd-act">
               <Link className="ico" href="/faccoes">facções</Link>
+              <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
               <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/">◄ arquivo</Link>
             </div>
