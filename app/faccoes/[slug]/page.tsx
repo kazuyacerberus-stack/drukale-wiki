@@ -8,6 +8,7 @@ import MatrixRain from '../../components/MatrixRain';
 import { useBeep } from '../../components/useBeep';
 import { supabase, type Character } from '../../lib/db';
 import { normalizarNome, mensagemFaccao, type Faccao } from '../../lib/faccoes';
+import { lerLocais, tipoDe, type Local } from '../../lib/mundo';
 
 export default function FaccaoPage() {
   const params = useParams<{ slug: string }>();
@@ -15,6 +16,7 @@ export default function FaccaoPage() {
 
   const [alvo, setAlvo] = useState<Faccao | null>(null);
   const [membros, setMembros] = useState<Character[]>([]);
+  const [territorio, setTerritorio] = useState<Local[]>([]);
   const [loading, setLoading] = useState(true);
   const [naoEncontrada, setNaoEncontrada] = useState(false);
   const [erro, setErro] = useState('');
@@ -28,9 +30,10 @@ export default function FaccaoPage() {
       setNaoEncontrada(false);
       setErro('');
 
-      const [{ data: fac, error: erroFac }, { data: chars }] = await Promise.all([
+      const [{ data: fac, error: erroFac }, { data: chars }, { data: locs }] = await Promise.all([
         supabase.from('faccoes').select('*').eq('slug', chave).maybeSingle(),
         supabase.from('characters').select('*'),
+        supabase.from('locais').select('*'),
       ]);
 
       if (erroFac) { setErro(mensagemFaccao(erroFac)); setLoading(false); return; }
@@ -44,6 +47,11 @@ export default function FaccaoPage() {
         todos
           .filter((c) => c.faction && normalizarNome(c.faction) === alvoNorm)
           .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR'))
+      );
+      setTerritorio(
+        lerLocais(locs)
+          .filter((l) => l.faccao && normalizarNome(l.faccao) === alvoNorm)
+          .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
       );
       setLoading(false);
     })();
@@ -175,6 +183,28 @@ export default function FaccaoPage() {
               })}
             </section>
           )}
+        </section>
+
+        <section style={{ marginTop: 44 }}>
+          <h2 style={{ margin: '0 0 18px' }}>locais no mapa{territorio.length > 0 ? ` (${territorio.length})` : ''}</h2>
+          {territorio.length === 0 ? (
+            <p className="vazio">nenhum local do mundo pertence a esta facção ainda.</p>
+          ) : (
+            <ul className="lista-locais" style={{ maxHeight: 'none' }}>
+              {territorio.map((l) => (
+                <li key={l.id}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 9px' }}>
+                    <i style={{ background: tipoDe(l.tipo).cor, width: 8, height: 8, borderRadius: '50%', boxShadow: '0 0 8px currentColor', flex: 'none' }} />
+                    <span className="lista-nome">{l.nome}</span>
+                    <span className="lista-tipo">{tipoDe(l.tipo).rotulo}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="dica" style={{ marginTop: 14 }}>
+            <Link href="/mundo">ver no mapa político →</Link>
+          </p>
         </section>
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>

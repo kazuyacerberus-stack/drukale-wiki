@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/db';
 import { gerarMundo } from './mundo/textura';
 import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
+import { gerarMapaPolitico } from './mundo/politico';
 import {
   TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
   LIMITES_LOCAL, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
   type Local, type TipoLocal,
 } from '../lib/mundo';
+import { normalizarNome } from '../lib/faccoes';
 
 const FOV = 38;
 const PERTO = 1.6;    // aproximação máxima
@@ -71,8 +73,17 @@ export default function Mundo() {
   const segurando = useRef<null | 'zoomMais' | 'zoomMenos' | 'giroEsq' | 'giroDir' | 'inclinaCima' | 'inclinaBaixo'>(null);
   // para onde a câmera está viajando sozinha, quando alguém clica um local na lista
   const alvoCam = useRef<{ giro: number; inclina: number } | null>(null);
+  // o objeto do globo, guardado pra poder trocar a textura política de fora do laço de desenho
+  const globoRef = useRef<ReturnType<typeof criarGlobo> | null>(null);
+  const tamRef = useRef({ L: 2048, A: 1024 });
+  // 0..1: o quanto o mapa político aparece por cima do terreno agora / pra onde ele está indo
+  const politicoAtual = useRef(0);
+  const politicoAlvo = useRef(0);
 
   const [locais, setLocais] = useState<Local[]>([]);
+  const [faccoes, setFaccoes] = useState<{ nome: string; cor: string }[]>([]);
+  const [modoPolitico, setModoPolitico] = useState(false);
+  const [gerandoPolitico, setGerandoPolitico] = useState(false);
   const [mostrarLista, setMostrarLista] = useState(true);
   const [filtroTipo, setFiltroTipo] = useState<Set<TipoLocal>>(new Set());
   const [buscaLocal, setBuscaLocal] = useState('');
@@ -97,16 +108,32 @@ export default function Mundo() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  /* ---------- os locais ---------- */
+  /* ---------- os locais e as facções donas deles ---------- */
   const carregar = async () => {
-    const { data, error } = await supabase
-      .from('locais').select('*').order('nome', { ascending: true });
+    const [{ data, error }, { data: fac }] = await Promise.all([
+      supabase.from('locais').select('*').order('nome', { ascending: true }),
+      supabase.from('faccoes').select('nome,cor'),
+    ]);
     if (error) { setErro(error.message); return; }
     const lista = lerLocais(data);
     locaisRef.current = lista;
     setLocais(lista);
+    setFaccoes((fac ?? []) as { nome: string; cor: string }[]);
   };
   useEffect(() => { carregar(); }, []);
+
+  /** normalizarNome(nome da facção) -> cor, pra pintar o mapa político */
+  const faccoesCores = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const f of faccoes) m.set(normalizarNome(f.nome), f.cor);
+    return m;
+  }, [faccoes]);
+
+  /** só os locais com uma facção cadastrada de verdade — é isto que vira território */
+  const pontosPoliticos = useMemo(
+    () => locais.filter((l) => l.faccao && faccoesCores.has(normalizarNome(l.faccao))),
+    [locais, faccoesCores],
+  );
 
   /* ============================================================
      O GLOBO
@@ -126,6 +153,7 @@ export default function Mundo() {
         const largo = palco.clientWidth;
         // no celular a textura grande custa caro e nem se enxerga
         const TAM = largo < 700 ? 1024 : 2048;
+        tamRef.current = { L: TAM, A: TAM / 2 };
         const mapas = gerarMundo(TAM, TAM / 2, {});
 
         const fundo = fundoRef.current;
@@ -138,6 +166,7 @@ export default function Mundo() {
 
         const globo = criarGlobo(tela, mapas);
         if (!globo) { setFase('sem-webgl'); return; }
+        globoRef.current = globo;
         setFase('pronto');
 
         // A cidadela só nasce quando existe alguma em órbita. Ela usa
@@ -181,8 +210,11 @@ export default function Mundo() {
             }
           }
 
+          // transição suave entre o globo por tipo e o mapa político
+          politicoAtual.current += (politicoAlvo.current - politicoAtual.current) * 0.08;
+
           const { giro, inclina, dist } = cam.current;
-          const cena = globo.desenhar(giro, inclina, dist, 1);
+          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current);
 
           // as cidadelas orbitais são desenhadas por cima do planeta
           const orbitais = locaisRef.current.filter((l) => tipoDe(l.tipo).orbital === true);
@@ -221,7 +253,7 @@ export default function Mundo() {
       }
     });
 
-    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf); };
+    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf); globoRef.current = null; };
   }, []);
 
   /* ---------- redimensionar ---------- */
@@ -242,6 +274,39 @@ export default function Mundo() {
     window.addEventListener('resize', ajustar);
     return () => window.removeEventListener('resize', ajustar);
   }, []);
+
+  /**
+   * Recalcula o mapa político sempre que os locais ou as cores das
+   * facções mudam. A conta é pesada (um diagrama de Voronoi pixel a
+   * pixel), então corre num `setTimeout` — o quadro seguinte pinta o
+   * aviso de "gerando..." antes de travar a aba, do mesmo jeito que a
+   * textura do planeta já faz na criação do globo.
+   */
+  useEffect(() => {
+    if (fase !== 'pronto') return;
+    const globo = globoRef.current;
+    if (!globo) return;
+
+    let vivo = true;
+    setGerandoPolitico(true);
+    const id = window.setTimeout(() => {
+      if (!vivo) return;
+      const { L, A } = tamRef.current;
+      const pontos = pontosPoliticos.map((l) => ({
+        lat: l.lat, lon: l.lon, cor: faccoesCores.get(normalizarNome(l.faccao as string)) as string,
+      }));
+      globo.atualizarMapaPolitico(gerarMapaPolitico(L, A, pontos));
+      setGerandoPolitico(false);
+    }, 0);
+    return () => { vivo = false; window.clearTimeout(id); };
+  }, [fase, pontosPoliticos, faccoesCores]);
+
+  /** Liga/desliga o mapa político — a transição em si acontece suave, dentro do laço de desenho. */
+  const alternarPolitico = () => {
+    const novo = !modoPolitico;
+    setModoPolitico(novo);
+    politicoAlvo.current = novo ? 1 : 0;
+  };
 
   /**
    * Põe cada marcador no lugar certo da tela.
@@ -387,7 +452,7 @@ export default function Mundo() {
     setSelecionado(null);
     limparFoto();
     setRascunho({
-      id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null,
+      id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null, faccao: null,
     });
     pausado.current = true;
   }
@@ -466,6 +531,7 @@ export default function Mundo() {
       lon: rascunho.lon,
       altitude: tipoDe(rascunho.tipo).orbital ? (rascunho.altitude || 0.55) : 0,
       imagem,
+      faccao: rascunho.faccao || null,
     };
 
     const { error } = rascunho.id
@@ -528,6 +594,7 @@ export default function Mundo() {
   }, [locais, filtroTipo, buscaLocal]);
 
   return (
+    <>
     <div className="mundo">
       <div
         className={`palco${cravando ? ' cravando' : ''}`}
@@ -551,7 +618,10 @@ export default function Mundo() {
               else marcosRef.current.delete(l.id);
             }}
             className={`marco${selecionado?.id === l.id ? ' on' : ''}`}
-            style={{ opacity: 0, '--cor': tipoDe(l.tipo).cor } as CSSProperties}
+            style={{
+              opacity: 0,
+              '--cor': (modoPolitico && l.faccao && faccoesCores.get(normalizarNome(l.faccao))) || tipoDe(l.tipo).cor,
+            } as CSSProperties}
             onClick={(ev) => {
               ev.stopPropagation();
               setRascunho(null);
@@ -582,6 +652,10 @@ export default function Mundo() {
 
         {fase === 'pronto' && cravando && !emEdicao && (
           <div className="mundo-dica">clique no planeta para cravar o ponto</div>
+        )}
+
+        {fase === 'pronto' && modoPolitico && !gerandoPolitico && pontosPoliticos.length === 0 && (
+          <div className="mundo-dica">nenhum local tem facção definida ainda — edite um local e escolha uma</div>
         )}
 
         {/* ---------- zoom e giro por botão ---------- */}
@@ -624,6 +698,15 @@ export default function Mundo() {
           onClick={() => setMostrarLista((v) => !v)}
         >
           ▤ locais
+        </button>
+        <button
+          type="button"
+          className={`mini-btn${modoPolitico ? ' on' : ''}`}
+          onClick={alternarPolitico}
+          disabled={gerandoPolitico}
+          title="pinta o território de cada facção sobre o globo"
+        >
+          {gerandoPolitico ? 'calculando território...' : modoPolitico ? '🌐 mapa por tipo' : '◑ mapa político'}
         </button>
         <button
           type="button"
@@ -779,6 +862,18 @@ export default function Mundo() {
               </div>
 
               <div className="field">
+                <label>facção dona</label>
+                <select
+                  value={rascunho.faccao ?? ''}
+                  onChange={(e) => setRascunho({ ...rascunho, faccao: e.target.value || null })}
+                >
+                  <option value="">nenhuma</option>
+                  {faccoes.map((f) => <option key={f.nome} value={f.nome}>{f.nome}</option>)}
+                </select>
+                <p className="dica">é o que pinta o território dela no mapa político</p>
+              </div>
+
+              <div className="field">
                 <label>resumo</label>
                 <textarea
                   rows={5}
@@ -828,5 +923,24 @@ export default function Mundo() {
         </aside>
       )}
     </div>
+
+    <div className="legenda">
+      {modoPolitico
+        ? (faccoes.length > 0
+          ? faccoes.map((f) => (
+            <span className="legenda-item" key={f.nome}>
+              <i style={{ background: f.cor }} />
+              {f.nome}
+            </span>
+          ))
+          : <span className="legenda-item">nenhuma facção cadastrada ainda</span>)
+        : TIPOS.map((t) => (
+          <span className="legenda-item" key={t.id} title={t.dica}>
+            <i style={{ background: t.cor }} />
+            {t.rotulo}
+          </span>
+        ))}
+    </div>
+    </>
   );
 }
