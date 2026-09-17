@@ -67,11 +67,13 @@ export default function PerfilPage() {
   }, [router]);
 
   const carregarPainel = async () => {
-    const [{ data: r, error: erroR }, { data: c }] = await Promise.all([
+    const [{ data: r, error: erroR }, { data: c, error: erroC }] = await Promise.all([
       supabase.rpc('drk_painel_resumo'),
       supabase.rpc('drk_admin_listar_perfis'),
     ]);
-    if (erroR) { setErroPainel(erroR.message); return; }
+    const primeiroErro = erroR ?? erroC;
+    if (primeiroErro) { setErroPainel(primeiroErro.message); return; }
+    setErroPainel('');
     setResumo(r as Resumo);
     setContasPendentes(((c ?? []) as ContaAdmin[]).filter((p) => p.status_conta === 'pendente'));
   };

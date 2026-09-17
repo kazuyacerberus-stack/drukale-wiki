@@ -49,13 +49,20 @@ export default function Painel() {
   }, []);
 
   const carregarPainel = useCallback(async () => {
-    const [{ data: r, error: erroR }, { data: c }, { data: f }, { data: e }] = await Promise.all([
+    const [
+      { data: r, error: erroR },
+      { data: c, error: erroC },
+      { data: f, error: erroF },
+      { data: e, error: erroE },
+    ] = await Promise.all([
       supabase.rpc('drk_painel_resumo'),
       supabase.rpc('drk_admin_listar_perfis'),
       supabase.from('characters').select('*').eq('status_aprovacao', 'pendente'),
       supabase.from('eventos').select('*').eq('status_aprovacao', 'pendente'),
     ]);
-    if (erroR) { setErroPainel(erroR.message); return; }
+    const primeiroErro = erroR ?? erroC ?? erroF ?? erroE;
+    if (primeiroErro) { setErroPainel(primeiroErro.message); return; }
+    setErroPainel('');
     setResumo(r as Resumo);
     setContas(((c ?? []) as ContaAdmin[]).filter((p) => p.status_conta === 'pendente'));
     setFichasPendentes((f ?? []) as Character[]);
