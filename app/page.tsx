@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import './matrix.css';
 import Abertura from './components/Abertura';
+import Avatar from './components/Avatar';
 import { useBeep } from './components/useBeep';
 import { supabase } from './lib/db';
 
@@ -64,6 +65,7 @@ export default function Home() {
   const [numeros, setNumeros] = useState<Numeros | null>(null);
   const [podeVerConteudo, setPodeVerConteudo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
+  const [meuPerfil, setMeuPerfil] = useState<{ apelido: string; avatar_url: string | null } | null>(null);
   const { beep, muted, setMuted } = useBeep();
   const heroRef = useRef<HTMLElement>(null);
 
@@ -78,14 +80,17 @@ export default function Home() {
   useEffect(() => {
     let vivo = true;
     const verificar = async (logado: boolean) => {
-      if (!logado) { if (vivo) { setPodeVerConteudo(false); setEhAdmin(false); } return; }
-      const [admin, aprovada] = await Promise.all([
+      if (!logado) { if (vivo) { setPodeVerConteudo(false); setEhAdmin(false); setMeuPerfil(null); } return; }
+      const { data: auth } = await supabase.auth.getUser();
+      const [admin, aprovada, perfil] = await Promise.all([
         supabase.rpc('drk_e_admin'),
         supabase.rpc('drk_conta_aprovada'),
+        auth.user ? supabase.from('profiles').select('apelido,avatar_url').eq('user_id', auth.user.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       if (vivo) {
         setPodeVerConteudo(admin.data === true || aprovada.data === true);
         setEhAdmin(admin.data === true);
+        setMeuPerfil(perfil.data as { apelido: string; avatar_url: string | null } | null);
       }
     };
     supabase.auth.getSession().then(({ data }) => { if (vivo) void verificar(Boolean(data.session)); });
@@ -167,6 +172,12 @@ export default function Home() {
                 {muted ? '♪ off' : '♪ on'}
               </button>
               {ehAdmin && <Link className="ico" href="/admin">★ game master</Link>}
+              {meuPerfil && (
+                <Link className="ico" href="/perfil" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <Avatar url={meuPerfil.avatar_url} nome={meuPerfil.apelido} tamanho={18} />
+                  perfil
+                </Link>
+              )}
             </div>
           </div>
         </header>
