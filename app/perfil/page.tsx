@@ -13,6 +13,11 @@ import { type Evento } from '../lib/eventos';
 
 const ROTULO_STATUS: Record<string, string> = { pendente: 'em análise', aprovado: 'aprovado', reprovado: 'reprovado' };
 
+type ContaAdmin = {
+  user_id: string; email: string; apelido: string; status_conta: 'pendente' | 'aprovado' | 'reprovado';
+};
+type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; banidos: number };
+
 export default function PerfilPage() {
   const router = useRouter();
   const [carregandoPerfil, setCarregandoPerfil] = useState(true);
@@ -29,16 +34,25 @@ export default function PerfilPage() {
   const [meusEventos, setMeusEventos] = useState<Evento[]>([]);
   const [carregandoEnvios, setCarregandoEnvios] = useState(true);
 
+  const [ehAdmin, setEhAdmin] = useState(false);
+  const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [contasPendentes, setContasPendentes] = useState<ContaAdmin[]>([]);
+  const [avaliando, setAvaliando] = useState<string | null>(null);
+  const [motivoPorId, setMotivoPorId] = useState<Record<string, string>>({});
+  const [mostrarMotivoPara, setMostrarMotivoPara] = useState<string | null>(null);
+  const [erroPainel, setErroPainel] = useState('');
+
   useEffect(() => {
     let vivo = true;
     (async () => {
       const { data } = await supabase.auth.getSession();
       if (!data.session) { router.replace('/admin/login'); return; }
       const uid = data.session.user.id;
-      const [p, personagens, eventos] = await Promise.all([
+      const [p, personagens, eventos, admin] = await Promise.all([
         garantirPerfil(),
         supabase.from('characters').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
         supabase.from('eventos').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+        supabase.rpc('drk_e_admin'),
       ]);
       if (!vivo) return;
       setPerfil(p);
@@ -47,9 +61,43 @@ export default function PerfilPage() {
       setMeusEventos((eventos.data ?? []) as Evento[]);
       setCarregandoPerfil(false);
       setCarregandoEnvios(false);
+      setEhAdmin(admin.data === true);
     })();
     return () => { vivo = false; };
   }, [router]);
+
+  const carregarPainel = async () => {
+    const [{ data: r, error: erroR }, { data: c }] = await Promise.all([
+      supabase.rpc('drk_painel_resumo'),
+      supabase.rpc('drk_admin_listar_perfis'),
+    ]);
+    if (erroR) { setErroPainel(erroR.message); return; }
+    setResumo(r as Resumo);
+    setContasPendentes(((c ?? []) as ContaAdmin[]).filter((p) => p.status_conta === 'pendente'));
+  };
+
+  useEffect(() => { if (ehAdmin) void carregarPainel(); }, [ehAdmin]);
+
+  const aprovarConta = async (uid: string) => {
+    setAvaliando(uid); setErroPainel('');
+    const { error } = await supabase.rpc('drk_aprovar_conta', { alvo: uid });
+    setAvaliando(null);
+    if (error) { setErroPainel(error.message); return; }
+    setContasPendentes((prev) => prev.filter((c) => c.user_id !== uid));
+    setResumo((prev) => prev && { ...prev, contas_pendentes: prev.contas_pendentes - 1, contas_aprovadas: prev.contas_aprovadas + 1 });
+  };
+
+  const reprovarConta = async (uid: string) => {
+    const motivo = (motivoPorId[uid] ?? '').trim();
+    if (!motivo) { setErroPainel('Escreva o motivo da reprovação.'); return; }
+    setAvaliando(uid); setErroPainel('');
+    const { error } = await supabase.rpc('drk_reprovar_conta', { alvo: uid, motivo });
+    setAvaliando(null);
+    if (error) { setErroPainel(error.message); return; }
+    setContasPendentes((prev) => prev.filter((c) => c.user_id !== uid));
+    setMostrarMotivoPara(null);
+    setResumo((prev) => prev && { ...prev, contas_pendentes: prev.contas_pendentes - 1 });
+  };
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -98,9 +146,62 @@ export default function PerfilPage() {
             <Link className="ico" href="/">← arquivo</Link>
             <Link className="ico" href="/chat">chat</Link>
             <Link className="ico" href="/cenas">cenas</Link>
+            {ehAdmin && <Link className="ico" href="/admin">painel completo</Link>}
             <button className="ico dim" onClick={async () => { await sair(); router.replace('/'); }}>sair</button>
           </div>
         </div>
+
+        {ehAdmin && (
+          <section className="panel login" style={{ marginBottom: 24 }}>
+            <h2 className="login-t" style={{ fontSize: 18 }}>PAINEL DO GAME MASTER</h2>
+            <p className="login-s">&gt; aprovar contas novas, direto daqui</p>
+
+            {erroPainel && <p className="stat bad">FALHA :: {erroPainel}</p>}
+
+            {resumo && (
+              <div className="imp-numeros" style={{ margin: '14px 0' }}>
+                <div className="imp-numero"><strong>{resumo.contas_pendentes}</strong><span>contas pendentes</span></div>
+                <div className="imp-numero"><strong>{resumo.fichas_pendentes}</strong><span>fichas pendentes</span></div>
+                <div className="imp-numero"><strong>{resumo.eventos_pendentes}</strong><span>eventos pendentes</span></div>
+                <div className="imp-numero"><strong>{resumo.banidos}</strong><span>banidos/silenciados</span></div>
+              </div>
+            )}
+
+            {contasPendentes.length === 0 ? (
+              <p className="vazio">nenhuma conta esperando aprovação no momento</p>
+            ) : (
+              contasPendentes.map((c) => (
+                <div key={c.user_id} className="linha" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                    <strong>{c.apelido}</strong>
+                    <span style={{ color: 'rgba(138,255,192,.5)', fontSize: 12 }}>{c.email}</span>
+                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      <button type="button" className="mini-btn" disabled={avaliando === c.user_id} onClick={() => aprovarConta(c.user_id)}>✓ aprovar</button>
+                      <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => setMostrarMotivoPara(mostrarMotivoPara === c.user_id ? null : c.user_id)}>✕ reprovar</button>
+                    </span>
+                  </div>
+                  {mostrarMotivoPara === c.user_id && (
+                    <div style={{ width: '100%', marginTop: 8 }}>
+                      <textarea
+                        rows={2}
+                        value={motivoPorId[c.user_id] ?? ''}
+                        onChange={(e) => setMotivoPorId((prev) => ({ ...prev, [c.user_id]: e.target.value }))}
+                        placeholder="explique o motivo — fica visível para a pessoa"
+                      />
+                      <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => reprovarConta(c.user_id)} style={{ marginTop: 8 }}>
+                        confirmar reprovação
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+
+            <p className="dica" style={{ marginTop: 14 }}>
+              Fichas, eventos e moderação de chat: <Link href="/admin" style={{ color: 'var(--g)' }}>abrir o painel completo →</Link>
+            </p>
+          </section>
+        )}
 
         {!carregandoPerfil && perfil && perfil.status_conta !== 'aprovado' && (
           <p className="stat bad" style={{ marginBottom: 18 }}>

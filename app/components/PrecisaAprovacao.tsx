@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/db';
+import { garantirPerfil } from '../lib/perfil';
 
 type Estado = 'verificando' | 'dentro' | 'fora' | 'pendente' | 'reprovado' | 'erro';
 
@@ -36,14 +37,19 @@ export default function PrecisaAprovacao({ children }: { children: ReactNode }) 
       if (erroAdmin) { setEstado('erro'); return; }
       if (admin === true) { setEstado('dentro'); return; }
 
-      const { data: auth } = await supabase.auth.getUser();
-      const { data: perfil, error: erroPerfil } = await supabase
-        .from('profiles')
-        .select('status_conta,motivo_reprovacao')
-        .eq('user_id', auth.user?.id ?? '')
-        .maybeSingle();
+      // garantirPerfil() cria a linha em "profiles" se ainda não existir —
+      // necessário aqui porque, antes desta tela, o único jeito de uma
+      // conta que confirmou e-mail depois ganhar perfil era passar por
+      // /perfil ou /chat. Como agora quase toda página passa por este
+      // gate primeiro, é aqui que a conta pendente precisa nascer.
+      let perfil;
+      try {
+        perfil = await garantirPerfil();
+      } catch {
+        if (vivo && atual === versao) setEstado('erro');
+        return;
+      }
       if (!vivo || atual !== versao) return;
-      if (erroPerfil) { setEstado('erro'); return; }
 
       const status = perfil?.status_conta ?? 'pendente';
       setMotivo(perfil?.motivo_reprovacao ?? null);
