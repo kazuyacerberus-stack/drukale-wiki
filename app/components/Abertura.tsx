@@ -163,10 +163,19 @@ export default function Abertura() {
     let raf = 0;
     let encerrado = false;
 
+    // trava o scroll da página só enquanto a abertura ocupa a tela — como
+    // ela nunca é removida da árvore (só passa a desenhar `null`), o
+    // "unmount" do efeito abaixo nunca chega a rodar sozinho: sem destravar
+    // aqui dentro de `pular`, a página fica presa para sempre assim que o
+    // conteúdo por trás for maior que uma tela
+    const travado = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const pular = () => {
       if (encerrado) return;
       encerrado = true;
       cancelAnimationFrame(raf);
+      document.body.style.overflow = travado;
       setVivo(false);
     };
     pularRef.current = pular;
@@ -335,8 +344,6 @@ export default function Abertura() {
       pular();
     };
     window.addEventListener('keydown', tecla);
-    const travado = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
 
     return () => {
       cancelAnimationFrame(raf);

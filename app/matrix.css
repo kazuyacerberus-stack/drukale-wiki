@@ -1281,16 +1281,26 @@ html, body { margin: 0; padding: 0; background: #000; }
   padding: 44px 70px 30px;
   margin: 6px 0 10px;
 }
-.imp-caveira {
-  position: absolute; top: 8px;
-  width: clamp(38px, 7vw, 64px); height: auto;
+.imp-selo {
+  position: absolute; top: 22px;
+  width: clamp(34px, 5vw, 52px); height: auto;
   color: var(--i-cromo);
-  filter: drop-shadow(0 0 10px rgba(122,58,209,.35));
-  opacity: .85;
+  filter: drop-shadow(0 0 8px rgba(122,58,209,.4));
+  opacity: .7;
 }
-.imp-caveira .olho { fill: #050308; }
-.imp-caveira-esq { left: 0; transform: rotate(-6deg); }
-.imp-caveira-dir { right: 0; transform: rotate(6deg) scaleX(-1); }
+.imp-selo-esq { left: 4px; }
+.imp-selo-dir { right: 4px; }
+
+.imp-medalhao {
+  display: block; margin: 0 auto 18px;
+  width: clamp(120px, 16vw, 172px); height: clamp(120px, 16vw, 172px);
+  border-radius: 50%; object-fit: cover; object-position: 50% 42%;
+  border: 2px solid var(--i-cromo-fraco);
+  box-shadow:
+    0 0 0 6px rgba(0,0,0,.5),
+    0 0 30px rgba(122,58,209,.45),
+    inset 0 0 26px rgba(0,0,0,.6);
+}
 
 .imp-titulo {
   position: relative; margin: 0 auto; display: inline-block;
@@ -1379,6 +1389,6 @@ html, body { margin: 0; padding: 0; background: #000; }
 .imp-numero span { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
 
 @media (max-width: 640px) {
-  .imp-hero { padding: 38px 46px 24px; }
-  .imp-caveira { top: 2px; width: 34px; }
+  .imp-hero { padding: 38px 40px 24px; }
+  .imp-selo { top: 4px; width: 28px; }
 }

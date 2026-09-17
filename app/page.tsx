@@ -34,18 +34,24 @@ const GUIAS = [
 type Forca = { slug: string; nome: string; cor: string; resumo: string | null };
 type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; eventos: number };
 
-/** Caveira estilizada, desenho original — só o contorno geral, sem detalhe fino. */
-function Caveira({ className }: { className: string }) {
+/**
+ * Selo oculto — um sigilo geométrico (estrela de oito pontas dentro de um
+ * círculo), não a caveira "de Halloween" da primeira versão. É um símbolo
+ * genérico de ocultismo/heráldica, sem ligação com nenhuma franquia.
+ */
+function Selo({ className }: { className: string }) {
   return (
-    <svg className={`imp-caveira ${className}`} viewBox="0 0 64 80" fill="currentColor" aria-hidden="true">
-      <path d="M32 4C15 4 5 17 5 33c0 10 4.5 17 11 22.5V63c0 3.3 2.7 6 6 6h1v-9h4v9h10v-9h4v9h1c3.3 0 6-2.7 6-6v-7.5C58 50 62.5 43 62.5 33 62.5 17 49 4 32 4z" />
-      <circle className="olho" cx="20" cy="33" r="7.5" />
-      <circle className="olho" cx="44" cy="33" r="7.5" />
-      <path className="olho" d="M32 42l-5 9h10z" />
-      <rect className="olho" x="18" y="58" width="4" height="6" rx=".5" />
-      <rect className="olho" x="26" y="58" width="4" height="8" rx=".5" />
-      <rect className="olho" x="34" y="58" width="4" height="8" rx=".5" />
-      <rect className="olho" x="42" y="58" width="4" height="6" rx=".5" />
+    <svg className={`imp-selo ${className}`} viewBox="0 0 100 100" fill="none" aria-hidden="true">
+      <circle cx="50" cy="50" r="47" stroke="currentColor" strokeWidth="1.4" opacity=".55" />
+      <circle cx="50" cy="50" r="34" stroke="currentColor" strokeWidth="1" opacity=".35" />
+      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+        <line x1="50" y1="6" x2="50" y2="94" />
+        <line x1="6" y1="50" x2="94" y2="50" />
+        <line x1="19" y1="19" x2="81" y2="81" />
+        <line x1="81" y1="19" x2="19" y2="81" />
+      </g>
+      <circle cx="50" cy="50" r="9" fill="currentColor" opacity=".85" />
+      <circle cx="50" cy="50" r="9" stroke="currentColor" strokeWidth="1.4" />
     </svg>
   );
 }
@@ -105,8 +111,10 @@ export default function Home() {
         </header>
 
         <section className="imp-hero">
-          <Caveira className="imp-caveira-esq" />
-          <Caveira className="imp-caveira-dir" />
+          <Selo className="imp-selo-esq" />
+          <Selo className="imp-selo-dir" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="imp-medalhao" src="/emblema-drukale.webp" alt="Emblema do Império Drukale" />
           <h1 className="imp-titulo">IMPÉRIO DRUKALE</h1>
           <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
           <p className="imp-lead">
