@@ -6,7 +6,16 @@ import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
-import { mensagemEvento, type Evento } from '../lib/eventos';
+import { mensagemEvento, urlAnexoEvento, type Evento } from '../lib/eventos';
+
+function Midia({ caminho, tipo, nome }: { caminho: string; tipo: string; nome: string }) {
+  const [falhou, setFalhou] = useState(false);
+  const url = urlAnexoEvento(caminho);
+  if (falhou) return <p className="dica">Não foi possível exibir {nome}.</p>;
+  return tipo.startsWith('video/')
+    ? <video src={url} controls preload="metadata" playsInline aria-label={nome} onError={() => setFalhou(true)} />
+    : <img src={url} alt={nome} loading="lazy" onError={() => setFalhou(true)} />;
+}
 
 export default function LinhaDoTempoPage() {
   const [lista, setLista] = useState<Evento[]>([]);
@@ -61,6 +70,11 @@ export default function LinhaDoTempoPage() {
                 <span className="evento-marca" />
                 {ev.data && <span className="evento-data">{ev.data}</span>}
                 <h2>{ev.titulo}</h2>
+                {ev.anexo && (
+                  <figure className="evento-midia">
+                    <Midia caminho={ev.anexo.caminho} tipo={ev.anexo.tipo} nome={ev.anexo.nome} />
+                  </figure>
+                )}
                 {ev.resumo && <p className="evento-resumo">{ev.resumo}</p>}
                 {ev.descricao && <p className="evento-desc">{ev.descricao}</p>}
               </article>

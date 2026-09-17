@@ -325,6 +325,11 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .evento-resumo { margin: 0 0 10px; font-size: 14.5px; line-height: 1.75; color: rgba(138,255,192,.9); }
 .evento-desc { margin: 0; font-size: 13.5px; line-height: 1.8; color: rgba(138,255,192,.5); white-space: pre-wrap; }
+.evento-midia {
+  margin: 0 0 14px; max-width: 420px; border-radius: 3px; overflow: hidden;
+  border: 1px solid rgba(0,255,102,.2);
+}
+.evento-midia img, .evento-midia video { display: block; width: 100%; max-height: 320px; object-fit: cover; }
 
 /* ficha lateral estilo wiki */
 .ficha {
@@ -411,9 +416,9 @@ html, body { margin: 0; padding: 0; background: #000; }
   display: flex; align-items: center; gap: 20px; padding: 17px;
   border: 1px solid rgba(0,255,102,.24); background: rgba(0,255,102,.035); border-radius: 3px; flex-wrap: wrap;
 }
-.done img { width: 92px; height: 92px; object-fit: cover; box-shadow: 0 0 22px rgba(0,255,102,.32); border: 1px solid rgba(0,255,102,.5); }
-.done img.rd { border-radius: 50%; }
-.done img.sq { border-radius: 5px; }
+.done img, .done video { width: 92px; height: 92px; object-fit: cover; box-shadow: 0 0 22px rgba(0,255,102,.32); border: 1px solid rgba(0,255,102,.5); }
+.done img.rd, .done video.rd { border-radius: 50%; }
+.done img.sq, .done video.sq { border-radius: 5px; }
 .done-txt { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
 .done-txt strong { color: var(--g); letter-spacing: 1.5px; }
 .done-txt span { color: rgba(138,255,192,.45); }
