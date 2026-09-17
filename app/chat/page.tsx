@@ -13,7 +13,7 @@ import s from './chat.module.css';
 
 const TAMANHO = 30;
 type PerfilLeve = { apelido: string; avatar_url: string | null; banido: boolean };
-type AnexoArquivo = { file: File; preview: string; tipo: 'imagem' | 'video' };
+type AnexoArquivo = { file: File; preview: string; tipo: 'imagem' | 'video'; enviado?: AnexoChat };
 
 function Midia({ anexo }: { anexo: AnexoChat }) {
   const [falhou, setFalhou] = useState(false);
@@ -187,9 +187,12 @@ export default function ChatPage() {
     const textoLimpo = texto.trim();
     if (!textoLimpo && !anexoArquivo) return;
     setEnviando(true); setErroEnvio('');
+    // já tinha subido este arquivo numa tentativa anterior que falhou na
+    // hora de gravar a mensagem: reaproveita em vez de subir de novo e
+    // deixar o primeiro arquivo órfão no bucket
+    let anexo: AnexoChat | null = anexoArquivo?.enviado ?? null;
     try {
-      let anexo: AnexoChat | null = null;
-      if (anexoArquivo) {
+      if (anexoArquivo && !anexo) {
         const { caminho, nome } = await subirAnexoChat(anexoArquivo.file, userId);
         anexo = { tipo: anexoArquivo.tipo, caminho, nome };
       }
@@ -198,6 +201,9 @@ export default function ChatPage() {
       setTexto('');
       removerAnexo();
     } catch (err) {
+      if (anexo && anexoArquivo && !anexoArquivo.enviado) {
+        setAnexoArquivo({ ...anexoArquivo, enviado: anexo });
+      }
       setErroEnvio(mensagemChat(err));
     } finally {
       setEnviando(false);
@@ -216,7 +222,9 @@ export default function ChatPage() {
   };
 
   const teclaComposer = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void enviar(); }
+    // isComposing: Enter usado para confirmar uma composição de IME (ex.:
+    // acento por tecla morta) não pode disparar o envio da mensagem
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void enviar(); }
   };
 
   /* -------- moderação rápida (admin) -------- */
@@ -227,7 +235,7 @@ export default function ChatPage() {
   };
   const alternarExpulsao = async (alvo: string, estado: boolean) => {
     const { error } = await supabase.rpc('drk_expulsar_usuario', { alvo, expulso: estado });
-    if (!error) mesclarPerfis([{ user_id: alvo, apelido: perfilDe(alvo).apelido, avatar_url: perfilDe(alvo).avatar_url, banido: estado }]);
+    if (!error) mesclarPerfis([{ ...perfilDe(alvo), user_id: alvo, banido: estado }]);
   };
 
   if (!authPronto) {
@@ -350,6 +358,7 @@ export default function ChatPage() {
               onKeyDown={teclaComposer}
               placeholder={suspenso ? 'você não pode postar' : mudo ? 'você está silenciado' : 'escreva uma mensagem…'}
               rows={1}
+              maxLength={4000}
             />
             <button type="submit" className={`${s.btnIcone} ${s.primario}`} disabled={composerDesabilitado || (!texto.trim() && !anexoArquivo)} title="Enviar">➤</button>
           </form>

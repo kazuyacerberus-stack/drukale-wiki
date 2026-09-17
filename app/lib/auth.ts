@@ -26,9 +26,18 @@ export async function entrar(email: string, senha: string) {
 /**
  * Cria a conta. Devolve `true` se já veio com sessão ativa (login
  * automático), ou `false` se o Supabase exige confirmar o e-mail antes.
+ *
+ * `apelido`, quando informado, viaja nos metadados da própria conta — é o
+ * único jeito de não perder a escolha de quem se cadastra: o perfil (a
+ * tabela `profiles`) só pode ser gravado depois que existe sessão, e isso
+ * só acontece depois da confirmação por e-mail. `garantirPerfil()` lê
+ * este metadado na hora de criar o perfil de verdade.
  */
-export async function cadastrar(email: string, senha: string): Promise<boolean> {
-  const { data, error } = await supabase.auth.signUp({ email, password: senha });
+export async function cadastrar(email: string, senha: string, apelido?: string): Promise<boolean> {
+  const { data, error } = await supabase.auth.signUp({
+    email, password: senha,
+    options: apelido ? { data: { apelido } } : undefined,
+  });
   if (error) throw new Error(traduz(error.message));
   return Boolean(data.session);
 }

@@ -15,7 +15,10 @@ create table if not exists public.profiles (
   banido boolean not null default false,
   created_at timestamptz not null default now()
 );
-create unique index if not exists profiles_apelido_unico on public.profiles (lower(apelido));
+-- btrim junto com lower: sem isto, "Nome" e "Nome " (com espaço no fim)
+-- passariam como apelidos diferentes, mas aparecem idênticos na tela —
+-- abrindo brecha para se passar por outra conta no chat
+create unique index if not exists profiles_apelido_unico on public.profiles (lower(btrim(apelido)));
 
 alter table public.profiles enable row level security;
 revoke all on public.profiles from anon, authenticated;
@@ -183,6 +186,13 @@ drop policy if exists drk_chat_storage_ler on storage.objects;
 create policy drk_chat_storage_ler on storage.objects for select to authenticated using (bucket_id='chat');
 
 -- estende o isolamento por pasta (definido em sql/08-cenas.sql) para os buckets novos
+--
+-- ATENÇÃO: sql/10-faccoes.sql redefine esta MESMA função acrescentando o
+-- bucket 'faccoes' à lista só-admin. Se este arquivo (09) for reaplicado
+-- sozinho DEPOIS do 10 já ter rodado, a versão abaixo sobrescreve a dele e
+-- destrava o bucket 'faccoes' para qualquer conta logada. Se precisar
+-- reaplicar este arquivo num banco que já tem o mapa político, reaplique
+-- o sql/10-faccoes.sql logo em seguida.
 create or replace function public.drk_pode_alterar_midia(bucket text, caminho text) returns boolean
 language sql stable security invoker set search_path = '' as $$
 select case
