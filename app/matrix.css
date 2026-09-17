@@ -1280,31 +1280,78 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 
 /* ---------- o herói ---------- */
+/* ---------- herói em tela cheia ---------- */
 .imp-hero {
+  --mx: 0; --my: 0;
   position: relative;
-  text-align: center;
-  padding: 44px 70px 30px;
-  margin: 6px 0 10px;
+  width: 100vw; margin-left: calc(50% - 50vw);
+  min-height: min(84vh, 720px);
+  display: flex; align-items: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--i-cromo-fraco);
 }
-.imp-selo {
-  position: absolute; top: 22px;
-  width: clamp(34px, 5vw, 52px); height: auto;
-  color: var(--i-cromo);
-  filter: drop-shadow(0 0 8px rgba(122,58,209,.4));
-  opacity: .7;
+.imp-hero-fundo {
+  position: absolute; inset: -4%;
+  background:
+    url('/hero-imperio.webp'),
+    radial-gradient(ellipse at 30% 20%, #241338 0%, #0d0616 45%, #030208 100%);
+  background-size: cover; background-position: center;
+  transform: translate(calc(var(--mx) * -16px), calc(var(--my) * -12px)) scale(1.08);
+  transition: transform .4s cubic-bezier(.2,.7,.3,1);
 }
-.imp-selo-esq { left: 4px; }
-.imp-selo-dir { right: 4px; }
+.imp-hero-veu {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(100deg, rgba(4,2,8,.95) 0%, rgba(4,2,8,.82) 32%, rgba(4,2,8,.38) 58%, rgba(4,2,8,.1) 80%),
+    linear-gradient(0deg, rgba(3,2,6,.85) 0%, transparent 24%);
+}
+.imp-hero-conteudo { position: relative; z-index: 2; max-width: 560px; padding: 60px 5vw; }
+.imp-hero-selo {
+  display: block; width: 58px; height: 58px; border-radius: 50%; margin-bottom: 22px;
+  object-fit: cover; object-position: 50% 42%;
+  border: 1.5px solid var(--i-cromo-fraco);
+  box-shadow: 0 0 22px rgba(122,58,209,.5);
+}
 
-.imp-medalhao {
-  display: block; margin: 0 auto 18px;
-  width: clamp(120px, 16vw, 172px); height: clamp(120px, 16vw, 172px);
-  border-radius: 50%; object-fit: cover; object-position: 50% 42%;
-  border: 2px solid var(--i-cromo-fraco);
-  box-shadow:
-    0 0 0 6px rgba(0,0,0,.5),
-    0 0 30px rgba(122,58,209,.45),
-    inset 0 0 26px rgba(0,0,0,.6);
+.imp-hero-conteudo .imp-titulo { text-align: left; margin: 0; display: block; }
+.imp-hero-conteudo .imp-sub { text-align: left; }
+.imp-hero-conteudo .imp-lead { text-align: left; margin: 20px 0 30px; max-width: 480px; }
+
+.imp-cta {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 14px 26px; border: 1px solid var(--i-osso); border-radius: 2px;
+  color: var(--i-osso); text-decoration: none; letter-spacing: 2px; font-size: 12.5px;
+  text-transform: uppercase; transition: .2s;
+}
+.imp-cta:hover { background: var(--i-osso); color: #0a0714; box-shadow: 0 0 26px rgba(122,58,209,.6); }
+
+/* ---------- faixa de navegação, logo abaixo do herói ---------- */
+.imp-faixa {
+  width: 100vw; margin-left: calc(50% - 50vw);
+  display: flex; flex-wrap: wrap; justify-content: center;
+  background: linear-gradient(180deg, #05030a, #0a0613);
+  border-bottom: 1px solid var(--i-cromo-fraco);
+  margin-bottom: 40px;
+}
+.imp-faixa-item {
+  flex: 1 1 160px; min-width: 160px; max-width: 240px;
+  display: flex; flex-direction: column; gap: 7px; align-items: flex-start; text-align: left;
+  padding: 28px 22px; text-decoration: none;
+  border-left: 1px solid var(--i-cromo-fraco);
+  transition: .2s;
+}
+.imp-faixa-item:first-child { border-left: 0; }
+.imp-faixa-item:hover { background: rgba(209,38,74,.06); }
+.imp-faixa-icone { font-size: 22px; color: var(--i-cromo); }
+.imp-faixa-item:hover .imp-faixa-icone { color: var(--i-sangue); }
+.imp-faixa-item strong { font-size: 12.5px; letter-spacing: 1.5px; color: var(--i-osso); text-transform: uppercase; }
+.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 11.5px; line-height: 1.5; color: rgba(233,228,218,.55); }
+.imp-faixa-seta { font-size: 12px; color: var(--i-sangue); opacity: 0; transform: translateX(-3px); transition: .2s; }
+.imp-faixa-item:hover .imp-faixa-seta { opacity: 1; transform: translateX(0); }
+
+@media (max-width: 760px) {
+  .imp-faixa-item { flex: 1 1 50%; max-width: none; border-left: 0; border-top: 1px solid var(--i-cromo-fraco); }
+  .imp-faixa-item:nth-child(odd) { border-left: 0; }
 }
 
 .imp-titulo {
@@ -1365,22 +1412,6 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .imp-forca span { font-size: 12.5px; line-height: 1.6; color: rgba(233,228,218,.65); }
 
-/* ---------- hub de navegação orgânica ---------- */
-.imp-hub { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
-.imp-hub-card {
-  display: flex; flex-direction: column; gap: 8px; padding: 20px 18px; text-decoration: none;
-  border: 1px solid var(--i-cromo-fraco); border-radius: 2px; background: rgba(255,255,255,.015);
-  transition: .2s; animation: up .4s ease both;
-}
-.imp-hub-card:hover {
-  border-color: var(--i-sangue); background: rgba(209,38,74,.06);
-  transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0,0,0,.5);
-}
-.imp-hub-icone { font-size: 22px; color: var(--i-cromo); }
-.imp-hub-card:hover .imp-hub-icone { color: var(--i-sangue); }
-.imp-hub-card strong { font-size: 14px; letter-spacing: 1px; color: var(--i-osso); }
-.imp-hub-card span { font-size: 12px; line-height: 1.5; color: rgba(233,228,218,.6); }
-
 /* ---------- números ao vivo ---------- */
 .imp-numeros {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 34px;
@@ -1395,6 +1426,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 .imp-numero span { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
 
 @media (max-width: 640px) {
-  .imp-hero { padding: 38px 40px 24px; }
-  .imp-selo { top: 4px; width: 28px; }
+  .imp-hero { min-height: min(76vh, 560px); }
+  .imp-hero-conteudo { padding: 40px 7vw; max-width: none; }
+  .imp-faixa-item { flex: 1 1 100%; }
 }

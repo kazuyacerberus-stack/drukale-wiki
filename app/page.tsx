@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import './matrix.css';
 import Abertura from './components/Abertura';
@@ -35,28 +35,6 @@ type Forca = { slug: string; nome: string; cor: string; resumo: string | null };
 type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; eventos: number };
 
 /**
- * Selo oculto — um sigilo geométrico (estrela de oito pontas dentro de um
- * círculo), não a caveira "de Halloween" da primeira versão. É um símbolo
- * genérico de ocultismo/heráldica, sem ligação com nenhuma franquia.
- */
-function Selo({ className }: { className: string }) {
-  return (
-    <svg className={`imp-selo ${className}`} viewBox="0 0 100 100" fill="none" aria-hidden="true">
-      <circle cx="50" cy="50" r="47" stroke="currentColor" strokeWidth="1.4" opacity=".55" />
-      <circle cx="50" cy="50" r="34" stroke="currentColor" strokeWidth="1" opacity=".35" />
-      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-        <line x1="50" y1="6" x2="50" y2="94" />
-        <line x1="6" y1="50" x2="94" y2="50" />
-        <line x1="19" y1="19" x2="81" y2="81" />
-        <line x1="81" y1="19" x2="19" y2="81" />
-      </g>
-      <circle cx="50" cy="50" r="9" fill="currentColor" opacity=".85" />
-      <circle cx="50" cy="50" r="9" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
-}
-
-/**
  * Divisória orgânica: um veio de corrupção se ramificando, em vez de uma
  * linha reta ou um zigue-zague geométrico. Os nós pulsam devagar, como se
  * algo ainda estivesse vivo por baixo da pele do desenho.
@@ -84,6 +62,31 @@ export default function Home() {
   const [forcas, setForcas] = useState<Forca[]>([]);
   const [numeros, setNumeros] = useState<Numeros | null>(null);
   const { beep, muted, setMuted } = useBeep();
+  const heroRef = useRef<HTMLElement>(null);
+
+  /**
+   * O fundo do herói acompanha o cursor devagar — um paralaxe sutil, não um
+   * arrasto de imagem. Mexe direto no style via ref (sem useState) porque
+   * isto dispararia dezenas de renders por segundo se fosse estado do React.
+   */
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const aoMover = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      const mx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      const my = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      el.style.setProperty('--mx', mx.toFixed(3));
+      el.style.setProperty('--my', my.toFixed(3));
+    };
+    const aoSair = () => { el.style.setProperty('--mx', '0'); el.style.setProperty('--my', '0'); };
+    el.addEventListener('pointermove', aoMover);
+    el.addEventListener('pointerleave', aoSair);
+    return () => {
+      el.removeEventListener('pointermove', aoMover);
+      el.removeEventListener('pointerleave', aoSair);
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -134,21 +137,42 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="imp-hero">
-          <Selo className="imp-selo-esq" />
-          <Selo className="imp-selo-dir" />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="imp-medalhao" src="/emblema-drukale.webp" alt="Emblema do Império Drukale" />
-          <h1 className="imp-titulo">IMPÉRIO DRUKALE</h1>
-          <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
-          <p className="imp-lead">
-            No trono de <strong>Tenebris Civitaten</strong> governa{' '}
-            <strong>Elsharion Drukale</strong>, o Hierarca da Anarquia — nascido
-            da corrupção e forjado na violência, sua vontade é a única lei que a
-            Casa Drukale reconhece. Este arquivo reúne tudo o que se sabe sobre
-            o império: suas casas, seus mundos, sua gente e o que os corrompeu.
-          </p>
+        <section className="imp-hero" ref={heroRef}>
+          <div className="imp-hero-fundo" />
+          <div className="imp-hero-veu" />
+          <div className="imp-hero-conteudo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="imp-hero-selo" src="/emblema-drukale.webp" alt="Emblema do Império Drukale" />
+            <h1 className="imp-titulo">IMPÉRIO DRUKALE</h1>
+            <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
+            <p className="imp-lead">
+              No trono de <strong>Tenebris Civitaten</strong> governa{' '}
+              <strong>Elsharion Drukale</strong>, o Hierarca da Anarquia — nascido
+              da corrupção e forjado na violência, sua vontade é a única lei que a
+              Casa Drukale reconhece.
+            </p>
+            <Link href="/mundo" className="imp-cta" onClick={() => beep('click')}>
+              ENTRAR NO IMPÉRIO →
+            </Link>
+          </div>
         </section>
+
+        <nav className="imp-faixa" aria-label="Navegação principal">
+          {GUIAS.map((g) => (
+            <Link
+              key={g.href}
+              href={g.href}
+              className="imp-faixa-item"
+              onMouseEnter={() => beep('hover')}
+              onClick={() => beep('click')}
+            >
+              <span className="imp-faixa-icone">{g.icone}</span>
+              <strong>{g.titulo}</strong>
+              <span>{g.desc}</span>
+              <span className="imp-faixa-seta">→</span>
+            </Link>
+          ))}
+        </nav>
 
         <VeioCorrupcao />
 
@@ -193,26 +217,6 @@ export default function Home() {
         )}
 
         <VeioCorrupcao />
-
-        <section className="imp-secao">
-          <h2>explore o arquivo</h2>
-          <div className="imp-hub">
-            {GUIAS.map((g, i) => (
-              <Link
-                key={g.href}
-                href={g.href}
-                className="imp-hub-card"
-                style={{ animationDelay: `${i * 60}ms` }}
-                onMouseEnter={() => beep('hover')}
-                onClick={() => beep('click')}
-              >
-                <span className="imp-hub-icone">{g.icone}</span>
-                <strong>{g.titulo}</strong>
-                <span>{g.desc}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
 
         {numeros && (
           <div className="imp-numeros">
