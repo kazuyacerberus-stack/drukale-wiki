@@ -6,8 +6,10 @@ import '../matrix.css';
 import { supabase } from '../lib/db';
 import { entrar } from '../lib/auth';
 import { BUCKET_CENAS, TIPOS_CENA, normalizarCena, validarAnexoCena, mensagemCena, urlAnexoCena, type Cena, type AnexoCena, type TipoCena } from '../lib/cenas';
+import { REACOES, ICONE_REACAO, type Reacao } from '../lib/comentarios';
 import Avatar from '../components/Avatar';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
+import Comentarios from './Comentarios';
 import s from './cenas.module.css';
 
 type PerfilLeve = { apelido: string; avatar_url: string | null; banido: boolean };
@@ -46,6 +48,7 @@ export default function CenasPage() {
   const [carregando, setCarregando] = useState(true);
   const [erroFeed, setErroFeed] = useState('');
   const [revisao, setRevisao] = useState(0);
+  const [comentariosAbertos, setComentariosAbertos] = useState<Set<string>>(new Set());
   const [aberto, setAberto] = useState(false);
   const [ampliado, setAmpliado] = useState(false);
   const [form, setForm] = useState(vazio);
@@ -96,6 +99,29 @@ export default function CenasPage() {
   const alternarExpulsao = async (alvo: string, estado: boolean) => {
     const { error } = await supabase.rpc('drk_expulsar_usuario', { alvo, expulso: estado });
     if (!error) setPerfis(prev => { const p = prev.get(alvo); return p ? new Map(prev).set(alvo, { ...p, banido: estado }) : prev; });
+  };
+
+  /** Clicar na reação já ativa remove; clicar em outra troca (upsert). Atualização otimista na tela. */
+  const reagir = async (cena: Cena, tipo: Reacao) => {
+    if (!userId) { setLogin(true); return; }
+    const original = cena;
+    const removendo = cena.minha_reacao === tipo;
+    const reacoes = { ...cena.reacoes };
+    if (cena.minha_reacao) reacoes[cena.minha_reacao] = Math.max(0, (reacoes[cena.minha_reacao] ?? 1) - 1);
+    if (!removendo) reacoes[tipo] = (reacoes[tipo] ?? 0) + 1;
+    setCenas(prev => prev.map(c => c.id === cena.id ? { ...c, reacoes, minha_reacao: removendo ? null : tipo } : c));
+
+    const { error } = removendo
+      ? await supabase.from('cena_reacoes').delete().eq('cena_id', cena.id).eq('user_id', userId)
+      : await supabase.from('cena_reacoes').upsert({ cena_id: cena.id, user_id: userId, tipo }, { onConflict: 'cena_id,user_id' });
+    if (error) {
+      setCenas(prev => prev.map(c => c.id === cena.id ? original : c));
+      setAviso('FALHA :: ' + mensagemCena(error));
+    }
+  };
+
+  const alternarComentarios = (id: string) => {
+    setComentariosAbertos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
 
   useEffect(() => {
@@ -273,6 +299,25 @@ export default function CenasPage() {
             </div>}
             <h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p><div className={s.texto}>{c.texto}</div>
             {c.anexos.length > 0 && <div className={s.midias}>{c.anexos.map(a => <figure key={a.caminho}><Midia url={urlAnexoCena(a.caminho)} tipo={a.tipo} nome={a.nome} /></figure>)}</div>}
+
+            <div className={s.reacoes}>
+              {REACOES.map(tipo => (
+                <button
+                  key={tipo}
+                  type="button"
+                  className={c.minha_reacao === tipo ? s.reacaoOn : ''}
+                  title={tipo}
+                  onClick={() => reagir(c, tipo)}
+                >
+                  {ICONE_REACAO[tipo]}{c.reacoes[tipo] > 0 && <span>{c.reacoes[tipo]}</span>}
+                </button>
+              ))}
+              <button type="button" className={s.comentarioToggle} onClick={() => alternarComentarios(c.id)}>
+                💬 {c.total_comentarios > 0 ? c.total_comentarios : ''} {c.total_comentarios === 1 ? 'comentário' : 'comentários'}
+              </button>
+            </div>
+            {comentariosAbertos.has(c.id) && <Comentarios cenaId={c.id} userId={userId} ehAdmin={ehAdmin} />}
+
             <footer className={s.assinatura}><div><small>AUTOR</small><strong>{c.autor}</strong></div><div><small>PERSONAGEM</small><strong>{c.personagem}</strong></div><span aria-hidden="true">╬</span></footer>
           </article>)}
           {carregando && <p role="status">Decodificando registros…</p>}

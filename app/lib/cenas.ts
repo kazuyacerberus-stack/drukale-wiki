@@ -3,7 +3,11 @@ import { supabase } from './db';
 export const TIPOS_CENA = ['Cena aberta', 'Cena fechada', 'Cena de desenvolvimento'] as const;
 export type TipoCena = typeof TIPOS_CENA[number];
 export type AnexoCena = { caminho: string; nome: string; tipo: string };
-export type Cena = { id: string; user_id: string; tipo: TipoCena; titulo: string; local: string; texto: string; autor: string; personagem: string; anexos: AnexoCena[]; created_at: string };
+export type Cena = {
+  id: string; user_id: string; tipo: TipoCena; titulo: string; local: string; texto: string; autor: string; personagem: string;
+  anexos: AnexoCena[]; created_at: string;
+  total_comentarios: number; reacoes: Record<string, number>; minha_reacao: string | null;
+};
 export const BUCKET_CENAS = 'cenas';
 export const MAX_BYTES_CENA = 40 * 1024 * 1024;
 export const MIMES_CENA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
