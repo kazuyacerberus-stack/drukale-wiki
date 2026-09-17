@@ -1,4 +1,4 @@
-import { supabase } from './db';
+import { supabase, traduzErroSupabase } from './db';
 
 export type AnexoChat =
   | { tipo: 'imagem' | 'video'; caminho: string; nome: string }
@@ -30,11 +30,11 @@ export async function subirAnexoChat(file: File, uid: string): Promise<{ caminho
 }
 
 export function mensagemChat(erro: unknown): string {
-  const e = erro as { message?: string; code?: string };
-  if (['42P01', 'PGRST205', '42883', 'PGRST202'].includes(e?.code ?? '')) return 'O chat ainda precisa ser configurado no Supabase. Aplique o arquivo sql/09-comunidade.sql.';
-  if (e?.code === '42501') return 'Você não tem permissão para postar — sua conta pode estar silenciada ou suspensa.';
-  if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Tente novamente.';
-  return e?.message || 'Não foi possível concluir. Tente novamente.';
+  return traduzErroSupabase(erro, (codigo) => {
+    if (codigo === '42501') return 'Você não tem permissão para postar — sua conta pode estar silenciada ou suspensa.';
+    if (codigo === '23514') return 'A mensagem passou do limite de 4000 caracteres.';
+    return null;
+  }, 'sql/09-comunidade.sql');
 }
 
 /* ============================================================

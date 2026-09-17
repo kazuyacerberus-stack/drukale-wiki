@@ -58,9 +58,9 @@ export default function Cadastro() {
 
     setCarregando(true);
     try {
-      const logadoJa = await cadastrar(email.trim(), senha);
+      const logadoJa = await cadastrar(email.trim(), senha, apelidoLimpo);
       if (!logadoJa) {
-        setAviso('Conta criada! Verifique seu e-mail para confirmar o acesso. Depois de confirmar, entre e finalize seu apelido em /perfil.');
+        setAviso('Conta criada! Verifique seu e-mail para confirmar o acesso — seu apelido já fica salvo. Se quiser, adicione uma foto depois em /perfil.');
         setCarregando(false);
         return;
       }

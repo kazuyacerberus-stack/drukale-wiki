@@ -7,6 +7,29 @@ export const supabase = createClient(
 
 export const BUCKET = 'Characters';
 
+/**
+ * Erros do Postgres/PostgREST vêm em códigos técnicos; isto traduz os mais
+ * comuns para português. `extras` deixa cada recurso (chat, perfil...)
+ * acrescentar seus próprios códigos (ex.: violação de índice único) sem
+ * duplicar os códigos genéricos que todos compartilham.
+ */
+export function traduzErroSupabase(
+  erro: unknown,
+  extras: (codigo: string) => string | null,
+  arquivoSql: string,
+): string {
+  const e = erro as { message?: string; code?: string };
+  const codigo = e?.code ?? '';
+  const doRecurso = extras(codigo);
+  if (doRecurso) return doRecurso;
+  if (['42P01', 'PGRST205', '42883', 'PGRST202'].includes(codigo)) {
+    return `Isto ainda precisa ser configurado no Supabase. Aplique o arquivo ${arquivoSql}.`;
+  }
+  if (codigo === '42501') return 'Sua sessão não tem permissão para isto. Entre novamente.';
+  if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Tente novamente.';
+  return e?.message || 'Não foi possível concluir. Tente novamente.';
+}
+
 /* ============================================================
    ARQUIVO DA FICHA (PDF ou Word)
    ============================================================ */

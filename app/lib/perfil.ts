@@ -1,4 +1,4 @@
-import { supabase } from './db';
+import { supabase, traduzErroSupabase } from './db';
 
 export type Perfil = {
   user_id: string;
@@ -27,7 +27,9 @@ export function estaMudo(p: Pick<Perfil, 'muted_until'> | null): boolean {
 /**
  * Busca o perfil da conta logada. Se ainda não existir — conta antiga de
  * antes deste recurso, ou confirmação de e-mail que só terminou agora —
- * cria um com um apelido provisório a partir do e-mail. Idempotente: se
+ * cria um com o apelido escolhido no cadastro (guardado nos metadados da
+ * conta, já que o perfil só pode ser gravado depois que a sessão existe)
+ * ou, na falta dele, um provisório a partir do e-mail. Idempotente: se
  * duas abas tentarem criar ao mesmo tempo, a segunda só relê o que a
  * primeira gravou.
  */
@@ -39,7 +41,11 @@ export async function garantirPerfil(): Promise<Perfil | null> {
   const { data: existente } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
   if (existente) return existente as Perfil;
 
-  const provisorio = (user.email ?? 'membro').split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24) || 'membro';
+  const doCadastro = typeof user.user_metadata?.apelido === 'string' ? user.user_metadata.apelido.trim() : '';
+  const provisorio = doCadastro.length >= 2 && doCadastro.length <= 32
+    ? doCadastro
+    : (user.email ?? 'membro').split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24) || 'membro';
+
   const { data: criado, error } = await supabase
     .from('profiles')
     .insert({ user_id: user.id, apelido: provisorio })
@@ -49,7 +55,17 @@ export async function garantirPerfil(): Promise<Perfil | null> {
 
   // outra aba/requisição já criou primeiro: não é falha, só relê
   const { data: relido } = await supabase.from('profiles').select('*').eq('user_id', user.id).maybeSingle();
-  return (relido as Perfil) ?? null;
+  if (relido) return relido as Perfil;
+
+  // não foi corrida entre abas — foi o APELIDO que colidiu com o de outra
+  // conta (duas pessoas com prefixo de e-mail igual, ex.: joao@gmail.com e
+  // joao@empresa.com). Sem isto, esta conta ficaria pra sempre sem perfil.
+  const { data: criado2 } = await supabase
+    .from('profiles')
+    .insert({ user_id: user.id, apelido: `${provisorio.slice(0, 27)}_${user.id.slice(0, 4)}` })
+    .select()
+    .single();
+  return (criado2 as Perfil) ?? null;
 }
 
 /** Sobe o avatar para a pasta da própria conta, sempre no mesmo nome (substitui o antigo). */
@@ -92,10 +108,8 @@ export async function salvarPerfil(apelido: string, avatarFile?: File | null): P
 }
 
 export function mensagemPerfil(erro: unknown): string {
-  const e = erro as { message?: string; code?: string };
-  if (e?.code === '23505') return 'Esse apelido já está em uso — escolha outro.';
-  if (['42P01', 'PGRST205'].includes(e?.code ?? '')) return 'A comunidade ainda precisa ser configurada no Supabase. Aplique o arquivo sql/09-comunidade.sql.';
-  if (e?.code === '42501') return 'Sua sessão não tem permissão. Entre novamente.';
-  if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Tente novamente.';
-  return e?.message || 'Não foi possível concluir. Tente novamente.';
+  return traduzErroSupabase(erro, (codigo) => {
+    if (codigo === '23505') return 'Esse apelido já está em uso — escolha outro.';
+    return null;
+  }, 'sql/09-comunidade.sql');
 }
