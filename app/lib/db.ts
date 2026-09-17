@@ -181,6 +181,9 @@ export type Character = {
   image_url: string | null;
   sheet_url: string | null;    // ficha anexada (PDF ou Word)
   sheet_name: string | null;   // nome original do arquivo, para o botão de baixar
+  user_id: string | null;              // quem enviou — null nas fichas antigas, feitas pelo admin
+  status_aprovacao: 'pendente' | 'aprovado' | 'reprovado';
+  motivo_reprovacao: string | null;
 };
 
 /** Campos vazios viram null para não poluir a ficha. */

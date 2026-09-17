@@ -120,6 +120,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [destino, setDestino] = useState<string | null>(null);
+  const [enviouPendente, setEnviouPendente] = useState(false);
 
   /* ---------- editor ---------- */
   const [showEditor, setShowEditor] = useState(false);
@@ -402,7 +403,10 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
         setStatus('FALHA :: ' + (data.error ?? 'desconhecida'));
         await desfazerUpload(subiuAgora);
       } else {
-        setStatus(editando ? 'REGISTRO ATUALIZADO' : 'REGISTRO GRAVADO');
+        setEnviouPendente(Boolean(data.pendente));
+        setStatus(data.pendente
+          ? (editando ? 'FICHA REENVIADA PARA ANÁLISE' : 'FICHA ENVIADA PARA ANÁLISE')
+          : (editando ? 'REGISTRO ATUALIZADO' : 'REGISTRO GRAVADO'));
         setDestino(data.slug ?? null);
         setFicha(null);
         setRemoverFicha(false);
@@ -780,7 +784,9 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               {' — '}
               <Link href={`/personagem/${destino}`}>ver a página</Link>
               {' · '}
-              <Link href="/admin">voltar ao painel</Link>
+              {enviouPendente
+                ? <Link href="/perfil">ver meus envios</Link>
+                : <Link href="/admin">voltar ao painel</Link>}
             </>
           )}
         </p>

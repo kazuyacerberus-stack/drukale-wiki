@@ -10,6 +10,9 @@ export type Evento = {
   descricao: string | null;
   ordem: number;
   anexo: AnexoEvento | null;
+  user_id: string | null;
+  status_aprovacao: 'pendente' | 'aprovado' | 'reprovado';
+  motivo_reprovacao: string | null;
   created_at: string;
 };
 

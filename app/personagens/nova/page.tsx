@@ -1,0 +1,36 @@
+'use client';
+
+import Link from 'next/link';
+import '../../matrix.css';
+import MatrixRain from '../../components/MatrixRain';
+import PrecisaLogin from '../../components/PrecisaLogin';
+import FichaForm from '../../components/FichaForm';
+
+export default function NovoPersonagemPublico() {
+  return (
+    <div className="term">
+      <MatrixRain />
+
+      <main className="wrap narrow">
+       <PrecisaLogin>
+        <header className="hd">
+          <div className="hd-bar">
+            <span className="dot" /><span className="dot" /><span className="dot" />
+            <span className="hd-path">drukale://arquivo/personagens/nova</span>
+            <div className="hd-act">
+              <Link className="ico" href="/personagens">← personagens</Link>
+              <Link className="ico" href="/perfil">meus envios</Link>
+            </div>
+          </div>
+          <h1 data-txt="ENVIAR PERSONAGEM">ENVIAR PERSONAGEM</h1>
+          <p className="sub">&gt; a ficha entra em análise antes de aparecer aprovada <span className="cur" /></p>
+        </header>
+
+        <FichaForm />
+
+        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </PrecisaLogin>
+      </main>
+    </div>
+  );
+}

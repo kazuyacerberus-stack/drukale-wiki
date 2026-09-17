@@ -27,14 +27,29 @@ async function exigirSessao(request: NextRequest) {
     ? cabecalho.slice(7).trim()
     : null;
 
-  if (!token) return { cli: null, erro: 'Sessão não encontrada — faça login novamente.' };
+  if (!token) return { cli: null, userId: null, erro: 'Sessão não encontrada — faça login novamente.' };
 
   const cli = clienteComToken(token);
   const { data, error } = await cli.auth.getUser();
   if (error || !data.user) {
-    return { cli: null, erro: 'Sessão expirada — faça login novamente.' };
+    return { cli: null, userId: null, erro: 'Sessão expirada — faça login novamente.' };
   }
-  return { cli, erro: null };
+  return { cli, userId: data.user.id, erro: null };
+}
+
+/**
+ * Quem não é administrador só consegue gravar como pendente e em nome
+ * de si mesmo — a política restritiva do banco garante isso de
+ * qualquer jeito, mas decidir aqui também evita uma ida a mais ao
+ * Postgres só para descobrir que foi recusado.
+ */
+async function aplicarAprovacao(cli: SupabaseClient, userId: string, registro: Record<string, unknown>): Promise<boolean> {
+  const { data: admin } = await cli.rpc('drk_e_admin');
+  if (admin === true) return false;
+  registro.user_id = userId;
+  registro.status_aprovacao = 'pendente';
+  registro.motivo_reprovacao = null;
+  return true;
 }
 
 function naoAutorizado(msg: string) {
@@ -149,7 +164,7 @@ const BLOQUEADO =
    CRIAR
    ============================================================ */
 export async function POST(request: NextRequest) {
-  const { cli, erro } = await exigirSessao(request);
+  const { cli, userId, erro } = await exigirSessao(request);
   if (!cli) return naoAutorizado(erro!);
 
   try {
@@ -161,6 +176,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'O nome é obrigatório' }, { status: 400 });
     }
 
+    const pendente = await aplicarAprovacao(cli, userId!, registro);
     aplicarSecoes(form, registro);
     aplicarFicha(form, registro);
 
@@ -190,9 +206,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Personagem gravado com sucesso!',
+        message: pendente ? 'Ficha enviada para análise do administrador!' : 'Personagem gravado com sucesso!',
         slug,
         imageUrl,
+        pendente,
       },
       { status: 200 }
     );
@@ -206,7 +223,7 @@ export async function POST(request: NextRequest) {
    ATUALIZAR
    ============================================================ */
 export async function PUT(request: NextRequest) {
-  const { cli, erro } = await exigirSessao(request);
+  const { cli, userId, erro } = await exigirSessao(request);
   if (!cli) return naoAutorizado(erro!);
 
   try {
@@ -219,6 +236,10 @@ export async function PUT(request: NextRequest) {
     if (!nome) {
       return NextResponse.json({ error: 'O nome é obrigatório' }, { status: 400 });
     }
+
+    // quem não é admin só edita a própria ficha, e ela volta para a fila
+    // de análise — corrigir e reenviar apaga a reprovação anterior
+    const pendente = await aplicarAprovacao(cli, userId!, registro);
 
     aplicarSecoes(form, registro);
     aplicarFicha(form, registro);
@@ -281,9 +302,10 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Registro atualizado!',
+        message: pendente ? 'Ficha atualizada e reenviada para análise!' : 'Registro atualizado!',
         slug,
         imageUrl,
+        pendente,
       },
       { status: 200 }
     );

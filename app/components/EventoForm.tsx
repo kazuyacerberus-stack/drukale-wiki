@@ -36,6 +36,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [salvo, setSalvo] = useState(false);
+  const [enviouPendente, setEnviouPendente] = useState(false);
 
   const escolherAnexo = (file: File | null) => {
     setErroAnexo('');
@@ -65,7 +66,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
       }
 
-      const linha = {
+      const linha: Record<string, unknown> = {
         titulo: f.titulo.trim().slice(0, LIMITES_EVENTO.titulo),
         data: f.data.trim() || null,
         resumo: f.resumo.trim().slice(0, LIMITES_EVENTO.resumo) || null,
@@ -73,11 +74,23 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         anexo: anexoLinha,
       };
 
+      // quem não é admin só grava como pendente e em nome de si mesmo —
+      // a política do banco garante isso de qualquer jeito, mas decidir
+      // aqui também evita uma ida a mais só para descobrir que foi recusado
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: admin } = await supabase.rpc('drk_e_admin');
+      const pendente = admin !== true;
+      if (pendente) {
+        linha.user_id = auth.user?.id ?? null;
+        linha.status_aprovacao = 'pendente';
+        linha.motivo_reprovacao = null;
+      }
+
       if (editando && inicial) {
         const { error } = await supabase.from('eventos').update(linha).eq('id', inicial.id);
         if (error) throw error;
         if (anexo || removerAnexo) await apagarAnexoEvento(inicial.anexo);
-        setStatus('EVENTO ATUALIZADO');
+        setStatus(pendente ? 'EVENTO REENVIADO PARA ANÁLISE' : 'EVENTO ATUALIZADO');
         setAnexoAtual(anexoLinha);
         setAnexo(null);
         setPreview('');
@@ -88,13 +101,14 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         const ordem = proximaOrdem((todos ?? []) as { ordem: number }[]);
         const { error } = await supabase.from('eventos').insert([{ ...linha, ordem }]);
         if (error) throw error;
-        setStatus('EVENTO GRAVADO NO FIM DA LINHA DO TEMPO');
+        setStatus(pendente ? 'EVENTO ENVIADO PARA ANÁLISE DO ADMINISTRADOR' : 'EVENTO GRAVADO NO FIM DA LINHA DO TEMPO');
         setF(VAZIO);
         setAnexo(null);
         setPreview('');
         setAnexoAtual(null);
       }
       setSalvo(true);
+      setEnviouPendente(pendente);
     } catch (err) {
       if (subiuAgora) await apagarAnexoEvento(subiuAgora);
       setStatus('FALHA :: ' + mensagemEvento(err));
@@ -199,7 +213,9 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
               {' — '}
               <Link href="/linha-do-tempo">ver a linha do tempo</Link>
               {' · '}
-              <Link href="/admin/linha-do-tempo">voltar à lista</Link>
+              {enviouPendente
+                ? <Link href="/perfil">ver meus envios</Link>
+                : <Link href="/admin/linha-do-tempo">voltar à lista</Link>}
             </>
           )}
         </p>
