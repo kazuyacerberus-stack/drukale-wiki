@@ -6,14 +6,15 @@ import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
+import PerfilCard from '../../components/PerfilCard';
 import PerfilTimeline from '../../components/PerfilTimeline';
-import Avatar from '../../components/Avatar';
 import { supabase } from '../../lib/db';
 import { pedirAmizade, aceitarAmizade, recusarAmizade, desfazerAmizade, estadoAmizade, buscarMinhasAmizades, mensagemAmizade, type EstadoAmizade } from '../../lib/amizades';
+import type { Perfil } from '../../lib/perfil';
 
 export default function JogadorPage() {
   return (
-    <div className="term">
+    <div className="term drukale">
       <MatrixRain />
       <main className="wrap">
         <PrecisaAprovacao>
@@ -30,7 +31,7 @@ function JogadorPageInterna() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [ehAdmin, setEhAdmin] = useState(false);
-  const [perfil, setPerfil] = useState<{ apelido: string; avatar_url: string | null } | null>(null);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [estado, setEstado] = useState<EstadoAmizade>('nenhum');
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
@@ -44,10 +45,10 @@ function JogadorPageInterna() {
       setUserId(uid);
       const [{ data: admin }, { data: p }] = await Promise.all([
         supabase.rpc('drk_e_admin'),
-        supabase.from('profiles').select('apelido,avatar_url').eq('user_id', alvo).maybeSingle(),
+        supabase.from('profiles').select('*').eq('user_id', alvo).maybeSingle(),
       ]);
       setEhAdmin(admin === true);
-      setPerfil(p as { apelido: string; avatar_url: string | null } | null);
+      setPerfil(p as Perfil | null);
       if (uid && uid !== alvo) {
         const linhas = await buscarMinhasAmizades();
         setEstado(estadoAmizade(linhas, uid, alvo));
@@ -61,7 +62,11 @@ function JogadorPageInterna() {
 
   useEffect(() => { if (alvo) void carregar(); }, [alvo]);
 
-  const agir = async (chamada: () => ReturnType<typeof pedirAmizade>) => {
+  const agir = async (acao: 'adicionar' | 'aceitar' | 'recusar' | 'desfazer') => {
+    const chamada = acao === 'adicionar' ? () => pedirAmizade(alvo)
+      : acao === 'aceitar' ? () => aceitarAmizade(alvo)
+      : acao === 'recusar' ? () => recusarAmizade(alvo)
+      : () => desfazerAmizade(alvo);
     setAgindo(true); setErro('');
     const { error } = await chamada();
     setAgindo(false);
@@ -95,27 +100,23 @@ function JogadorPageInterna() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, margin: '26px 0' }}>
-        <Avatar url={perfil.avatar_url} nome={perfil.apelido} tamanho={64} />
-        <h1 data-txt={perfil.apelido} style={{ margin: 0 }}>{perfil.apelido}</h1>
-        {userId && userId !== alvo && (
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-            {estado === 'nenhum' && <button type="button" className="mini-btn" disabled={agindo} onClick={() => agir(() => pedirAmizade(alvo))}>+ adicionar amigo</button>}
-            {estado === 'pedido_enviado' && <button type="button" className="mini-btn dim" disabled={agindo} onClick={() => agir(() => desfazerAmizade(alvo))}>pedido enviado — cancelar</button>}
-            {estado === 'pedido_recebido' && (
-              <>
-                <button type="button" className="mini-btn" disabled={agindo} onClick={() => agir(() => aceitarAmizade(alvo))}>✓ aceitar</button>
-                <button type="button" className="mini-btn dim" disabled={agindo} onClick={() => agir(() => recusarAmizade(alvo))}>✕ recusar</button>
-              </>
-            )}
-            {estado === 'amigos' && <button type="button" className="mini-btn dim" disabled={agindo} onClick={() => agir(() => desfazerAmizade(alvo))}>✓ amigos — desfazer</button>}
-          </div>
-        )}
-      </div>
-
       {erro && <p className="erro">FALHA :: {erro}</p>}
 
-      <PerfilTimeline alvo={alvo} ehProprioPerfil={userId === alvo} ehAdmin={ehAdmin} />
+      <div className="drukale-layout" style={{ marginTop: 20 }}>
+        <aside className="drukale-lateral">
+          <PerfilCard
+            perfil={perfil}
+            ehProprioPerfil={userId === alvo}
+            ehAdmin={ehAdmin}
+            estadoAmizade={estado}
+            agindoAmizade={agindo}
+            onAcaoAmizade={agir}
+          />
+        </aside>
+        <div className="drukale-principal">
+          <PerfilTimeline alvo={alvo} ehProprioPerfil={userId === alvo} ehAdmin={ehAdmin} />
+        </div>
+      </div>
 
       <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
     </>

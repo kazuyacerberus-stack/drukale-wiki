@@ -1,17 +1,18 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
 import Avatar from '../components/Avatar';
+import PerfilCard from '../components/PerfilCard';
+import PerfilTimeline from '../components/PerfilTimeline';
 import { supabase, type Character } from '../lib/db';
 import { sair } from '../lib/auth';
-import { garantirPerfil, salvarPerfil, validarAvatar, estaMudo, mensagemPerfil, type Perfil } from '../lib/perfil';
+import { garantirPerfil, estaMudo, type Perfil } from '../lib/perfil';
 import { type Evento } from '../lib/eventos';
 import { buscarMinhasAmizades, pedirAmizade, aceitarAmizade, recusarAmizade, desfazerAmizade, mensagemAmizade, type Amizade } from '../lib/amizades';
-import PerfilTimeline from '../components/PerfilTimeline';
 
 const ROTULO_STATUS: Record<string, string> = { pendente: 'em análise', aprovado: 'aprovado', reprovado: 'reprovado' };
 type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null };
@@ -25,13 +26,6 @@ export default function PerfilPage() {
   const router = useRouter();
   const [carregandoPerfil, setCarregandoPerfil] = useState(true);
   const [perfil, setPerfil] = useState<Perfil | null>(null);
-  const [apelido, setApelido] = useState('');
-  const [avatar, setAvatar] = useState<File | null>(null);
-  const [preview, setPreview] = useState('');
-  const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
-  const [salvando, setSalvando] = useState(false);
-  const arquivoRef = useRef<HTMLInputElement>(null);
 
   const [meusPersonagens, setMeusPersonagens] = useState<Character[]>([]);
   const [meusEventos, setMeusEventos] = useState<Evento[]>([]);
@@ -69,7 +63,6 @@ export default function PerfilPage() {
       ]);
       if (!vivo) return;
       setPerfil(p);
-      setApelido(p?.apelido ?? '');
       setMeusPersonagens((personagens.data ?? []) as Character[]);
       setMeusEventos((eventos.data ?? []) as Evento[]);
       setCarregandoPerfil(false);
@@ -152,46 +145,10 @@ export default function PerfilPage() {
     void carregarAmizades();
   };
 
-  useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
-
-  const escolherAvatar = (file: File | null) => {
-    setErro('');
-    if (!file) { setAvatar(null); setPreview(''); return; }
-    const problema = validarAvatar(file);
-    if (problema) { setErro(problema); if (arquivoRef.current) arquivoRef.current.value = ''; return; }
-    if (preview) URL.revokeObjectURL(preview);
-    setAvatar(file);
-    setPreview(URL.createObjectURL(file));
-  };
-
-  const salvar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErro(''); setAviso('');
-    const apelidoLimpo = apelido.trim();
-    if (apelidoLimpo.length < 2 || apelidoLimpo.length > 32) {
-      setErro('O apelido precisa ter entre 2 e 32 caracteres.');
-      return;
-    }
-    setSalvando(true);
-    try {
-      const atualizado = await salvarPerfil(apelidoLimpo, avatar);
-      setPerfil(atualizado);
-      setApelido(atualizado.apelido);
-      if (preview) URL.revokeObjectURL(preview);
-      setAvatar(null); setPreview('');
-      if (arquivoRef.current) arquivoRef.current.value = '';
-      setAviso('Perfil atualizado.');
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : mensagemPerfil(err));
-    } finally {
-      setSalvando(false);
-    }
-  };
-
   return (
-    <div className="term">
+    <div className="term drukale">
       <MatrixRain />
-      <main className="wrap login-wrap">
+      <main className="wrap">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">drukale://minha-conta</span>
@@ -204,58 +161,6 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        {ehAdmin && (
-          <section className="panel login" style={{ marginBottom: 24 }}>
-            <h2 className="login-t" style={{ fontSize: 18 }}>PAINEL DO GAME MASTER</h2>
-            <p className="login-s">&gt; aprovar contas novas, direto daqui</p>
-
-            {erroPainel && <p className="stat bad">FALHA :: {erroPainel}</p>}
-
-            {resumo && (
-              <div className="imp-numeros" style={{ margin: '14px 0' }}>
-                <div className="imp-numero"><strong>{resumo.contas_pendentes}</strong><span>contas pendentes</span></div>
-                <div className="imp-numero"><strong>{resumo.fichas_pendentes}</strong><span>fichas pendentes</span></div>
-                <div className="imp-numero"><strong>{resumo.eventos_pendentes}</strong><span>eventos pendentes</span></div>
-                <div className="imp-numero"><strong>{resumo.banidos}</strong><span>banidos/silenciados</span></div>
-              </div>
-            )}
-
-            {contasPendentes.length === 0 ? (
-              <p className="vazio">nenhuma conta esperando aprovação no momento</p>
-            ) : (
-              contasPendentes.map((c) => (
-                <div key={c.user_id} className="linha" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
-                    <strong>{c.apelido}</strong>
-                    <span style={{ color: 'rgba(138,255,192,.5)', fontSize: 12 }}>{c.email}</span>
-                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                      <button type="button" className="mini-btn" disabled={avaliando === c.user_id} onClick={() => aprovarConta(c.user_id)}>✓ aprovar</button>
-                      <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => setMostrarMotivoPara(mostrarMotivoPara === c.user_id ? null : c.user_id)}>✕ reprovar</button>
-                    </span>
-                  </div>
-                  {mostrarMotivoPara === c.user_id && (
-                    <div style={{ width: '100%', marginTop: 8 }}>
-                      <textarea
-                        rows={2}
-                        value={motivoPorId[c.user_id] ?? ''}
-                        onChange={(e) => setMotivoPorId((prev) => ({ ...prev, [c.user_id]: e.target.value }))}
-                        placeholder="explique o motivo — fica visível para a pessoa"
-                      />
-                      <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => reprovarConta(c.user_id)} style={{ marginTop: 8 }}>
-                        confirmar reprovação
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-
-            <p className="dica" style={{ marginTop: 14 }}>
-              Fichas, eventos e moderação de chat: <Link href="/admin" style={{ color: 'var(--g)' }}>abrir o painel completo →</Link>
-            </p>
-          </section>
-        )}
-
         {!carregandoPerfil && perfil && perfil.status_conta !== 'aprovado' && (
           <p className="stat bad" style={{ marginBottom: 18 }}>
             {perfil.status_conta === 'pendente'
@@ -263,177 +168,183 @@ export default function PerfilPage() {
               : `Seu cadastro não foi aprovado${perfil.motivo_reprovacao ? `: ${perfil.motivo_reprovacao}` : '.'}`}
           </p>
         )}
+        {perfil && (perfil.banido || estaMudo(perfil)) && (
+          <p className="stat bad" style={{ marginBottom: 18 }}>
+            {perfil.banido ? 'Sua conta foi suspensa — você não consegue mais postar.' : `Você está silenciado até ${new Date(perfil.muted_until as string).toLocaleString('pt-BR')}.`}
+          </p>
+        )}
 
-        {carregandoPerfil ? (
+        {carregandoPerfil || !perfil || !userId ? (
           <div className="load"><span /><span /><span /><p>carregando perfil...</p></div>
         ) : (
-          <form className="panel login" onSubmit={salvar}>
-            <h1 className="login-t">MEU PERFIL</h1>
-            <p className="login-s">&gt; apelido e foto usados nas cenas e no chat</p>
+          <div className="drukale-layout">
+            <aside className="drukale-lateral">
+              <PerfilCard perfil={perfil} ehProprioPerfil ehAdmin={ehAdmin} resumo={resumo} onPerfilAtualizado={setPerfil} />
+            </aside>
 
-            <div style={{ display: 'grid', justifyItems: 'center', gap: 8, margin: '4px 0 14px' }}>
-              <Avatar url={preview || perfil?.avatar_url} nome={apelido} tamanho={72} />
-              <label className="mini-btn" style={{ cursor: 'pointer' }}>
-                trocar foto
-                <input
-                  ref={arquivoRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  style={{ display: 'none' }}
-                  onChange={(e) => escolherAvatar(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </div>
+            <div className="drukale-principal">
+              <PerfilTimeline alvo={userId} ehProprioPerfil ehAdmin={ehAdmin} />
 
-            {perfil && (perfil.banido || estaMudo(perfil)) && (
-              <p className="stat bad">
-                {perfil.banido ? 'Sua conta foi suspensa — você não consegue mais postar.' : `Você está silenciado até ${new Date(perfil.muted_until as string).toLocaleString('pt-BR')}.`}
-              </p>
-            )}
-
-            <div className="field">
-              <label>apelido</label>
-              <input value={apelido} onChange={(e) => setApelido(e.target.value)} maxLength={32} required />
-            </div>
-
-            <button className="go" disabled={salvando}>{salvando ? '// salvando...' : 'SALVAR'}</button>
-
-            {erro && <p className="stat bad">FALHA :: {erro}</p>}
-            {aviso && <p className="stat ok">{aviso}</p>}
-          </form>
-        )}
-
-        {!carregandoPerfil && userId && (() => {
-          const pedidosRecebidos = amizades.filter((a) => a.destinatario === userId && a.status === 'pendente');
-          const amigos = amizades.filter((a) => a.solicitante === userId && a.status === 'aceita');
-          const idsConhecidos = new Set(amizades.flatMap((a) => [a.solicitante, a.destinatario]));
-          return (
-            <section className="panel login" style={{ marginTop: 24 }}>
-              <h2 className="login-t" style={{ fontSize: 18 }}>AMIZADES</h2>
-              <p className="login-s">&gt; adicione outros jogadores pra ver os posts marcados como &quot;amigos&quot;</p>
-
-              {erroAmizade && <p className="stat bad">FALHA :: {erroAmizade}</p>}
-
-              <div className="field" style={{ marginTop: 14 }}>
-                <label>buscar por apelido</label>
-                <input value={buscaApelido} onChange={(e) => setBuscaApelido(e.target.value)} placeholder="digite ao menos 2 letras" />
-              </div>
-              {buscando && <p className="dica">buscando...</p>}
-              {resultadosBusca.map((p) => (
-                <div className="linha" key={p.user_id} style={{ padding: '8px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Avatar url={p.avatar_url} nome={p.apelido} tamanho={26} />
-                    <strong>{p.apelido}</strong>
-                  </div>
-                  {!idsConhecidos.has(p.user_id) && (
-                    <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => pedirAmizade(p.user_id), p)}>+ adicionar</button>
-                  )}
-                </div>
-              ))}
-
-              {carregandoAmizades ? (
-                <div className="load"><span /><span /><span /></div>
-              ) : (
-                <>
-                  {pedidosRecebidos.length > 0 && (
-                    <div style={{ marginTop: 18 }}>
-                      <h3 style={{ fontSize: 13, letterSpacing: 1, color: 'var(--g)' }}>PEDIDOS RECEBIDOS</h3>
-                      {pedidosRecebidos.map((a) => {
-                        const p = perfisAmizade.get(a.solicitante);
-                        return (
-                          <div className="linha" key={a.solicitante} style={{ padding: '8px 0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
-                              <strong>{p?.apelido ?? 'membro'}</strong>
-                            </div>
-                            <span style={{ display: 'flex', gap: 8 }}>
-                              <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => aceitarAmizade(a.solicitante), p!)}>✓ aceitar</button>
-                              <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => recusarAmizade(a.solicitante), p!)}>✕ recusar</button>
-                            </span>
+              {ehAdmin && (
+                <section className="panel login" style={{ marginTop: 24 }}>
+                  <h2 className="login-t" style={{ fontSize: 18 }}>CONTAS AGUARDANDO APROVAÇÃO</h2>
+                  {erroPainel && <p className="stat bad">FALHA :: {erroPainel}</p>}
+                  {contasPendentes.length === 0 ? (
+                    <p className="vazio">nenhuma conta esperando aprovação no momento</p>
+                  ) : (
+                    contasPendentes.map((c) => (
+                      <div key={c.user_id} className="linha" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                          <strong>{c.apelido}</strong>
+                          <span style={{ color: 'rgba(233,228,218,.5)', fontSize: 12 }}>{c.email}</span>
+                          <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                            <button type="button" className="mini-btn" disabled={avaliando === c.user_id} onClick={() => aprovarConta(c.user_id)}>✓ aprovar</button>
+                            <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => setMostrarMotivoPara(mostrarMotivoPara === c.user_id ? null : c.user_id)}>✕ reprovar</button>
+                          </span>
+                        </div>
+                        {mostrarMotivoPara === c.user_id && (
+                          <div style={{ width: '100%', marginTop: 8 }}>
+                            <textarea
+                              rows={2}
+                              value={motivoPorId[c.user_id] ?? ''}
+                              onChange={(e) => setMotivoPorId((prev) => ({ ...prev, [c.user_id]: e.target.value }))}
+                              placeholder="explique o motivo — fica visível para a pessoa"
+                            />
+                            <button type="button" className="mini-btn dim" disabled={avaliando === c.user_id} onClick={() => reprovarConta(c.user_id)} style={{ marginTop: 8 }}>
+                              confirmar reprovação
+                            </button>
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
+                      </div>
+                    ))
                   )}
-
-                  <div style={{ marginTop: 18 }}>
-                    <h3 style={{ fontSize: 13, letterSpacing: 1, color: 'var(--g)' }}>MEUS AMIGOS{amigos.length > 0 ? ` (${amigos.length})` : ''}</h3>
-                    {amigos.length === 0 ? (
-                      <p className="vazio">nenhum amigo ainda — busque um apelido acima</p>
-                    ) : (
-                      amigos.map((a) => {
-                        const p = perfisAmizade.get(a.destinatario);
-                        return (
-                          <div className="linha" key={a.destinatario} style={{ padding: '8px 0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
-                              <Link href={`/jogador/${a.destinatario}`}><strong>{p?.apelido ?? 'membro'}</strong></Link>
-                            </div>
-                            <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => desfazerAmizade(a.destinatario), p!)}>desfazer</button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
+                </section>
               )}
-            </section>
-          );
-        })()}
 
-        {!carregandoPerfil && (
-          <section className="panel login" style={{ marginTop: 24 }}>
-            <h2 className="login-t" style={{ fontSize: 18 }}>MEUS ENVIOS</h2>
-            <p className="login-s">&gt; fichas e eventos que você enviou para análise</p>
+              {(() => {
+                const pedidosRecebidos = amizades.filter((a) => a.destinatario === userId && a.status === 'pendente');
+                const amigos = amizades.filter((a) => a.solicitante === userId && a.status === 'aceita');
+                const idsConhecidos = new Set(amizades.flatMap((a) => [a.solicitante, a.destinatario]));
+                return (
+                  <section className="panel login" style={{ marginTop: 24 }}>
+                    <h2 className="login-t" style={{ fontSize: 18 }}>AMIZADES</h2>
+                    <p className="login-s">&gt; adicione outros jogadores pra ver os posts marcados como &quot;amigos&quot;</p>
 
-            {carregandoEnvios ? (
-              <div className="load"><span /><span /><span /></div>
-            ) : meusPersonagens.length === 0 && meusEventos.length === 0 ? (
-              <p className="vazio">
-                nenhum envio ainda —{' '}
-                <Link href="/personagens/nova" style={{ color: 'var(--g)' }}>enviar personagem</Link>
-                {' '}ou{' '}
-                <Link href="/linha-do-tempo/nova" style={{ color: 'var(--g)' }}>enviar evento</Link>
-              </p>
-            ) : (
-              <>
-                {meusPersonagens.map((c) => (
-                  <div className="linha" key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(0,255,102,.12)' }}>
-                    <strong>{c.name || 'sem nome'}</strong>
-                    <span className={`selo-${c.status_aprovacao}`} style={{ marginLeft: 10 }}>{ROTULO_STATUS[c.status_aprovacao]}</span>
-                    {c.status_aprovacao === 'reprovado' && c.motivo_reprovacao && (
-                      <p className="dica" style={{ margin: '6px 0' }}>motivo: {c.motivo_reprovacao}</p>
-                    )}
-                    <div style={{ marginTop: 6 }}>
-                      {c.status_aprovacao === 'aprovado' && <Link href={`/personagem/${c.slug || c.id}`}>ver a página</Link>}
-                      {c.status_aprovacao !== 'aprovado' && <Link href={`/personagens/editar/${c.id}`}>editar e reenviar</Link>}
+                    {erroAmizade && <p className="stat bad">FALHA :: {erroAmizade}</p>}
+
+                    <div className="field" style={{ marginTop: 14 }}>
+                      <label>buscar por apelido</label>
+                      <input value={buscaApelido} onChange={(e) => setBuscaApelido(e.target.value)} placeholder="digite ao menos 2 letras" />
                     </div>
-                  </div>
-                ))}
-                {meusEventos.map((ev) => (
-                  <div className="linha" key={ev.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(0,255,102,.12)' }}>
-                    <strong>{ev.titulo}</strong>
-                    <span className={`selo-${ev.status_aprovacao}`} style={{ marginLeft: 10 }}>{ROTULO_STATUS[ev.status_aprovacao]}</span>
-                    {ev.status_aprovacao === 'reprovado' && ev.motivo_reprovacao && (
-                      <p className="dica" style={{ margin: '6px 0' }}>motivo: {ev.motivo_reprovacao}</p>
-                    )}
-                    <div style={{ marginTop: 6 }}>
-                      {ev.status_aprovacao === 'aprovado' && <Link href="/linha-do-tempo">ver a linha do tempo</Link>}
-                      {ev.status_aprovacao !== 'aprovado' && <Link href={`/linha-do-tempo/editar/${ev.id}`}>editar e reenviar</Link>}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-          </section>
-        )}
+                    {buscando && <p className="dica">buscando...</p>}
+                    {resultadosBusca.map((p) => (
+                      <div className="linha" key={p.user_id} style={{ padding: '8px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar url={p.avatar_url} nome={p.apelido} tamanho={26} />
+                          <strong>{p.apelido}</strong>
+                        </div>
+                        {!idsConhecidos.has(p.user_id) && (
+                          <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => pedirAmizade(p.user_id), p)}>+ adicionar</button>
+                        )}
+                      </div>
+                    ))}
 
-        {!carregandoPerfil && userId && (
-          <section style={{ marginTop: 24 }}>
-            <h2 style={{ fontSize: 18, marginBottom: 4 }}>MINHA LINHA DO TEMPO</h2>
-            <p className="login-s" style={{ marginBottom: 16 }}>&gt; suas postagens e o que você escreveu ou comentou nas cenas</p>
-            <PerfilTimeline alvo={userId} ehProprioPerfil ehAdmin={ehAdmin} />
-          </section>
+                    {carregandoAmizades ? (
+                      <div className="load"><span /><span /><span /></div>
+                    ) : (
+                      <>
+                        {pedidosRecebidos.length > 0 && (
+                          <div style={{ marginTop: 18 }}>
+                            <h3 style={{ fontSize: 13, letterSpacing: 1 }}>PEDIDOS RECEBIDOS</h3>
+                            {pedidosRecebidos.map((a) => {
+                              const p = perfisAmizade.get(a.solicitante);
+                              return (
+                                <div className="linha" key={a.solicitante} style={{ padding: '8px 0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
+                                    <strong>{p?.apelido ?? 'membro'}</strong>
+                                  </div>
+                                  <span style={{ display: 'flex', gap: 8 }}>
+                                    <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => aceitarAmizade(a.solicitante), p!)}>✓ aceitar</button>
+                                    <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => recusarAmizade(a.solicitante), p!)}>✕ recusar</button>
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <div style={{ marginTop: 18 }}>
+                          <h3 style={{ fontSize: 13, letterSpacing: 1 }}>MEUS AMIGOS{amigos.length > 0 ? ` (${amigos.length})` : ''}</h3>
+                          {amigos.length === 0 ? (
+                            <p className="vazio">nenhum amigo ainda — busque um apelido acima</p>
+                          ) : (
+                            amigos.map((a) => {
+                              const p = perfisAmizade.get(a.destinatario);
+                              return (
+                                <div className="linha" key={a.destinatario} style={{ padding: '8px 0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
+                                    <Link href={`/jogador/${a.destinatario}`}><strong>{p?.apelido ?? 'membro'}</strong></Link>
+                                  </div>
+                                  <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => desfazerAmizade(a.destinatario), p!)}>desfazer</button>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </section>
+                );
+              })()}
+
+              <section className="panel login" style={{ marginTop: 24 }}>
+                <h2 className="login-t" style={{ fontSize: 18 }}>MEUS ENVIOS</h2>
+                <p className="login-s">&gt; fichas e eventos que você enviou para análise</p>
+
+                {carregandoEnvios ? (
+                  <div className="load"><span /><span /><span /></div>
+                ) : meusPersonagens.length === 0 && meusEventos.length === 0 ? (
+                  <p className="vazio">
+                    nenhum envio ainda —{' '}
+                    <Link href="/personagens/nova" style={{ color: 'var(--d-osso)' }}>enviar personagem</Link>
+                    {' '}ou{' '}
+                    <Link href="/linha-do-tempo/nova" style={{ color: 'var(--d-osso)' }}>enviar evento</Link>
+                  </p>
+                ) : (
+                  <>
+                    {meusPersonagens.map((c) => (
+                      <div className="linha" key={c.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(233,228,218,.12)' }}>
+                        <strong>{c.name || 'sem nome'}</strong>
+                        <span className={`selo-${c.status_aprovacao}`} style={{ marginLeft: 10 }}>{ROTULO_STATUS[c.status_aprovacao]}</span>
+                        {c.status_aprovacao === 'reprovado' && c.motivo_reprovacao && (
+                          <p className="dica" style={{ margin: '6px 0' }}>motivo: {c.motivo_reprovacao}</p>
+                        )}
+                        <div style={{ marginTop: 6 }}>
+                          {c.status_aprovacao === 'aprovado' && <Link href={`/personagem/${c.slug || c.id}`}>ver a página</Link>}
+                          {c.status_aprovacao !== 'aprovado' && <Link href={`/personagens/editar/${c.id}`}>editar e reenviar</Link>}
+                        </div>
+                      </div>
+                    ))}
+                    {meusEventos.map((ev) => (
+                      <div className="linha" key={ev.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(233,228,218,.12)' }}>
+                        <strong>{ev.titulo}</strong>
+                        <span className={`selo-${ev.status_aprovacao}`} style={{ marginLeft: 10 }}>{ROTULO_STATUS[ev.status_aprovacao]}</span>
+                        {ev.status_aprovacao === 'reprovado' && ev.motivo_reprovacao && (
+                          <p className="dica" style={{ margin: '6px 0' }}>motivo: {ev.motivo_reprovacao}</p>
+                        )}
+                        <div style={{ marginTop: 6 }}>
+                          {ev.status_aprovacao === 'aprovado' && <Link href="/linha-do-tempo">ver a linha do tempo</Link>}
+                          {ev.status_aprovacao !== 'aprovado' && <Link href={`/linha-do-tempo/editar/${ev.id}`}>editar e reenviar</Link>}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </section>
+            </div>
+          </div>
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>

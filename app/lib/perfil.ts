@@ -4,6 +4,8 @@ export type Perfil = {
   user_id: string;
   apelido: string;
   avatar_url: string | null;
+  capa_url: string | null;
+  bio: string | null;
   muted_until: string | null;
   banido: boolean;
   status_conta: 'pendente' | 'aprovado' | 'reprovado';
@@ -13,12 +15,21 @@ export type Perfil = {
 
 export const BUCKET_AVATARS = 'avatars';
 export const MAX_BYTES_AVATAR = 5 * 1024 * 1024;
+export const MAX_BYTES_CAPA = 8 * 1024 * 1024;
 export const MIMES_AVATAR = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+export const LIMITE_BIO = 300;
 
 export function validarAvatar(f: Pick<File, 'size' | 'type'>): string | null {
   if (!MIMES_AVATAR.includes(f.type)) return 'Use JPG, PNG, WebP ou GIF.';
   if (f.size === 0) return 'O arquivo está vazio.';
   if (f.size > MAX_BYTES_AVATAR) return 'A imagem pode ter até 5 MB.';
+  return null;
+}
+
+export function validarCapa(f: Pick<File, 'size' | 'type'>): string | null {
+  if (!MIMES_AVATAR.includes(f.type)) return 'Use JPG, PNG, WebP ou GIF.';
+  if (f.size === 0) return 'O arquivo está vazio.';
+  if (f.size > MAX_BYTES_CAPA) return 'A capa pode ter até 8 MB.';
   return null;
 }
 
@@ -70,10 +81,10 @@ export async function garantirPerfil(): Promise<Perfil | null> {
   return (criado2 as Perfil) ?? null;
 }
 
-/** Sobe o avatar para a pasta da própria conta, sempre no mesmo nome (substitui o antigo). */
-async function subirAvatar(file: File, uid: string): Promise<string> {
+/** Sobe o avatar ou a capa para a pasta da própria conta, sempre no mesmo nome (substitui o antigo). */
+async function subirImagemPerfil(file: File, uid: string, base: 'avatar' | 'capa'): Promise<string> {
   const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
-  const caminho = `${uid}/avatar.${ext}`;
+  const caminho = `${uid}/${base}.${ext}`;
   const { error } = await supabase.storage.from(BUCKET_AVATARS).upload(caminho, file, {
     contentType: file.type,
     cacheControl: '3600',
@@ -81,9 +92,12 @@ async function subirAvatar(file: File, uid: string): Promise<string> {
   });
   if (error) throw new Error(`Não consegui enviar a imagem: ${error.message}`);
   const { data } = supabase.storage.from(BUCKET_AVATARS).getPublicUrl(caminho);
-  // marca de tempo na URL só para o navegador não mostrar o avatar antigo em cache
+  // marca de tempo na URL só para o navegador não mostrar a imagem antiga em cache
   return `${data.publicUrl}?t=${Date.now()}`;
 }
+
+const subirAvatar = (file: File, uid: string) => subirImagemPerfil(file, uid, 'avatar');
+const subirCapa = (file: File, uid: string) => subirImagemPerfil(file, uid, 'capa');
 
 /** Cria o perfil logo após o cadastro, já com o apelido escolhido na hora. */
 export async function criarPerfilInicial(apelido: string, avatarFile?: File | null): Promise<Perfil> {
@@ -97,12 +111,14 @@ export async function criarPerfilInicial(apelido: string, avatarFile?: File | nu
   return salvarPerfil(apelido, avatarFile);
 }
 
-export async function salvarPerfil(apelido: string, avatarFile?: File | null): Promise<Perfil> {
+export async function salvarPerfil(apelido: string, avatarFile?: File | null, capaFile?: File | null, bio?: string): Promise<Perfil> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error('Entre novamente para salvar o perfil.');
 
-  const registro: { apelido: string; avatar_url?: string } = { apelido: apelido.trim() };
+  const registro: { apelido: string; avatar_url?: string; capa_url?: string; bio?: string | null } = { apelido: apelido.trim() };
   if (avatarFile) registro.avatar_url = await subirAvatar(avatarFile, auth.user.id);
+  if (capaFile) registro.capa_url = await subirCapa(capaFile, auth.user.id);
+  if (bio !== undefined) registro.bio = bio.trim().slice(0, LIMITE_BIO) || null;
 
   const { data, error } = await supabase.from('profiles').update(registro).eq('user_id', auth.user.id).select().single();
   if (error) throw new Error(mensagemPerfil(error));
