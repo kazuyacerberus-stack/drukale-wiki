@@ -43,6 +43,7 @@ export default function FaccoesPage() {
                 {muted ? '♪ off' : '♪ on'}
               </button>
               <Link className="ico" href="/">← arquivo</Link>
+              <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
               <Link className="ico" href="/glossario">glossário</Link>
               <Link className="ico" href="/admin/faccoes">+ nova</Link>

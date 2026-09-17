@@ -1227,3 +1227,158 @@ html, body { margin: 0; padding: 0; background: #000; }
       20px 3px, 3px 20px, 20px 3px, 3px 20px;
   }
 }
+
+/* ============================================================
+   TERMINAL IMPERIAL — só a página inicial
+   ------------------------------------------------------------
+   Um painel de máquina xenos: obsidiana, cromo e um brilho roxo
+   doentio, caveiras e espinhos nas bordas. Vale só sob .imperio; o
+   resto da wiki continua verde e Matrix como sempre foi.
+   ============================================================ */
+
+.term.imperio {
+  --i-osso: #e9e4da;
+  --i-cromo: #9aa6b3;
+  --i-cromo-fraco: #4a5058;
+  --i-roxo: #7a3ad1;
+  --i-sangue: #d1264a;
+  color: var(--i-osso);
+  background: radial-gradient(ellipse at 50% -10%, #1a0f2a 0%, #0a0714 55%, #030208 100%);
+}
+
+.imperio::before {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    repeating-linear-gradient(65deg, rgba(0,0,0,0) 0 9px, rgba(0,0,0,.2) 9px 10px),
+    radial-gradient(circle at 14% 10%, rgba(122,58,209,.10), transparent 46%),
+    radial-gradient(circle at 86% 82%, rgba(209,38,74,.08), transparent 50%);
+}
+
+/* ---------- cabeçalho ---------- */
+.imperio .hd { border-bottom: 0; }
+.imperio .hd-bar {
+  border: 1px solid var(--i-cromo-fraco);
+  border-left: 5px solid var(--i-roxo);
+  background: linear-gradient(180deg, rgba(122,58,209,.12), rgba(0,0,0,.4));
+  padding: 9px 14px;
+}
+.imperio .hd-path { color: var(--i-cromo); }
+.imperio .dot { background: var(--i-roxo); box-shadow: 0 0 8px rgba(122,58,209,.6); }
+.imperio .ico {
+  border-color: var(--i-cromo-fraco); color: var(--i-osso);
+  background: rgba(0,0,0,.35);
+}
+.imperio .ico:hover {
+  border-color: var(--i-sangue); color: #ff8fa3;
+  box-shadow: 0 0 14px rgba(209,38,74,.35);
+}
+
+/* ---------- o herói ---------- */
+.imp-hero {
+  position: relative;
+  text-align: center;
+  padding: 44px 70px 30px;
+  margin: 6px 0 10px;
+}
+.imp-caveira {
+  position: absolute; top: 8px;
+  width: clamp(38px, 7vw, 64px); height: auto;
+  color: var(--i-cromo);
+  filter: drop-shadow(0 0 10px rgba(122,58,209,.35));
+  opacity: .85;
+}
+.imp-caveira .olho { fill: #050308; }
+.imp-caveira-esq { left: 0; transform: rotate(-6deg); }
+.imp-caveira-dir { right: 0; transform: rotate(6deg) scaleX(-1); }
+
+.imp-titulo {
+  position: relative; margin: 0 auto; display: inline-block;
+  font-family: Cinzel, 'Times New Roman', serif; font-weight: 700;
+  font-size: clamp(30px, 6vw, 58px); letter-spacing: 7px;
+  color: var(--i-osso);
+  text-shadow: 0 0 22px rgba(122,58,209,.55), 0 2px 0 #000;
+}
+.imp-titulo::before, .imp-titulo::after { display: none; }
+.imp-sub {
+  margin: 12px 0 0; font-size: 13.5px; letter-spacing: 2px;
+  color: var(--i-cromo); text-transform: uppercase;
+}
+.imp-lead {
+  max-width: 640px; margin: 22px auto 0; font-size: 15px; line-height: 1.7;
+  color: rgba(233,228,218,.82);
+}
+.imp-lead strong { color: var(--i-osso); text-shadow: 0 0 10px rgba(122,58,209,.5); }
+
+/* ---------- divisória em espinhos ---------- */
+.imp-espinhos {
+  height: 16px; margin: 40px 0 34px; border: 0;
+  background: linear-gradient(180deg, var(--i-cromo), var(--i-cromo-fraco));
+  clip-path: polygon(
+    0% 100%, 4% 0%, 8% 100%, 12% 0%, 16% 100%, 20% 0%, 24% 100%, 28% 0%,
+    32% 100%, 36% 0%, 40% 100%, 44% 0%, 48% 100%, 52% 0%, 56% 100%, 60% 0%,
+    64% 100%, 68% 0%, 72% 100%, 76% 0%, 80% 100%, 84% 0%, 88% 100%, 92% 0%,
+    96% 100%, 100% 0%, 100% 100%
+  );
+  opacity: .55;
+}
+
+/* ---------- seções de texto ---------- */
+.imp-secao { margin: 0 0 40px; animation: fadein .5s ease both; }
+.imp-secao h2 {
+  margin: 0 0 14px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--i-cromo);
+}
+.imp-secao h2::before { content: '◆ '; color: var(--i-sangue); }
+.imp-secao p { margin: 0 0 14px; line-height: 1.75; color: rgba(233,228,218,.8); max-width: 720px; }
+
+/* ---------- as quatro forças corruptoras ---------- */
+.imp-forcas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.imp-forca {
+  display: block; padding: 18px 18px 16px; border-radius: 2px; text-decoration: none;
+  border: 1px solid var(--i-cromo-fraco); border-top: 3px solid var(--forca-cor, var(--i-roxo));
+  background: rgba(255,255,255,.02); transition: .2s;
+}
+.imp-forca:hover {
+  border-color: var(--forca-cor, var(--i-roxo)); transform: translateY(-4px);
+  box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 20px color-mix(in srgb, var(--forca-cor, var(--i-roxo)) 35%, transparent);
+}
+.imp-forca strong {
+  display: block; margin-bottom: 8px; font-size: 14.5px; letter-spacing: 1px;
+  color: var(--forca-cor, var(--i-osso));
+}
+.imp-forca span { font-size: 12.5px; line-height: 1.6; color: rgba(233,228,218,.65); }
+
+/* ---------- hub de navegação orgânica ---------- */
+.imp-hub { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.imp-hub-card {
+  display: flex; flex-direction: column; gap: 8px; padding: 20px 18px; text-decoration: none;
+  border: 1px solid var(--i-cromo-fraco); border-radius: 2px; background: rgba(255,255,255,.015);
+  transition: .2s; animation: up .4s ease both;
+}
+.imp-hub-card:hover {
+  border-color: var(--i-sangue); background: rgba(209,38,74,.06);
+  transform: translateY(-4px); box-shadow: 0 10px 26px rgba(0,0,0,.5);
+}
+.imp-hub-icone { font-size: 22px; color: var(--i-cromo); }
+.imp-hub-card:hover .imp-hub-icone { color: var(--i-sangue); }
+.imp-hub-card strong { font-size: 14px; letter-spacing: 1px; color: var(--i-osso); }
+.imp-hub-card span { font-size: 12px; line-height: 1.5; color: rgba(233,228,218,.6); }
+
+/* ---------- números ao vivo ---------- */
+.imp-numeros {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 34px;
+  padding: 26px 20px; margin: 46px 0 6px;
+  border-top: 1px solid var(--i-cromo-fraco); border-bottom: 1px solid var(--i-cromo-fraco);
+}
+.imp-numero { text-align: center; }
+.imp-numero strong {
+  display: block; font-size: 26px; font-family: Cinzel, serif; color: var(--i-osso);
+  text-shadow: 0 0 14px rgba(122,58,209,.5);
+}
+.imp-numero span { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
+
+@media (max-width: 640px) {
+  .imp-hero { padding: 38px 46px 24px; }
+  .imp-caveira { top: 2px; width: 34px; }
+}

@@ -1,119 +1,96 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import './matrix.css';
-import MatrixRain from './components/MatrixRain';
 import Abertura from './components/Abertura';
 import { useBeep } from './components/useBeep';
-import { supabase, type Character } from './lib/db';
+import { supabase } from './lib/db';
+
+/**
+ * As quatro forças corruptoras do império — nomes 100% originais,
+ * já cadastrados como facções (ver sql/... desta mesma frente). Usar
+ * uma estrutura de "quatro poderes" é a mesma ideia estrutural do Caos
+ * de Warhammer 40K, mas sem tomar emprestado nome, deus ou texto de
+ * ninguém: tudo aqui foi escrito para o Império Drukale.
+ */
+const FORCAS_CORRUPTORAS = [
+  'Legião da Fúria Vermelha',
+  'Culto da Podridão Eterna',
+  'Conselho das Mil Máscaras',
+  'Corte do Êxtase Infinito',
+];
+
+const GUIAS = [
+  { href: '/faccoes', icone: '⌂', titulo: 'Facções', desc: 'as casas e cultos que disputam o poder' },
+  { href: '/linha-do-tempo', icone: '⏱', titulo: 'Linha do tempo', desc: 'os marcos que forjaram o império' },
+  { href: '/glossario', icone: '◈', titulo: 'Glossário', desc: 'raças, magia, tecnologia e mais' },
+  { href: '/personagens', icone: '◉', titulo: 'Personagens', desc: 'o arquivo de quem habita Drukale' },
+  { href: '/cenas', icone: '▤', titulo: 'Cenas', desc: 'o que já foi vivido, em texto' },
+  { href: '/mundo', icone: '◍', titulo: 'Mundo', desc: 'o globo em 3D e o mapa político' },
+  { href: '/chat', icone: '✉', titulo: 'Chat', desc: 'converse com a comunidade' },
+];
+
+type Forca = { slug: string; nome: string; cor: string; resumo: string | null };
+type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; eventos: number };
+
+/** Caveira estilizada, desenho original — só o contorno geral, sem detalhe fino. */
+function Caveira({ className }: { className: string }) {
+  return (
+    <svg className={`imp-caveira ${className}`} viewBox="0 0 64 80" fill="currentColor" aria-hidden="true">
+      <path d="M32 4C15 4 5 17 5 33c0 10 4.5 17 11 22.5V63c0 3.3 2.7 6 6 6h1v-9h4v9h10v-9h4v9h1c3.3 0 6-2.7 6-6v-7.5C58 50 62.5 43 62.5 33 62.5 17 49 4 32 4z" />
+      <circle className="olho" cx="20" cy="33" r="7.5" />
+      <circle className="olho" cx="44" cy="33" r="7.5" />
+      <path className="olho" d="M32 42l-5 9h10z" />
+      <rect className="olho" x="18" y="58" width="4" height="6" rx=".5" />
+      <rect className="olho" x="26" y="58" width="4" height="8" rx=".5" />
+      <rect className="olho" x="34" y="58" width="4" height="8" rx=".5" />
+      <rect className="olho" x="42" y="58" width="4" height="6" rx=".5" />
+    </svg>
+  );
+}
 
 export default function Home() {
-  const [chars, setChars] = useState<Character[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState('');
-  const [query, setQuery] = useState('');
-  const [faccao, setFaccao] = useState('');   // '' = todas
-  const [estado, setEstado] = useState('');   // '' = todos
-  const [broken, setBroken] = useState<Record<string, boolean>>({});
+  const [forcas, setForcas] = useState<Forca[]>([]);
+  const [numeros, setNumeros] = useState<Numeros | null>(null);
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
     (async () => {
-      // o id é UUID, então ordenar por ele dá ordem aleatória:
-      // alfabética é o que faz sentido num arquivo de personagens
-      const { data, error } = await supabase
-        .from('characters')
-        .select('*')
-        .order('name', { ascending: true });
-      if (error) setErro(error.message);
-      else setChars((data ?? []) as Character[]);
-      setLoading(false);
+      const { data } = await supabase.from('faccoes').select('slug,nome,cor,resumo').in('nome', FORCAS_CORRUPTORAS);
+      const encontradas = (data ?? []) as Forca[];
+      const ordenadas = FORCAS_CORRUPTORAS
+        .map((nome) => encontradas.find((f) => f.nome === nome))
+        .filter((f): f is Forca => Boolean(f));
+      setForcas(ordenadas);
     })();
   }, []);
 
-  /**
-   * Monta a lista de abas de um campo a partir dos personagens que existem.
-   * Agrupa ignorando maiúsculas — "Casa Drukale" e "casa drukale" viram
-   * uma aba só — e mostra a forma como foi escrita da primeira vez.
-   * Ordena da facção mais numerosa para a menos numerosa.
-   */
-  const abasDe = (campo: 'faction' | 'status') => {
-    const mapa = new Map<string, { rotulo: string; n: number }>();
-    for (const c of chars) {
-      const bruto = (c[campo] ?? '').trim();
-      if (!bruto) continue;
-      const chave = bruto.toLowerCase();
-      const atual = mapa.get(chave);
-      if (atual) atual.n++;
-      else mapa.set(chave, { rotulo: bruto, n: 1 });
-    }
-    return [...mapa.entries()]
-      .map(([chave, v]) => ({ chave, rotulo: v.rotulo, n: v.n }))
-      .sort((a, b) => b.n - a.n || a.rotulo.localeCompare(b.rotulo));
-  };
-
-  const faccoes = useMemo(() => abasDe('faction'), [chars]);
-  const estados = useMemo(() => abasDe('status'), [chars]);
-
-  const q = query.trim().toLowerCase();
-  const list = chars.filter((c) => {
-    if (faccao && (c.faction ?? '').trim().toLowerCase() !== faccao) return false;
-    if (estado && (c.status ?? '').trim().toLowerCase() !== estado) return false;
-    if (
-      q &&
-      ![c.name, c.epithet, c.faction, c.description].some((v) =>
-        (v ?? '').toLowerCase().includes(q)
-      )
-    ) return false;
-    return true;
-  });
-
-  const filtrando = Boolean(q || faccao || estado);
-
-  const inicial = (n: string | null) => (n?.trim()?.[0] ?? '?').toUpperCase();
-  const rota = (c: Character) => `/personagem/${c.slug || c.id}`;
-
-  /** Desenha uma linha de abas. Clicar na aba já ativa desliga o filtro. */
-  const linhaDeAbas = (
-    titulo: string,
-    todos: string,
-    opcoes: { chave: string; rotulo: string; n: number }[],
-    valor: string,
-    definir: (v: string) => void
-  ) => (
-    <div className="abas">
-      <span className="abas-rot">{titulo}</span>
-      <button
-        className={`aba${valor === '' ? ' on' : ''}`}
-        onClick={() => { definir(''); beep('click'); }}
-        onMouseEnter={() => beep('hover')}
-      >
-        {todos}<span className="n">{chars.length}</span>
-      </button>
-      {opcoes.map((o) => (
-        <button
-          key={o.chave}
-          className={`aba${valor === o.chave ? ' on' : ''}`}
-          onClick={() => { definir(valor === o.chave ? '' : o.chave); beep('click'); }}
-          onMouseEnter={() => beep('hover')}
-        >
-          {o.rotulo}<span className="n">{o.n}</span>
-        </button>
-      ))}
-    </div>
-  );
+  useEffect(() => {
+    (async () => {
+      const contar = (tabela: string) => supabase.from(tabela).select('id', { count: 'exact', head: true });
+      const [personagens, faccoes, termos, locais, eventos] = await Promise.all([
+        contar('characters'), contar('faccoes'), contar('glossario'), contar('locais'), contar('eventos'),
+      ]);
+      setNumeros({
+        personagens: personagens.count ?? 0,
+        faccoes: faccoes.count ?? 0,
+        termos: termos.count ?? 0,
+        locais: locais.count ?? 0,
+        eventos: eventos.count ?? 0,
+      });
+    })();
+  }, []);
 
   return (
-    <div className="term">
+    <div className="term imperio">
       <Abertura />
-      <MatrixRain />
 
       <main className="wrap">
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/personagens</span>
+            <span className="hd-path">drukale://imperio</span>
             <div className="hd-act">
               <button
                 className="ico"
@@ -122,91 +99,97 @@ export default function Home() {
               >
                 {muted ? '♪ off' : '♪ on'}
               </button>
-              <Link className="ico" href="/faccoes" title="casas e organizações do império">⌂ facções</Link>
-              <Link className="ico" href="/linha-do-tempo" title="os grandes marcos do império">⏱ linha do tempo</Link>
-              <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
-              <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
-              <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
-              <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>
               <Link className="ico" href="/admin">+ novo</Link>
             </div>
           </div>
-
-          <h1 data-txt="IMPÉRIO DRUKALE">IMPÉRIO DRUKALE</h1>
-          <p className="sub">&gt; arquivo central de personagens <span className="cur" /></p>
         </header>
 
-        {/* abas de filtragem — aparecem assim que existir facção ou status preenchido */}
-        {!loading && (faccoes.length > 0 || estados.length > 0) && (
-          <div className="filtros">
-            {faccoes.length > 0 &&
-              linhaDeAbas('facção', 'todas', faccoes, faccao, setFaccao)}
-            {estados.length > 0 &&
-              linhaDeAbas('status', 'todos', estados, estado, setEstado)}
-          </div>
-        )}
-
-        <div className="bar">
-          <input
-            className="srch"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="buscar por nome, epíteto ou facção..."
-          />
-          <span className="count">
-            {loading ? 'CARREGANDO' : `${list.length} REGISTRO${list.length === 1 ? '' : 'S'}`}
-          </span>
-        </div>
-
-        {erro && <p className="erro">FALHA :: {erro}</p>}
-
-        {loading ? (
-          <div className="load">
-            <span /><span /><span />
-            <p>decodificando arquivo...</p>
-          </div>
-        ) : list.length === 0 ? (
-          <p className="vazio">
-            {filtrando
-              ? 'nenhum registro corresponde aos filtros'
-              : 'arquivo vazio — nenhum personagem registrado'}
+        <section className="imp-hero">
+          <Caveira className="imp-caveira-esq" />
+          <Caveira className="imp-caveira-dir" />
+          <h1 className="imp-titulo">IMPÉRIO DRUKALE</h1>
+          <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
+          <p className="imp-lead">
+            No trono de <strong>Tenebris Civitaten</strong> governa{' '}
+            <strong>Elsharion Drukale</strong>, o Hierarca da Anarquia — nascido
+            da corrupção e forjado na violência, sua vontade é a única lei que a
+            Casa Drukale reconhece. Este arquivo reúne tudo o que se sabe sobre
+            o império: suas casas, seus mundos, sua gente e o que os corrompeu.
           </p>
-        ) : (
-          <section className="grid">
-            {list.map((c, i) => {
-              const key = String(c.id);
-              const ok = c.image_url && !broken[key];
-              return (
+        </section>
+
+        <hr className="imp-espinhos" aria-hidden="true" />
+
+        <section className="imp-secao">
+          <h2>o que é o império</h2>
+          <p>
+            Drukale não nasceu de uma conquista — nasceu de uma ruptura. Onde a
+            realidade se rasga, uma energia sem forma escorre para dentro do
+            mundo material e se agarra às paixões de quem a toca: fúria vira
+            guerra sem fim, ambição vira intriga sem fundo, desejo vira excesso
+            sem limite, e a própria morte vira um culto. O império é o que resta
+            de pé quando essa força encontra um povo disposto a servi-la.
+          </p>
+          <p>
+            Elsharion Drukale não impôs ordem a esse caos — ele o organizou.
+            Sob seu trono, cada facção que canaliza uma faceta dessa corrupção
+            tem seu lugar, contanto que sirva à Casa Drukale antes de servir a
+            si mesma. É um equilíbrio instável, mantido tanto pelo medo quanto
+            pela lealdade — e é esse equilíbrio que este arquivo documenta.
+          </p>
+        </section>
+
+        {forcas.length > 0 && (
+          <section className="imp-secao">
+            <h2>as quatro forças</h2>
+            <div className="imp-forcas">
+              {forcas.map((f) => (
                 <Link
-                  key={key}
-                  href={rota(c)}
-                  className="node"
-                  style={{ animationDelay: `${Math.min(i * 55, 700)}ms` }}
+                  key={f.slug}
+                  href={`/faccoes/${f.slug}`}
+                  className="imp-forca"
+                  style={{ '--forca-cor': f.cor } as React.CSSProperties}
                   onMouseEnter={() => beep('hover')}
                   onClick={() => beep('click')}
                 >
-                  <div className="ringwrap">
-                    <span className="ring" />
-                    <span className="ring2" />
-                    <div className="orb">
-                      {ok ? (
-                        <img
-                          src={c.image_url as string}
-                          alt={c.name ?? ''}
-                          onError={() => setBroken((b) => ({ ...b, [key]: true }))}
-                        />
-                      ) : (
-                        <span className="ini">{inicial(c.name)}</span>
-                      )}
-                      <span className="sheen" />
-                    </div>
-                  </div>
-                  <h3>{c.name ?? 'sem nome'}</h3>
-                  <p className="desc">{c.epithet || c.description || ''}</p>
+                  <strong>{f.nome}</strong>
+                  {f.resumo && <span>{f.resumo}</span>}
                 </Link>
-              );
-            })}
+              ))}
+            </div>
           </section>
+        )}
+
+        <hr className="imp-espinhos" aria-hidden="true" />
+
+        <section className="imp-secao">
+          <h2>explore o arquivo</h2>
+          <div className="imp-hub">
+            {GUIAS.map((g, i) => (
+              <Link
+                key={g.href}
+                href={g.href}
+                className="imp-hub-card"
+                style={{ animationDelay: `${i * 60}ms` }}
+                onMouseEnter={() => beep('hover')}
+                onClick={() => beep('click')}
+              >
+                <span className="imp-hub-icone">{g.icone}</span>
+                <strong>{g.titulo}</strong>
+                <span>{g.desc}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {numeros && (
+          <div className="imp-numeros">
+            <div className="imp-numero"><strong>{numeros.personagens}</strong><span>personagens</span></div>
+            <div className="imp-numero"><strong>{numeros.faccoes}</strong><span>facções</span></div>
+            <div className="imp-numero"><strong>{numeros.eventos}</strong><span>eventos</span></div>
+            <div className="imp-numero"><strong>{numeros.termos}</strong><span>termos</span></div>
+            <div className="imp-numero"><strong>{numeros.locais}</strong><span>locais</span></div>
+          </div>
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>

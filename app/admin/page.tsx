@@ -84,6 +84,7 @@ export default function Painel() {
             <span className="hd-path">drukale://admin/painel</span>
             <div className="hd-act">
               <Link className="ico" href="/">← arquivo</Link>
+              <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/admin/novo">+ novo registro</Link>
               <Link className="ico" href="/admin/faccoes">facções</Link>
               <Link className="ico" href="/admin/linha-do-tempo">linha do tempo</Link>
