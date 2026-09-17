@@ -3,7 +3,7 @@
    Todas as páginas importam este arquivo.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cinzel:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap');
 
 html, body { margin: 0; padding: 0; background: #000; }
 * { box-sizing: border-box; }
@@ -1249,6 +1249,10 @@ html, body { margin: 0; padding: 0; background: #000; }
   --i-sangue: #d1264a;
   color: var(--i-osso);
   background: radial-gradient(ellipse at 50% -10%, #1a0f2a 0%, #0a0714 55%, #030208 100%);
+  /* fonte de livro de RPG — curvada e elegante, no lugar do monoespaçado
+     "terminal" que o resto do site usa. Só o h1 continua em Cinzel. */
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 500;
 }
 
 .imperio::before {
@@ -1320,7 +1324,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 .imp-cta {
   display: inline-flex; align-items: center; gap: 10px;
   padding: 14px 26px; border: 1px solid var(--i-osso); border-radius: 2px;
-  color: var(--i-osso); text-decoration: none; letter-spacing: 2px; font-size: 12.5px;
+  color: var(--i-osso); text-decoration: none; letter-spacing: 2px; font-size: 14px; font-weight: 700;
   text-transform: uppercase; transition: .2s;
 }
 .imp-cta:hover { background: var(--i-osso); color: #0a0714; box-shadow: 0 0 26px rgba(122,58,209,.6); }
@@ -1344,8 +1348,8 @@ html, body { margin: 0; padding: 0; background: #000; }
 .imp-faixa-item:hover { background: rgba(209,38,74,.06); }
 .imp-faixa-icone { font-size: 22px; color: var(--i-cromo); }
 .imp-faixa-item:hover .imp-faixa-icone { color: var(--i-sangue); }
-.imp-faixa-item strong { font-size: 12.5px; letter-spacing: 1.5px; color: var(--i-osso); text-transform: uppercase; }
-.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 11.5px; line-height: 1.5; color: rgba(233,228,218,.55); }
+.imp-faixa-item strong { font-size: 14.5px; font-weight: 700; letter-spacing: 1px; color: var(--i-osso); text-transform: uppercase; }
+.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 13.5px; line-height: 1.5; color: rgba(233,228,218,.55); }
 .imp-faixa-seta { font-size: 12px; color: var(--i-sangue); opacity: 0; transform: translateX(-3px); transition: .2s; }
 .imp-faixa-item:hover .imp-faixa-seta { opacity: 1; transform: translateX(0); }
 
@@ -1363,12 +1367,12 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .imp-titulo::before, .imp-titulo::after { display: none; }
 .imp-sub {
-  margin: 12px 0 0; font-size: 13.5px; letter-spacing: 2px;
+  margin: 12px 0 0; font-size: 15px; font-weight: 600; letter-spacing: 2px;
   color: var(--i-cromo); text-transform: uppercase;
 }
 .imp-lead {
-  max-width: 640px; margin: 22px auto 0; font-size: 15px; line-height: 1.7;
-  color: rgba(233,228,218,.82);
+  max-width: 640px; margin: 22px auto 0; font-size: 18px; line-height: 1.65;
+  color: rgba(233,228,218,.85);
 }
 .imp-lead strong { color: var(--i-osso); text-shadow: 0 0 10px rgba(122,58,209,.5); }
 
@@ -1389,11 +1393,11 @@ html, body { margin: 0; padding: 0; background: #000; }
 /* ---------- seções de texto ---------- */
 .imp-secao { margin: 0 0 40px; animation: fadein .5s ease both; }
 .imp-secao h2 {
-  margin: 0 0 14px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  margin: 0 0 14px; font-size: 13.5px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
   color: var(--i-cromo);
 }
 .imp-secao h2::before { content: '◆ '; color: var(--i-sangue); }
-.imp-secao p { margin: 0 0 14px; line-height: 1.75; color: rgba(233,228,218,.8); max-width: 720px; }
+.imp-secao p { margin: 0 0 14px; font-size: 17px; line-height: 1.7; color: rgba(233,228,218,.8); max-width: 720px; }
 
 /* ---------- as quatro forças corruptoras ---------- */
 .imp-forcas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
@@ -1407,10 +1411,10 @@ html, body { margin: 0; padding: 0; background: #000; }
   box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 20px color-mix(in srgb, var(--forca-cor, var(--i-roxo)) 35%, transparent);
 }
 .imp-forca strong {
-  display: block; margin-bottom: 8px; font-size: 14.5px; letter-spacing: 1px;
+  display: block; margin-bottom: 8px; font-size: 17px; font-weight: 700; letter-spacing: .5px;
   color: var(--forca-cor, var(--i-osso));
 }
-.imp-forca span { font-size: 12.5px; line-height: 1.6; color: rgba(233,228,218,.65); }
+.imp-forca span { font-size: 14.5px; line-height: 1.6; color: rgba(233,228,218,.65); }
 
 /* ---------- números ao vivo ---------- */
 .imp-numeros {
@@ -1423,7 +1427,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   display: block; font-size: 26px; font-family: Cinzel, serif; color: var(--i-osso);
   text-shadow: 0 0 14px rgba(122,58,209,.5);
 }
-.imp-numero span { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
+.imp-numero span { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
 
 @media (max-width: 640px) {
   .imp-hero { min-height: min(76vh, 560px); }
