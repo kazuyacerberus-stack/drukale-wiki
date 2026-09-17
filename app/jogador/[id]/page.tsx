@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import PerfilCard from '../../components/PerfilCard';
 import PerfilTimeline from '../../components/PerfilTimeline';
@@ -15,7 +14,6 @@ import type { Perfil } from '../../lib/perfil';
 export default function JogadorPage() {
   return (
     <div className="term drukale">
-      <MatrixRain />
       <main className="wrap">
         <PrecisaAprovacao>
           <JogadorPageInterna />

@@ -1506,26 +1506,32 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 
 /* ============================================================
-   TEMA "DRUKALE" — mesma família visual escura do .imperio (home),
-   mas como classe própria: .imperio também é o gatilho que tira o
-   latão dos botões de navegação, e o perfil precisa continuar com
-   latão. Variáveis copiadas, não herdadas.
+   TEMA "DRUKALE" — painel de computador antigo: âmbar/latão sobre
+   quase-preto, monoespaçado, linhas de varredura sutis. Original,
+   sem referência a nenhuma obra registrada. Classe própria (não
+   herda de .imperio) porque .imperio é o gatilho que tira o latão
+   dos botões de navegação, e o perfil precisa continuar com latão.
    ============================================================ */
 .term.drukale {
-  --d-osso: #e9e4da; --d-cromo: #9aa6b3; --d-cromo-fraco: #4a5058;
-  --d-roxo: #7a3ad1; --d-sangue: #d1264a;
+  --d-osso: #f0dfb8; --d-cromo: #b89a6a; --d-cromo-fraco: #6d5a30;
+  --d-roxo: #d8a85c; --d-sangue: #d1264a;
   color: var(--d-osso);
-  background: radial-gradient(ellipse at 50% -10%, #1a0f2a 0%, #0a0714 55%, #030208 100%);
-  font-family: 'Cormorant Garamond', Georgia, serif;
+  background: radial-gradient(ellipse at 50% -10%, #201808 0%, #0f0b04 55%, #050301 100%);
+  font-family: 'Share Tech Mono', Consolas, monospace;
+}
+.drukale::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,.18) 2px 4px);
+  mix-blend-mode: multiply;
 }
 .drukale .hd { border-bottom: 0; }
 .drukale .hd-bar {
   border: 1px solid var(--d-cromo-fraco); border-left: 5px solid var(--d-roxo);
-  background: linear-gradient(180deg, rgba(122,58,209,.12), rgba(0,0,0,.4));
+  background: linear-gradient(180deg, rgba(216,168,92,.12), rgba(0,0,0,.4));
   padding: 9px 14px;
 }
 .drukale .hd-path { color: var(--d-cromo); }
-.drukale .dot { background: var(--d-roxo); box-shadow: 0 0 8px rgba(122,58,209,.6); }
+.drukale .dot { background: var(--d-roxo); box-shadow: 0 0 8px rgba(216,168,92,.6); }
 
 .drukale-layout { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 26px; align-items: start; }
 .drukale-lateral { position: sticky; top: 20px; }

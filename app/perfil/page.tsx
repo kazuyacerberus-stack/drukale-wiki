@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import Avatar from '../components/Avatar';
 import PerfilCard from '../components/PerfilCard';
 import PerfilTimeline from '../components/PerfilTimeline';
@@ -147,7 +146,6 @@ export default function PerfilPage() {
 
   return (
     <div className="term drukale">
-      <MatrixRain />
       <main className="wrap">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
