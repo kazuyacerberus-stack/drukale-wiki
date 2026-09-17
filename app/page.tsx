@@ -63,6 +63,7 @@ export default function Home() {
   const [forcas, setForcas] = useState<Forca[]>([]);
   const [numeros, setNumeros] = useState<Numeros | null>(null);
   const [podeVerConteudo, setPodeVerConteudo] = useState(false);
+  const [ehAdmin, setEhAdmin] = useState(false);
   const { beep, muted, setMuted } = useBeep();
   const heroRef = useRef<HTMLElement>(null);
 
@@ -77,12 +78,15 @@ export default function Home() {
   useEffect(() => {
     let vivo = true;
     const verificar = async (logado: boolean) => {
-      if (!logado) { if (vivo) setPodeVerConteudo(false); return; }
+      if (!logado) { if (vivo) { setPodeVerConteudo(false); setEhAdmin(false); } return; }
       const [admin, aprovada] = await Promise.all([
         supabase.rpc('drk_e_admin'),
         supabase.rpc('drk_conta_aprovada'),
       ]);
-      if (vivo) setPodeVerConteudo(admin.data === true || aprovada.data === true);
+      if (vivo) {
+        setPodeVerConteudo(admin.data === true || aprovada.data === true);
+        setEhAdmin(admin.data === true);
+      }
     };
     supabase.auth.getSession().then(({ data }) => { if (vivo) void verificar(Boolean(data.session)); });
     const { data: sub } = supabase.auth.onAuthStateChange((_evento, sessao) => {
@@ -162,7 +166,7 @@ export default function Home() {
               >
                 {muted ? '♪ off' : '♪ on'}
               </button>
-              <Link className="ico" href="/admin">+ novo</Link>
+              {ehAdmin && <Link className="ico" href="/admin">★ game master</Link>}
             </div>
           </div>
         </header>
