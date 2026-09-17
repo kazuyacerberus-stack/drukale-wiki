@@ -45,6 +45,11 @@ create policy drk_faccoes_img_apagar on storage.objects for delete to authentica
 
 -- estende o isolamento por bucket (definido em sql/08-cenas.sql): só admin
 -- mexe nas imagens de facções, igual já vale para Characters e fichas.
+--
+-- ATENÇÃO: esta mesma função é redefinida em sql/09 e sql/15. Se este
+-- arquivo for reaplicado sozinho DEPOIS de um desses já ter rodado, ele
+-- apaga a proteção dos buckets que eles acrescentaram. Reaplique sempre
+-- o arquivo de maior número por último.
 create or replace function public.drk_pode_alterar_midia(bucket text, caminho text) returns boolean
 language sql stable security invoker set search_path = '' as $$
 select case
