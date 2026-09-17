@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
-import PrecisaLogin from '../../components/PrecisaLogin';
+import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import FichaForm from '../../components/FichaForm';
 
 export default function NovoPersonagemPublico() {
@@ -12,7 +12,7 @@ export default function NovoPersonagemPublico() {
       <MatrixRain />
 
       <main className="wrap narrow">
-       <PrecisaLogin>
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -29,7 +29,7 @@ export default function NovoPersonagemPublico() {
         <FichaForm />
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaLogin>
+       </PrecisaAprovacao>
       </main>
     </div>
   );

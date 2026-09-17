@@ -345,6 +345,21 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .evento-midia img, .evento-midia video { display: block; width: 100%; max-height: 320px; object-fit: cover; }
 
+/* ---------- eventos (mural de novidades do grupo) ---------- */
+.novidades-lista { display: flex; flex-direction: column; gap: 24px; margin: 10px 0 20px; }
+.novidade {
+  position: relative; padding: 22px 24px; border: 1px solid rgba(0,255,102,.18); border-radius: 3px;
+  background: linear-gradient(160deg, rgba(0,20,9,.5), rgba(0,7,3,.35));
+  animation: up .4s ease-out both;
+}
+.novidade-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; font-size: 12px; color: rgba(138,255,192,.55); }
+.novidade-topo strong { color: var(--g2); font-weight: normal; }
+.novidade-topo time { margin-left: auto; letter-spacing: 1px; }
+.novidade h2 { margin: 0 0 10px; font-size: 19px; font-weight: normal; letter-spacing: .5px; color: #fff; text-shadow: 0 0 12px rgba(0,255,102,.3); }
+.novidade-texto { margin: 0 0 4px; font-size: 14px; line-height: 1.75; color: rgba(138,255,192,.85); white-space: pre-wrap; }
+.novidade-midia { margin: 12px 0 4px; max-width: 420px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(0,255,102,.2); }
+.novidade-midia img, .novidade-midia video { display: block; width: 100%; max-height: 320px; object-fit: cover; }
+
 /* ficha lateral estilo wiki */
 .ficha {
   position: sticky; top: 28px; padding: 22px; border-radius: 3px;
@@ -1344,32 +1359,42 @@ html, body { margin: 0; padding: 0; background: #000; }
 .imp-cta:hover { background: var(--i-osso); color: #0a0714; box-shadow: 0 0 26px rgba(122,58,209,.6); }
 
 /* ---------- faixa de navegação, logo abaixo do herói ---------- */
+/* cada item é um "portal": arco elíptico no topo (via border-radius com
+   valor percentual + valor fixo por eixo), fechando em canto quase reto
+   embaixo — a mesma técnica de arco usada em portais/túmulos, só com CSS. */
 .imp-faixa {
   width: 100vw; margin-left: calc(50% - 50vw);
-  display: flex; flex-wrap: wrap; justify-content: center;
+  display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 20px;
   background: linear-gradient(180deg, #05030a, #0a0613);
+  padding: 34px clamp(16px, 4vw, 40px) 38px;
   border-bottom: 1px solid var(--i-cromo-fraco);
   margin-bottom: 40px;
 }
 .imp-faixa-item {
-  flex: 1 1 160px; min-width: 160px; max-width: 240px;
-  display: flex; flex-direction: column; gap: 7px; align-items: flex-start; text-align: left;
-  padding: 28px 22px; text-decoration: none;
-  border-left: 1px solid var(--i-cromo-fraco);
-  transition: .2s;
+  flex: 1 1 176px; min-width: 176px; max-width: 224px;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center;
+  padding: 40px 20px 26px; text-decoration: none;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(122,58,209,.14), rgba(255,255,255,.015) 65%);
+  border: 1px solid var(--i-cromo-fraco);
+  border-radius: 50% 50% 14px 14px / 56px 56px 14px 14px;
+  transition: .25s;
 }
-.imp-faixa-item:first-child { border-left: 0; }
-.imp-faixa-item:hover { background: rgba(209,38,74,.06); }
-.imp-faixa-icone { font-size: 22px; color: var(--i-cromo); }
+.imp-faixa-item:hover {
+  background: radial-gradient(120% 90% at 50% 0%, rgba(209,38,74,.16), rgba(255,255,255,.02) 65%);
+  border-color: var(--i-sangue);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(0,0,0,.5), 0 0 22px rgba(209,38,74,.25);
+}
+.imp-faixa-icone { font-size: 24px; color: var(--i-cromo); }
 .imp-faixa-item:hover .imp-faixa-icone { color: var(--i-sangue); }
 .imp-faixa-item strong { font-size: 14.5px; font-weight: 700; letter-spacing: 1px; color: var(--i-osso); text-transform: uppercase; }
-.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 13.5px; line-height: 1.5; color: rgba(233,228,218,.55); }
-.imp-faixa-seta { font-size: 12px; color: var(--i-sangue); opacity: 0; transform: translateX(-3px); transition: .2s; }
-.imp-faixa-item:hover .imp-faixa-seta { opacity: 1; transform: translateX(0); }
+.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 13.5px; line-height: 1.5; color: rgba(233,228,218,.6); }
+.imp-faixa-seta { font-size: 12px; color: var(--i-sangue); opacity: 0; transform: translateY(2px); transition: .2s; margin-top: 2px; }
+.imp-faixa-item:hover .imp-faixa-seta { opacity: 1; transform: translateY(0); }
 
 @media (max-width: 760px) {
-  .imp-faixa-item { flex: 1 1 50%; max-width: none; border-left: 0; border-top: 1px solid var(--i-cromo-fraco); }
-  .imp-faixa-item:nth-child(odd) { border-left: 0; }
+  .imp-faixa { gap: 14px; padding: 26px 16px 30px; }
+  .imp-faixa-item { flex: 1 1 45%; max-width: none; padding: 32px 14px 20px; }
 }
 
 .imp-titulo {

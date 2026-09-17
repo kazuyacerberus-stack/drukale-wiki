@@ -25,7 +25,7 @@ export default function Cadastro() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/cenas');
+      if (data.session) router.replace('/perfil');
     });
   }, [router]);
 
@@ -60,12 +60,13 @@ export default function Cadastro() {
     try {
       const logadoJa = await cadastrar(email.trim(), senha, apelidoLimpo);
       if (!logadoJa) {
-        setAviso('Conta criada! Verifique seu e-mail para confirmar o acesso — seu apelido já fica salvo. Se quiser, adicione uma foto depois em /perfil.');
+        setAviso('Conta criada! Verifique seu e-mail para confirmar o acesso. Depois disso, seu cadastro ainda espera aprovação do game master antes de liberar o site.');
         setCarregando(false);
         return;
       }
       await criarPerfilInicial(apelidoLimpo, avatar);
-      router.replace('/cenas');
+      setAviso('Cadastro enviado! Sua conta está aguardando aprovação do game master — acompanhe em /perfil.');
+      setCarregando(false);
     } catch (err) {
       setErro(err instanceof Error ? err.message : mensagemPerfil(err));
       setCarregando(false);

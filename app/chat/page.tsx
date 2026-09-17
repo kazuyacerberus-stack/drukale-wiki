@@ -248,7 +248,7 @@ export default function ChatPage() {
         <div className={s.wrap}>
           <header className={s.topo}>
             <span className={s.caminho}><i /> drukale://chat</span>
-            <nav><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">facções</Link><Link href="/linha-do-tempo">linha do tempo</Link><Link href="/glossario">glossário</Link><Link href="/cenas">▤ cenas</Link></nav>
+            <nav><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">facções</Link><Link href="/linha-do-tempo">linha do tempo</Link><Link href="/eventos">eventos</Link><Link href="/glossario">glossário</Link><Link href="/cenas">▤ cenas</Link></nav>
           </header>
           <div className={s.portao}>
             <h1>CHAT FECHADO</h1>
@@ -257,6 +257,33 @@ export default function ChatPage() {
               <Link href="/admin/login" className={s.primario} style={{ padding: '10px 16px', borderRadius: 3 }}>Entrar</Link>
               <Link href="/cadastro">Criar conta</Link>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // conta logada, mas ainda não sabemos se está aprovada — evita mostrar
+  // o chat por um instante antes de travar de volta
+  if (!ehAdmin && !perfilProprio) {
+    return <div className={s.terminal}><div className={s.wrap}><p className={s.portao}>verificando sua conta…</p></div></div>;
+  }
+
+  if (!ehAdmin && perfilProprio && perfilProprio.status_conta !== 'aprovado') {
+    return (
+      <div className={s.terminal}>
+        <div className={s.wrap}>
+          <header className={s.topo}>
+            <span className={s.caminho}><i /> drukale://chat</span>
+            <nav><Link href="/">◄ Arquivo</Link><Link href="/perfil">perfil</Link></nav>
+          </header>
+          <div className={s.portao}>
+            <h1>CHAT FECHADO</h1>
+            <p>
+              {perfilProprio.status_conta === 'pendente'
+                ? 'Sua conta está aguardando aprovação do game master.'
+                : `Seu cadastro não foi aprovado${perfilProprio.motivo_reprovacao ? `: ${perfilProprio.motivo_reprovacao}` : '.'}`}
+            </p>
           </div>
         </div>
       </div>
@@ -273,6 +300,7 @@ export default function ChatPage() {
             <Link href="/personagens">personagens</Link>
             <Link href="/faccoes">facções</Link>
             <Link href="/linha-do-tempo">linha do tempo</Link>
+            <Link href="/eventos">eventos</Link>
             <Link href="/glossario">glossário</Link>
             <Link href="/cenas">▤ cenas</Link>
             <Link href="/perfil">perfil</Link>

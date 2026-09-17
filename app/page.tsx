@@ -26,13 +26,14 @@ const GUIAS = [
   { href: '/linha-do-tempo', icone: '⏱', titulo: 'Linha do tempo', desc: 'os marcos que forjaram o império' },
   { href: '/glossario', icone: '◈', titulo: 'Glossário', desc: 'raças, magia, tecnologia e mais' },
   { href: '/personagens', icone: '◉', titulo: 'Personagens', desc: 'o arquivo de quem habita Drukale' },
+  { href: '/eventos', icone: '✦', titulo: 'Eventos', desc: 'as novidades do grupo, em tempo real' },
   { href: '/cenas', icone: '▤', titulo: 'Cenas', desc: 'o que já foi vivido, em texto' },
   { href: '/mundo', icone: '◍', titulo: 'Mundo', desc: 'o globo em 3D e o mapa político' },
   { href: '/chat', icone: '✉', titulo: 'Chat', desc: 'converse com a comunidade' },
 ];
 
 type Forca = { slug: string; nome: string; cor: string; resumo: string | null };
-type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; eventos: number };
+type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; linhaDoTempo: number; novidades: number };
 
 /**
  * Divisória orgânica: um veio de corrupção se ramificando, em vez de uma
@@ -61,8 +62,34 @@ function VeioCorrupcao() {
 export default function Home() {
   const [forcas, setForcas] = useState<Forca[]>([]);
   const [numeros, setNumeros] = useState<Numeros | null>(null);
+  const [podeVerConteudo, setPodeVerConteudo] = useState(false);
   const { beep, muted, setMuted } = useBeep();
   const heroRef = useRef<HTMLElement>(null);
+
+  /**
+   * A home é a única página pública — quem não tem conta aprovada
+   * ainda vê o herói, a faixa de navegação (é só ícone e texto, sem
+   * dado nenhum) e o CTA, mas não os números nem a prévia das facções.
+   * Cada link da faixa é quem barra de verdade: leva a uma página
+   * fechada atrás de `PrecisaAprovacao`, que pede login ou mostra o
+   * aviso de conta pendente.
+   */
+  useEffect(() => {
+    let vivo = true;
+    const verificar = async (logado: boolean) => {
+      if (!logado) { if (vivo) setPodeVerConteudo(false); return; }
+      const [admin, aprovada] = await Promise.all([
+        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_conta_aprovada'),
+      ]);
+      if (vivo) setPodeVerConteudo(admin.data === true || aprovada.data === true);
+    };
+    supabase.auth.getSession().then(({ data }) => { if (vivo) void verificar(Boolean(data.session)); });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, sessao) => {
+      window.setTimeout(() => { if (vivo) void verificar(Boolean(sessao)); }, 0);
+    });
+    return () => { vivo = false; sub.subscription.unsubscribe(); };
+  }, []);
 
   /**
    * O fundo do herói acompanha o cursor devagar — um paralaxe sutil, não um
@@ -89,6 +116,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!podeVerConteudo) return;
     (async () => {
       const { data } = await supabase.from('faccoes').select('slug,nome,cor,resumo').in('nome', FORCAS_CORRUPTORAS);
       const encontradas = (data ?? []) as Forca[];
@@ -97,23 +125,25 @@ export default function Home() {
         .filter((f): f is Forca => Boolean(f));
       setForcas(ordenadas);
     })();
-  }, []);
+  }, [podeVerConteudo]);
 
   useEffect(() => {
+    if (!podeVerConteudo) return;
     (async () => {
       const contar = (tabela: string) => supabase.from(tabela).select('id', { count: 'exact', head: true });
-      const [personagens, faccoes, termos, locais, eventos] = await Promise.all([
-        contar('characters'), contar('faccoes'), contar('glossario'), contar('locais'), contar('eventos'),
+      const [personagens, faccoes, termos, locais, linhaDoTempo, novidades] = await Promise.all([
+        contar('characters'), contar('faccoes'), contar('glossario'), contar('locais'), contar('eventos'), contar('novidades'),
       ]);
       setNumeros({
         personagens: personagens.count ?? 0,
         faccoes: faccoes.count ?? 0,
         termos: termos.count ?? 0,
         locais: locais.count ?? 0,
-        eventos: eventos.count ?? 0,
+        linhaDoTempo: linhaDoTempo.count ?? 0,
+        novidades: novidades.count ?? 0,
       });
     })();
-  }, []);
+  }, [podeVerConteudo]);
 
   return (
     <div className="term imperio">
@@ -222,7 +252,8 @@ export default function Home() {
           <div className="imp-numeros">
             <div className="imp-numero"><strong>{numeros.personagens}</strong><span>personagens</span></div>
             <div className="imp-numero"><strong>{numeros.faccoes}</strong><span>facções</span></div>
-            <div className="imp-numero"><strong>{numeros.eventos}</strong><span>eventos</span></div>
+            <div className="imp-numero"><strong>{numeros.linhaDoTempo}</strong><span>linha do tempo</span></div>
+            <div className="imp-numero"><strong>{numeros.novidades}</strong><span>eventos</span></div>
             <div className="imp-numero"><strong>{numeros.termos}</strong><span>termos</span></div>
             <div className="imp-numero"><strong>{numeros.locais}</strong><span>locais</span></div>
           </div>

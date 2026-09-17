@@ -5,11 +5,30 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
+import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase } from '../../lib/db';
 import { mensagemGlossario, type Termo } from '../../lib/glossario';
 
+/**
+ * A busca do termo só começa depois que `PrecisaAprovacao` libera —
+ * senão, para quem ainda não tem conta aprovada, a RLS devolveria vazio
+ * e a tela mostraria "termo não encontrado" em vez do aviso de espera.
+ */
 export default function TermoPage() {
+  return (
+    <div className="term">
+      <MatrixRain />
+      <main className="wrap narrow">
+        <PrecisaAprovacao>
+          <TermoPageInterna />
+        </PrecisaAprovacao>
+      </main>
+    </div>
+  );
+}
+
+function TermoPageInterna() {
   const params = useParams<{ slug: string }>();
   const chave = decodeURIComponent(String(params?.slug ?? ''));
 
@@ -35,39 +54,25 @@ export default function TermoPage() {
   }, [chave]);
 
   if (loading) {
-    return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <div className="load"><span /><span /><span /><p>acessando registro...</p></div>
-        </main>
-      </div>
-    );
+    return <div className="load"><span /><span /><span /><p>acessando registro...</p></div>;
   }
 
   if (naoEncontrado || erro || !alvo) {
     return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <header className="hd">
-            <div className="hd-bar">
-              <span className="dot" /><span className="dot" /><span className="dot" />
-              <span className="hd-path">drukale://arquivo/glossario/{chave}</span>
-              <div className="hd-act"><Link className="ico" href="/glossario">← glossário</Link></div>
-            </div>
-            <h1 data-txt="TERMO NÃO ENCONTRADO">TERMO NÃO ENCONTRADO</h1>
-            <p className="sub">&gt; {erro || `nenhum termo responde por "${chave}"`}</p>
-          </header>
-        </main>
-      </div>
+      <header className="hd">
+        <div className="hd-bar">
+          <span className="dot" /><span className="dot" /><span className="dot" />
+          <span className="hd-path">drukale://arquivo/glossario/{chave}</span>
+          <div className="hd-act"><Link className="ico" href="/glossario">← glossário</Link></div>
+        </div>
+        <h1 data-txt="TERMO NÃO ENCONTRADO">TERMO NÃO ENCONTRADO</h1>
+        <p className="sub">&gt; {erro || `nenhum termo responde por "${chave}"`}</p>
+      </header>
     );
   }
 
   return (
-    <div className="term">
-      <MatrixRain />
-      <main className="wrap narrow">
+    <>
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">drukale://arquivo/glossario/{alvo.slug}</span>
@@ -101,7 +106,6 @@ export default function TermoPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
-      </main>
-    </div>
+    </>
   );
 }

@@ -5,12 +5,26 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
+import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase, type Character } from '../../lib/db';
 import { normalizarNome, mensagemFaccao, type Faccao } from '../../lib/faccoes';
 import { lerLocais, tipoDe, type Local } from '../../lib/mundo';
 
 export default function FaccaoPage() {
+  return (
+    <div className="term">
+      <MatrixRain />
+      <main className="wrap">
+        <PrecisaAprovacao>
+          <FaccaoPageInterna />
+        </PrecisaAprovacao>
+      </main>
+    </div>
+  );
+}
+
+function FaccaoPageInterna() {
   const params = useParams<{ slug: string }>();
   const chave = decodeURIComponent(String(params?.slug ?? ''));
 
@@ -61,39 +75,25 @@ export default function FaccaoPage() {
   const temSimbolo = alvo?.simbolo && !quebrada;
 
   if (loading) {
-    return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <div className="load"><span /><span /><span /><p>acessando registro...</p></div>
-        </main>
-      </div>
-    );
+    return <div className="load"><span /><span /><span /><p>acessando registro...</p></div>;
   }
 
   if (naoEncontrada || erro || !alvo) {
     return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <header className="hd">
-            <div className="hd-bar">
-              <span className="dot" /><span className="dot" /><span className="dot" />
-              <span className="hd-path">drukale://arquivo/faccoes/{chave}</span>
-              <div className="hd-act"><Link className="ico" href="/faccoes">← facções</Link></div>
-            </div>
-            <h1 data-txt="FACÇÃO NÃO ENCONTRADA">FACÇÃO NÃO ENCONTRADA</h1>
-            <p className="sub">&gt; {erro || `nenhuma facção responde por "${chave}"`}</p>
-          </header>
-        </main>
-      </div>
+      <header className="hd">
+        <div className="hd-bar">
+          <span className="dot" /><span className="dot" /><span className="dot" />
+          <span className="hd-path">drukale://arquivo/faccoes/{chave}</span>
+          <div className="hd-act"><Link className="ico" href="/faccoes">← facções</Link></div>
+        </div>
+        <h1 data-txt="FACÇÃO NÃO ENCONTRADA">FACÇÃO NÃO ENCONTRADA</h1>
+        <p className="sub">&gt; {erro || `nenhuma facção responde por "${chave}"`}</p>
+      </header>
     );
   }
 
   return (
-    <div className="term">
-      <MatrixRain />
-      <main className="wrap">
+    <>
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">drukale://arquivo/faccoes/{alvo.slug}</span>
@@ -208,7 +208,6 @@ export default function FaccaoPage() {
         </section>
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
-      </main>
-    </div>
+    </>
   );
 }

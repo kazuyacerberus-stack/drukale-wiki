@@ -6,6 +6,8 @@ export type Perfil = {
   avatar_url: string | null;
   muted_until: string | null;
   banido: boolean;
+  status_conta: 'pendente' | 'aprovado' | 'reprovado';
+  motivo_reprovacao: string | null;
   created_at: string;
 };
 

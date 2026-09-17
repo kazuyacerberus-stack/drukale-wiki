@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
+import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
 import { mensagemEvento, urlAnexoEvento, type Evento } from '../lib/eventos';
@@ -71,6 +72,7 @@ export default function LinhaDoTempoPage() {
       <MatrixRain />
 
       <main className="wrap narrow">
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -82,6 +84,7 @@ export default function LinhaDoTempoPage() {
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
+              <Link className="ico" href="/eventos">✦ eventos</Link>
               <Link className="ico" href="/glossario">glossário</Link>
               {userId && <Link className="ico" href="/linha-do-tempo/nova">+ enviar evento</Link>}
               <Link className="ico" href="/admin/linha-do-tempo">+ novo</Link>
@@ -139,6 +142,7 @@ export default function LinhaDoTempoPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </PrecisaAprovacao>
       </main>
     </div>
   );

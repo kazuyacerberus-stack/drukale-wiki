@@ -102,6 +102,14 @@ export default function PerfilPage() {
           </div>
         </div>
 
+        {!carregandoPerfil && perfil && perfil.status_conta !== 'aprovado' && (
+          <p className="stat bad" style={{ marginBottom: 18 }}>
+            {perfil.status_conta === 'pendente'
+              ? 'Sua conta está aguardando aprovação do game master — você ainda não consegue ver o resto do site.'
+              : `Seu cadastro não foi aprovado${perfil.motivo_reprovacao ? `: ${perfil.motivo_reprovacao}` : '.'}`}
+          </p>
+        )}
+
         {carregandoPerfil ? (
           <div className="load"><span /><span /><span /><p>carregando perfil...</p></div>
         ) : (

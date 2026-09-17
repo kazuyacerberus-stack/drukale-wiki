@@ -5,11 +5,25 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
+import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
 import { normalizarNome } from '../../lib/faccoes';
 
 export default function PersonagemPage() {
+  return (
+    <div className="term">
+      <MatrixRain />
+      <main className="wrap">
+        <PrecisaAprovacao>
+          <PersonagemPageInterna />
+        </PrecisaAprovacao>
+      </main>
+    </div>
+  );
+}
+
+function PersonagemPageInterna() {
   const params = useParams<{ slug: string }>();
   const chave = decodeURIComponent(String(params?.slug ?? ''));
 
@@ -104,14 +118,9 @@ export default function PersonagemPage() {
   /* ---------- carregando ---------- */
   if (loading) {
     return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <div className="load">
-            <span /><span /><span />
-            <p>acessando registro...</p>
-          </div>
-        </main>
+      <div className="load">
+        <span /><span /><span />
+        <p>acessando registro...</p>
       </div>
     );
   }
@@ -119,18 +128,15 @@ export default function PersonagemPage() {
   /* ---------- não encontrado ---------- */
   if (!alvo) {
     return (
-      <div className="term">
-        <MatrixRain />
-        <main className="wrap narrow">
-          <Link className="volta" href="/" onClick={() => beep('close')}>
-            ← voltar ao arquivo
-          </Link>
-          <header className="hd">
-            <h1 data-txt="REGISTRO NÃO ENCONTRADO">REGISTRO NÃO ENCONTRADO</h1>
-            <p className="sub">&gt; nenhum personagem responde por &quot;{chave}&quot;</p>
-          </header>
-        </main>
-      </div>
+      <>
+        <Link className="volta" href="/" onClick={() => beep('close')}>
+          ← voltar ao arquivo
+        </Link>
+        <header className="hd">
+          <h1 data-txt="REGISTRO NÃO ENCONTRADO">REGISTRO NÃO ENCONTRADO</h1>
+          <p className="sub">&gt; nenhum personagem responde por &quot;{chave}&quot;</p>
+        </header>
+      </>
     );
   }
 
@@ -148,10 +154,7 @@ export default function PersonagemPage() {
   const temImagem = alvo.image_url && !quebrada;
 
   return (
-    <div className="term">
-      <MatrixRain />
-
-      <main className="wrap">
+    <>
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">
@@ -317,7 +320,6 @@ export default function PersonagemPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
-      </main>
-    </div>
+    </>
   );
 }

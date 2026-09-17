@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import '../matrix.css';
 import { supabase } from '../lib/db';
 import { entrar } from '../lib/auth';
 import { BUCKET_CENAS, TIPOS_CENA, normalizarCena, validarAnexoCena, mensagemCena, urlAnexoCena, type Cena, type AnexoCena, type TipoCena } from '../lib/cenas';
 import Avatar from '../components/Avatar';
+import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import s from './cenas.module.css';
 
 type PerfilLeve = { apelido: string; avatar_url: string | null; banido: boolean };
@@ -211,8 +213,9 @@ export default function CenasPage() {
     <div className={s.wrap}>
       <header className={s.topo}>
         <span className={s.caminho}><i /> drukale://arquivo/cenas</span>
-        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">Facções</Link><Link href="/linha-do-tempo">Linha do tempo</Link><Link href="/glossario">Glossário</Link><Link href="/mundo">◍ Mundo</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
+        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">Facções</Link><Link href="/linha-do-tempo">Linha do tempo</Link><Link href="/eventos">Eventos</Link><Link href="/glossario">Glossário</Link><Link href="/mundo">◍ Mundo</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
       </header>
+      <PrecisaAprovacao>
       <section className={s.hero}>
         <div><p className={s.eyebrow}>IMPÉRIO DRUKALE / REGISTROS NARRATIVOS</p><h1>ARQUIVO DE CENAS<span>_</span></h1><p>Cada personagem deixa um rastro. Registre o seu.</p></div>
         <button className={s.primario} ref={novaRef} disabled={!authPronto || salvando} onClick={novaCena}>＋ NOVA CENA</button>
@@ -276,6 +279,7 @@ export default function CenasPage() {
           {mais && !erroFeed && <button className={s.carregar} disabled={carregando} onClick={() => setPagina(p => p + 1)}>Carregar mais cenas</button>}
         </section>
       </div>
+      </PrecisaAprovacao>
       <datalist id="cenas-locais">{locais.map(l => <option key={l} value={l} />)}</datalist><datalist id="cenas-pessoas">{pessoas.map(p => <option key={p} value={p} />)}</datalist>
       <footer className={s.rodape}><span>DRUKALE // ARQUIVO DE CENAS</span><span>MEMÓRIAS ALÉM DO TEMPO</span></footer>
     </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../../matrix.css';
 import MatrixRain from '../../../components/MatrixRain';
-import PrecisaLogin from '../../../components/PrecisaLogin';
+import PrecisaAprovacao from '../../../components/PrecisaAprovacao';
 import EventoForm from '../../../components/EventoForm';
 import { supabase } from '../../../lib/db';
 import { type Evento } from '../../../lib/eventos';
@@ -40,7 +40,7 @@ export default function EditarEventoPublico() {
       <MatrixRain />
 
       <main className="wrap narrow">
-       <PrecisaLogin>
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -74,7 +74,7 @@ export default function EditarEventoPublico() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaLogin>
+       </PrecisaAprovacao>
       </main>
     </div>
   );

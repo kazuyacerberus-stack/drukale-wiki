@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
+import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase, type Character } from '../lib/db';
 
@@ -117,6 +118,7 @@ export default function PersonagensPage() {
       <MatrixRain />
 
       <main className="wrap">
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -132,6 +134,7 @@ export default function PersonagensPage() {
               <Link className="ico" href="/" title="a página inicial do império">← arquivo</Link>
               <Link className="ico" href="/faccoes" title="casas e organizações do império">⌂ facções</Link>
               <Link className="ico" href="/linha-do-tempo" title="os grandes marcos do império">⏱ linha do tempo</Link>
+              <Link className="ico" href="/eventos" title="as novidades do grupo">✦ eventos</Link>
               <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
               <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
@@ -220,6 +223,7 @@ export default function PersonagensPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </PrecisaAprovacao>
       </main>
     </div>
   );

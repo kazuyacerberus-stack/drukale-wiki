@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
+import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
 import { mensagemFaccao, type Faccao } from '../lib/faccoes';
@@ -34,6 +35,7 @@ export default function FaccoesPage() {
       <MatrixRain />
 
       <main className="wrap">
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -45,6 +47,7 @@ export default function FaccoesPage() {
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
+              <Link className="ico" href="/eventos">eventos</Link>
               <Link className="ico" href="/glossario">glossário</Link>
               <Link className="ico" href="/admin/faccoes">+ nova</Link>
             </div>
@@ -100,6 +103,7 @@ export default function FaccoesPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </PrecisaAprovacao>
       </main>
     </div>
   );

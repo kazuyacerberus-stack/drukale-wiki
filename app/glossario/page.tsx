@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
+import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
 import { CATEGORIAS_GLOSSARIO, mensagemGlossario, type Termo } from '../lib/glossario';
@@ -33,6 +34,7 @@ export default function GlossarioPage() {
       <MatrixRain />
 
       <main className="wrap">
+       <PrecisaAprovacao>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -85,6 +87,7 @@ export default function GlossarioPage() {
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+       </PrecisaAprovacao>
       </main>
     </div>
   );
