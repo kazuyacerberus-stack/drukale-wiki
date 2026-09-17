@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/db';
-import { mensagemEvento, proximaOrdem, LIMITES_EVENTO, type Evento } from '../lib/eventos';
+import {
+  mensagemEvento, proximaOrdem, validarAnexoEvento, subirAnexoEvento, apagarAnexoEvento, urlAnexoEvento,
+  LIMITES_EVENTO, type Evento, type AnexoEvento,
+} from '../lib/eventos';
 
 export type CamposEvento = { titulo: string; data: string; resumo: string; descricao: string };
 
@@ -23,9 +26,28 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setF((s) => ({ ...s, [k]: e.target.value }));
 
+  const [anexo, setAnexo] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
+  const [previewTipo, setPreviewTipo] = useState('');
+  const [anexoAtual, setAnexoAtual] = useState<AnexoEvento | null>(inicial?.anexo ?? null);
+  const [removerAnexo, setRemoverAnexo] = useState(false);
+  const [erroAnexo, setErroAnexo] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [salvo, setSalvo] = useState(false);
+
+  const escolherAnexo = (file: File | null) => {
+    setErroAnexo('');
+    if (!file) return;
+    const problema = validarAnexoEvento(file);
+    if (problema) { setErroAnexo(problema); return; }
+    if (preview) URL.revokeObjectURL(preview);
+    setAnexo(file);
+    setPreview(URL.createObjectURL(file));
+    setPreviewTipo(file.type);
+    setRemoverAnexo(false);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,18 +55,33 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
     setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
     setSalvo(false);
 
-    const linha = {
-      titulo: f.titulo.trim().slice(0, LIMITES_EVENTO.titulo),
-      data: f.data.trim() || null,
-      resumo: f.resumo.trim().slice(0, LIMITES_EVENTO.resumo) || null,
-      descricao: f.descricao.trim().slice(0, LIMITES_EVENTO.descricao) || null,
-    };
-
+    let subiuAgora: AnexoEvento | null = null;
     try {
+      let anexoLinha = removerAnexo ? null : anexoAtual;
+      if (anexo) {
+        setStatus('ENVIANDO ANEXO...');
+        anexoLinha = await subirAnexoEvento(anexo, f.titulo || 'evento');
+        subiuAgora = anexoLinha;
+        setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
+      }
+
+      const linha = {
+        titulo: f.titulo.trim().slice(0, LIMITES_EVENTO.titulo),
+        data: f.data.trim() || null,
+        resumo: f.resumo.trim().slice(0, LIMITES_EVENTO.resumo) || null,
+        descricao: f.descricao.trim().slice(0, LIMITES_EVENTO.descricao) || null,
+        anexo: anexoLinha,
+      };
+
       if (editando && inicial) {
         const { error } = await supabase.from('eventos').update(linha).eq('id', inicial.id);
         if (error) throw error;
+        if (anexo || removerAnexo) await apagarAnexoEvento(inicial.anexo);
         setStatus('EVENTO ATUALIZADO');
+        setAnexoAtual(anexoLinha);
+        setAnexo(null);
+        setPreview('');
+        setRemoverAnexo(false);
       } else {
         const { data: todos, error: erroBusca } = await supabase.from('eventos').select('ordem');
         if (erroBusca) throw erroBusca;
@@ -53,15 +90,20 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         if (error) throw error;
         setStatus('EVENTO GRAVADO NO FIM DA LINHA DO TEMPO');
         setF(VAZIO);
+        setAnexo(null);
+        setPreview('');
+        setAnexoAtual(null);
       }
       setSalvo(true);
     } catch (err) {
+      if (subiuAgora) await apagarAnexoEvento(subiuAgora);
       setStatus('FALHA :: ' + mensagemEvento(err));
     }
     setLoading(false);
   };
 
   const ruim = status.startsWith('FALHA');
+  const mostrarAtual = editando && anexoAtual && !preview && !removerAnexo;
 
   return (
     <form className="panel" onSubmit={submit}>
@@ -90,6 +132,59 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
           <textarea value={f.descricao} onChange={set('descricao')} rows={9} maxLength={LIMITES_EVENTO.descricao}
             placeholder="O relato completo do evento, para quem quiser ler mais." />
         </div>
+      </div>
+
+      <div className="grupo">
+        <span className="grupo-t">anexo</span>
+
+        {preview ? (
+          <div className="done">
+            {previewTipo.startsWith('video/')
+              ? <video src={preview} className="sq" controls muted />
+              /* eslint-disable-next-line @next/next/no-img-element */
+              : <img src={preview} alt="" className="sq" />}
+            <div className="done-txt">
+              <strong>NOVO ANEXO PRONTO</strong>
+              <span>{anexo?.name}</span>
+              <button type="button" className="lnk dim" onClick={() => { if (preview) URL.revokeObjectURL(preview); setAnexo(null); setPreview(''); }}>
+                descartar
+              </button>
+            </div>
+          </div>
+        ) : mostrarAtual ? (
+          <div className="done">
+            {anexoAtual!.tipo.startsWith('video/')
+              ? <video src={urlAnexoEvento(anexoAtual!.caminho)} className="sq" controls muted />
+              /* eslint-disable-next-line @next/next/no-img-element */
+              : <img src={urlAnexoEvento(anexoAtual!.caminho)} alt="" className="sq" />}
+            <div className="done-txt">
+              <strong>ANEXO ATUAL</strong>
+              <label className="lnk" style={{ cursor: 'pointer' }}>
+                trocar anexo
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm" style={{ display: 'none' }}
+                  onChange={(e) => { escolherAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              </label>
+              <button type="button" className="lnk dim" onClick={() => setRemoverAnexo(true)}>remover anexo</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label className="drop">
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+                onChange={(e) => { escolherAnexo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              <div className="drop-ico">[ + ]</div>
+              <div className="drop-t">clique para anexar foto, vídeo ou GIF (opcional)</div>
+              <div className="drop-s">jpg · png · webp · gif · mp4 · webm · até 40 MB</div>
+            </label>
+            {removerAnexo && (
+              <p className="dica" style={{ marginTop: 10, color: 'rgba(255,120,120,.75)' }}>
+                o anexo atual será apagado ao salvar —{' '}
+                <button type="button" className="lnk" onClick={() => setRemoverAnexo(false)}>cancelar</button>
+              </p>
+            )}
+          </>
+        )}
+        {erroAnexo && <p className="erro" style={{ marginTop: 12 }}>{erroAnexo}</p>}
       </div>
 
       <button className="go" disabled={loading}>
