@@ -22,7 +22,19 @@ export default function PersonagemPage() {
   const [quebrada, setQuebrada] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState(0);
   const [faccoes, setFaccoes] = useState<Map<string, string>>(new Map());
+  const [ehAdmin, setEhAdmin] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [mostrarMotivo, setMostrarMotivo] = useState(false);
+  const [avaliando, setAvaliando] = useState(false);
+  const [erroAvaliacao, setErroAvaliacao] = useState('');
   const { beep, muted, setMuted } = useBeep();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) { setEhAdmin(false); return; }
+      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
+    });
+  }, []);
 
   useEffect(() => {
     if (!chave) return;
@@ -31,9 +43,10 @@ export default function PersonagemPage() {
       setAbaAtiva(0);   // trocou de personagem, volta para a primeira aba
 
       // busca todos e resolve localmente: funciona por slug ou por id,
-      // e já entrega os vizinhos para a navegação do rodapé
+      // e já entrega os vizinhos para a navegação do rodapé.
+      // reprovado não aparece aqui — só para o autor (em /perfil) e o admin
       const [{ data }, { data: fac }] = await Promise.all([
-        supabase.from('characters').select('*').order('name', { ascending: true }),
+        supabase.from('characters').select('*').neq('status_aprovacao', 'reprovado').order('name', { ascending: true }),
         supabase.from('faccoes').select('slug,nome'),
       ]);
       setFaccoes(new Map((fac ?? []).map((f: { slug: string; nome: string }) => [normalizarNome(f.nome), f.slug])));
@@ -66,6 +79,27 @@ export default function PersonagemPage() {
 
   const inicial = (n: string | null) => (n?.trim()?.[0] ?? '?').toUpperCase();
   const rota = (c: Character) => `/personagem/${c.slug || c.id}`;
+
+  const aprovar = async () => {
+    if (!alvo) return;
+    setAvaliando(true); setErroAvaliacao('');
+    const { error } = await supabase.rpc('drk_aprovar_personagem', { alvo_id: alvo.id });
+    setAvaliando(false);
+    if (error) { setErroAvaliacao(error.message); return; }
+    setAlvo({ ...alvo, status_aprovacao: 'aprovado', motivo_reprovacao: null });
+  };
+
+  const reprovar = async () => {
+    if (!alvo) return;
+    if (!motivo.trim()) { setErroAvaliacao('Escreva o motivo da reprovação.'); return; }
+    setAvaliando(true); setErroAvaliacao('');
+    const { error } = await supabase.rpc('drk_reprovar_personagem', { alvo_id: alvo.id, motivo: motivo.trim() });
+    setAvaliando(false);
+    if (error) { setErroAvaliacao(error.message); return; }
+    setAlvo({ ...alvo, status_aprovacao: 'reprovado', motivo_reprovacao: motivo.trim() });
+    setMostrarMotivo(false);
+    setMotivo('');
+  };
 
   /* ---------- carregando ---------- */
   if (loading) {
@@ -160,8 +194,30 @@ export default function PersonagemPage() {
               <div className="pnome">
                 {alvo.epithet && <span className="epi">{alvo.epithet}</span>}
                 <h1 data-txt={alvo.name ?? 'sem nome'}>{alvo.name ?? 'sem nome'}</h1>
+                {alvo.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
               </div>
             </div>
+
+            {ehAdmin && alvo.status_aprovacao === 'pendente' && (
+              <div className="acoes-aprovacao">
+                <button type="button" className="mini-btn" disabled={avaliando} onClick={aprovar}>✓ aprovar</button>
+                <button type="button" className="mini-btn dim" disabled={avaliando} onClick={() => setMostrarMotivo((v) => !v)}>
+                  ✕ reprovar
+                </button>
+                {mostrarMotivo && (
+                  <div style={{ width: '100%' }}>
+                    <textarea
+                      rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                      placeholder="explique o motivo — o autor vai ver isto para corrigir e reenviar"
+                    />
+                    <button type="button" className="mini-btn dim" disabled={avaliando} onClick={reprovar} style={{ marginTop: 8 }}>
+                      confirmar reprovação
+                    </button>
+                  </div>
+                )}
+                {erroAvaliacao && <p className="erro">{erroAvaliacao}</p>}
+              </div>
+            )}
 
             {alvo.quote && <p className="cit">&ldquo;{alvo.quote}&rdquo;</p>}
 

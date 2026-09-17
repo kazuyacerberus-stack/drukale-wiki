@@ -15,15 +15,24 @@ export default function PersonagensPage() {
   const [faccao, setFaccao] = useState('');   // '' = todas
   const [estado, setEstado] = useState('');   // '' = todos
   const [broken, setBroken] = useState<Record<string, boolean>>({});
+  const [userId, setUserId] = useState<string | null>(null);
   const { beep, muted, setMuted } = useBeep();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUserId(s?.user.id ?? null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     (async () => {
       // o id é UUID, então ordenar por ele dá ordem aleatória:
-      // alfabética é o que faz sentido num arquivo de personagens
+      // alfabética é o que faz sentido num arquivo de personagens.
+      // reprovado não aparece aqui — só para o autor (em /perfil) e o admin
       const { data, error } = await supabase
         .from('characters')
         .select('*')
+        .neq('status_aprovacao', 'reprovado')
         .order('name', { ascending: true });
       if (error) setErro(error.message);
       else setChars((data ?? []) as Character[]);
@@ -127,6 +136,7 @@ export default function PersonagensPage() {
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
               <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
               <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>
+              {userId && <Link className="ico" href="/personagens/nova">+ enviar personagem</Link>}
               <Link className="ico" href="/admin">+ novo</Link>
             </div>
           </div>
@@ -202,6 +212,7 @@ export default function PersonagensPage() {
                   </div>
                   <h3>{c.name ?? 'sem nome'}</h3>
                   <p className="desc">{c.epithet || c.description || ''}</p>
+                  {c.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
                 </Link>
               );
             })}

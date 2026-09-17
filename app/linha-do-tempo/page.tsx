@@ -21,16 +21,50 @@ export default function LinhaDoTempoPage() {
   const [lista, setLista] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [ehAdmin, setEhAdmin] = useState(false);
+  const [avaliando, setAvaliando] = useState<string | null>(null);
+  const [abrirMotivo, setAbrirMotivo] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [erroAvaliacao, setErroAvaliacao] = useState('');
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUserId(data.session?.user.id ?? null);
+      if (!data.session) { setEhAdmin(false); return; }
+      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
+    });
+  }, []);
+
+  useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('eventos').select('*').order('ordem', { ascending: true });
+      // reprovado não aparece aqui — só para o autor (em /perfil) e o admin
+      const { data, error } = await supabase.from('eventos').select('*').neq('status_aprovacao', 'reprovado').order('ordem', { ascending: true });
       if (error) setErro(mensagemEvento(error));
       else setLista((data ?? []) as Evento[]);
       setLoading(false);
     })();
   }, []);
+
+  const aprovar = async (id: string) => {
+    setAvaliando(id); setErroAvaliacao('');
+    const { error } = await supabase.rpc('drk_aprovar_evento', { alvo_id: id });
+    setAvaliando(null);
+    if (error) { setErroAvaliacao(error.message); return; }
+    setLista((prev) => prev.map((e) => (e.id === id ? { ...e, status_aprovacao: 'aprovado', motivo_reprovacao: null } : e)));
+  };
+
+  const reprovar = async (id: string) => {
+    if (!motivo.trim()) { setErroAvaliacao('Escreva o motivo da reprovação.'); return; }
+    setAvaliando(id); setErroAvaliacao('');
+    const { error } = await supabase.rpc('drk_reprovar_evento', { alvo_id: id, motivo: motivo.trim() });
+    setAvaliando(null);
+    if (error) { setErroAvaliacao(error.message); return; }
+    setLista((prev) => prev.filter((e) => e.id !== id));
+    setAbrirMotivo(null);
+    setMotivo('');
+  };
 
   return (
     <div className="term">
@@ -49,6 +83,7 @@ export default function LinhaDoTempoPage() {
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
               <Link className="ico" href="/glossario">glossário</Link>
+              {userId && <Link className="ico" href="/linha-do-tempo/nova">+ enviar evento</Link>}
               <Link className="ico" href="/admin/linha-do-tempo">+ novo</Link>
             </div>
           </div>
@@ -70,6 +105,27 @@ export default function LinhaDoTempoPage() {
                 <span className="evento-marca" />
                 {ev.data && <span className="evento-data">{ev.data}</span>}
                 <h2>{ev.titulo}</h2>
+                {ev.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
+                {ehAdmin && ev.status_aprovacao === 'pendente' && (
+                  <div className="acoes-aprovacao">
+                    <button type="button" className="mini-btn" disabled={avaliando === ev.id} onClick={() => aprovar(ev.id)}>✓ aprovar</button>
+                    <button type="button" className="mini-btn dim" disabled={avaliando === ev.id} onClick={() => setAbrirMotivo(abrirMotivo === ev.id ? null : ev.id)}>
+                      ✕ reprovar
+                    </button>
+                    {abrirMotivo === ev.id && (
+                      <div style={{ width: '100%' }}>
+                        <textarea
+                          rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                          placeholder="explique o motivo — o autor vai ver isto para corrigir e reenviar"
+                        />
+                        <button type="button" className="mini-btn dim" disabled={avaliando === ev.id} onClick={() => reprovar(ev.id)} style={{ marginTop: 8 }}>
+                          confirmar reprovação
+                        </button>
+                      </div>
+                    )}
+                    {erroAvaliacao && <p className="erro">{erroAvaliacao}</p>}
+                  </div>
+                )}
                 {ev.anexo && (
                   <figure className="evento-midia">
                     <Midia caminho={ev.anexo.caminho} tipo={ev.anexo.tipo} nome={ev.anexo.nome} />

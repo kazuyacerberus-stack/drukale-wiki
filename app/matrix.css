@@ -183,6 +183,20 @@ html, body { margin: 0; padding: 0; background: #000; }
 .erro { color: #ff5f5f; font-size: 13px; letter-spacing: 1.5px; }
 .vazio { text-align: center; padding: 60px 0; color: rgba(138,255,192,.35); font-size: 13.5px; letter-spacing: 1.5px; }
 
+/* ---------- selo de status de aprovação ---------- */
+.selo-pendente, .selo-aprovado, .selo-reprovado {
+  display: inline-block; margin-top: 8px; padding: 3px 9px; font-size: 10px;
+  letter-spacing: 1.5px; text-transform: uppercase; border-radius: 2px;
+}
+.selo-pendente { color: #ffcf6b; border: 1px solid rgba(255,207,107,.4); background: rgba(255,207,107,.08); }
+.selo-aprovado { color: var(--g); border: 1px solid rgba(0,255,102,.4); background: rgba(0,255,102,.08); }
+.selo-reprovado { color: #ff8b8b; border: 1px solid rgba(255,95,95,.4); background: rgba(255,95,95,.08); }
+.acoes-aprovacao { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
+.acoes-aprovacao textarea {
+  width: 100%; font-family: inherit; font-size: 13px; padding: 10px 12px;
+  color: var(--g2); background: rgba(0,255,102,.04); border: 1px solid rgba(0,255,102,.22); border-radius: 2px;
+}
+
 .load { text-align: center; padding: 60px 0; }
 .load span {
   display: inline-block; width: 9px; height: 9px; margin: 0 4px; border-radius: 50%;
