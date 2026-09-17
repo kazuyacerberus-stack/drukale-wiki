@@ -82,6 +82,10 @@ export default function Login() {
           </button>
 
           {erro && <p className="stat bad">FALHA :: {erro}</p>}
+
+          <p className="login-s" style={{ marginTop: 18 }}>
+            Ainda não tem conta? <Link href="/cadastro" style={{ color: 'var(--g)' }}>Cadastre-se</Link>
+          </p>
         </form>
 
         <footer className="ft">drukale_system v1.0 // canal criptografado</footer>

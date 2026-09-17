@@ -84,6 +84,7 @@ export default function PrecisaAprovacao({ children }: { children: ReactNode }) 
       <div className="load">
         <p>Sua conta está aguardando aprovação do game master.</p>
         <p>Volte mais tarde ou fale com o administrador do grupo.</p>
+        <a href="/perfil">ver meu perfil →</a>
       </div>
     );
   }
