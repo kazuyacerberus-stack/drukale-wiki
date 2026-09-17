@@ -248,7 +248,7 @@ export default function ChatPage() {
         <div className={s.wrap}>
           <header className={s.topo}>
             <span className={s.caminho}><i /> drukale://chat</span>
-            <nav><Link href="/">◄ Arquivo</Link><Link href="/faccoes">facções</Link><Link href="/linha-do-tempo">linha do tempo</Link><Link href="/glossario">glossário</Link><Link href="/cenas">▤ cenas</Link></nav>
+            <nav><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">facções</Link><Link href="/linha-do-tempo">linha do tempo</Link><Link href="/glossario">glossário</Link><Link href="/cenas">▤ cenas</Link></nav>
           </header>
           <div className={s.portao}>
             <h1>CHAT FECHADO</h1>
@@ -270,6 +270,7 @@ export default function ChatPage() {
           <span className={s.caminho}><i /> drukale://chat</span>
           <nav aria-label="Navegação">
             <Link href="/">◄ Arquivo</Link>
+            <Link href="/personagens">personagens</Link>
             <Link href="/faccoes">facções</Link>
             <Link href="/linha-do-tempo">linha do tempo</Link>
             <Link href="/glossario">glossário</Link>

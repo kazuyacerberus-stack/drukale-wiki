@@ -37,6 +37,7 @@ export default function LinhaDoTempoPage() {
                 {muted ? '♪ off' : '♪ on'}
               </button>
               <Link className="ico" href="/">← arquivo</Link>
+              <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
               <Link className="ico" href="/glossario">glossário</Link>
               <Link className="ico" href="/admin/linha-do-tempo">+ novo</Link>
