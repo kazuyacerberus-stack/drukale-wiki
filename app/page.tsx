@@ -56,6 +56,30 @@ function Selo({ className }: { className: string }) {
   );
 }
 
+/**
+ * Divisória orgânica: um veio de corrupção se ramificando, em vez de uma
+ * linha reta ou um zigue-zague geométrico. Os nós pulsam devagar, como se
+ * algo ainda estivesse vivo por baixo da pele do desenho.
+ */
+function VeioCorrupcao() {
+  return (
+    <svg className="imp-veio" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true">
+      <path
+        className="imp-veio-tronco"
+        d="M0,35 C80,15 140,55 220,32 C300,10 360,50 440,28 C520,8 580,48 660,30 C740,14 800,52 880,34 C930,22 970,40 1000,32"
+      />
+      <path className="imp-veio-ramo" d="M220,32 C210,50 200,60 185,66" />
+      <path className="imp-veio-ramo" d="M440,28 C450,10 465,2 480,4" />
+      <path className="imp-veio-ramo" d="M660,30 C670,50 685,60 705,64" />
+      <path className="imp-veio-ramo" d="M880,34 C870,14 858,6 840,8" />
+      <circle className="imp-veio-no" style={{ animationDelay: '0s' }} cx="220" cy="32" r="3" />
+      <circle className="imp-veio-no" style={{ animationDelay: '.6s' }} cx="440" cy="28" r="3" />
+      <circle className="imp-veio-no" style={{ animationDelay: '1.2s' }} cx="660" cy="30" r="3" />
+      <circle className="imp-veio-no" style={{ animationDelay: '1.8s' }} cx="880" cy="34" r="3" />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [forcas, setForcas] = useState<Forca[]>([]);
   const [numeros, setNumeros] = useState<Numeros | null>(null);
@@ -126,7 +150,7 @@ export default function Home() {
           </p>
         </section>
 
-        <hr className="imp-espinhos" aria-hidden="true" />
+        <VeioCorrupcao />
 
         <section className="imp-secao">
           <h2>o que é o império</h2>
@@ -168,7 +192,7 @@ export default function Home() {
           </section>
         )}
 
-        <hr className="imp-espinhos" aria-hidden="true" />
+        <VeioCorrupcao />
 
         <section className="imp-secao">
           <h2>explore o arquivo</h2>
