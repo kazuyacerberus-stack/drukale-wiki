@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '../lib/db';
 import Avatar from '../components/Avatar';
 import GifPicker from '../components/GifPicker';
@@ -148,7 +149,7 @@ function Item({
       <Avatar url={perfil?.avatar_url} nome={perfil?.apelido} tamanho={26} />
       <div className={s.comentarioCorpo}>
         <div className={s.comentarioBalao}>
-          <strong>{perfil?.apelido ?? 'membro'}</strong>
+          <Link href={`/jogador/${no.user_id}`}><strong>{perfil?.apelido ?? 'membro'}</strong></Link>
           {no.texto && <p>{no.texto}</p>}
         </div>
         {no.anexo && <div className={s.comentarioMidia}><Midia anexo={no.anexo} /></div>}

@@ -10,8 +10,11 @@ import { supabase, type Character } from '../lib/db';
 import { sair } from '../lib/auth';
 import { garantirPerfil, salvarPerfil, validarAvatar, estaMudo, mensagemPerfil, type Perfil } from '../lib/perfil';
 import { type Evento } from '../lib/eventos';
+import { buscarMinhasAmizades, pedirAmizade, aceitarAmizade, recusarAmizade, desfazerAmizade, mensagemAmizade, type Amizade } from '../lib/amizades';
+import PerfilTimeline from '../components/PerfilTimeline';
 
 const ROTULO_STATUS: Record<string, string> = { pendente: 'em análise', aprovado: 'aprovado', reprovado: 'reprovado' };
+type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null };
 
 type ContaAdmin = {
   user_id: string; email: string; apelido: string; status_conta: 'pendente' | 'aprovado' | 'reprovado';
@@ -34,6 +37,15 @@ export default function PerfilPage() {
   const [meusEventos, setMeusEventos] = useState<Evento[]>([]);
   const [carregandoEnvios, setCarregandoEnvios] = useState(true);
 
+  const [userId, setUserId] = useState<string | null>(null);
+  const [amizades, setAmizades] = useState<Amizade[]>([]);
+  const [perfisAmizade, setPerfisAmizade] = useState<Map<string, PerfilLeve>>(new Map());
+  const [carregandoAmizades, setCarregandoAmizades] = useState(true);
+  const [erroAmizade, setErroAmizade] = useState('');
+  const [buscaApelido, setBuscaApelido] = useState('');
+  const [resultadosBusca, setResultadosBusca] = useState<PerfilLeve[]>([]);
+  const [buscando, setBuscando] = useState(false);
+
   const [ehAdmin, setEhAdmin] = useState(false);
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [contasPendentes, setContasPendentes] = useState<ContaAdmin[]>([]);
@@ -48,6 +60,7 @@ export default function PerfilPage() {
       const { data } = await supabase.auth.getSession();
       if (!data.session) { router.replace('/admin/login'); return; }
       const uid = data.session.user.id;
+      setUserId(uid);
       const [p, personagens, eventos, admin] = await Promise.all([
         garantirPerfil(),
         supabase.from('characters').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
@@ -99,6 +112,44 @@ export default function PerfilPage() {
     setContasPendentes((prev) => prev.filter((c) => c.user_id !== uid));
     setMostrarMotivoPara(null);
     setResumo((prev) => prev && { ...prev, contas_pendentes: prev.contas_pendentes - 1 });
+  };
+
+  const carregarAmizades = async () => {
+    try {
+      const linhas = await buscarMinhasAmizades();
+      setAmizades(linhas);
+      const ids = [...new Set(linhas.flatMap((a) => [a.solicitante, a.destinatario]))].filter((id) => id !== userId);
+      if (ids.length) {
+        const { data } = await supabase.from('profiles').select('user_id,apelido,avatar_url').in('user_id', ids);
+        if (data) setPerfisAmizade(new Map((data as PerfilLeve[]).map((p) => [p.user_id, p])));
+      }
+    } catch (e) {
+      setErroAmizade(mensagemAmizade(e));
+    } finally {
+      setCarregandoAmizades(false);
+    }
+  };
+
+  useEffect(() => { if (userId) void carregarAmizades(); }, [userId]);
+
+  useEffect(() => {
+    const termo = buscaApelido.trim();
+    if (termo.length < 2) { setResultadosBusca([]); return; }
+    let vivo = true;
+    setBuscando(true);
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase.from('profiles').select('user_id,apelido,avatar_url').ilike('apelido', `%${termo}%`).limit(8);
+      if (vivo) { setResultadosBusca(((data ?? []) as PerfilLeve[]).filter((p) => p.user_id !== userId)); setBuscando(false); }
+    }, 300);
+    return () => { vivo = false; window.clearTimeout(timer); };
+  }, [buscaApelido, userId]);
+
+  const acaoAmizade = async (chamada: () => ReturnType<typeof pedirAmizade>, alvo: PerfilLeve) => {
+    setErroAmizade('');
+    setPerfisAmizade((prev) => new Map(prev).set(alvo.user_id, alvo));
+    const { error } = await chamada();
+    if (error) { setErroAmizade(mensagemAmizade(error)); return; }
+    void carregarAmizades();
   };
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
@@ -252,6 +303,84 @@ export default function PerfilPage() {
           </form>
         )}
 
+        {!carregandoPerfil && userId && (() => {
+          const pedidosRecebidos = amizades.filter((a) => a.destinatario === userId && a.status === 'pendente');
+          const amigos = amizades.filter((a) => a.solicitante === userId && a.status === 'aceita');
+          const idsConhecidos = new Set(amizades.flatMap((a) => [a.solicitante, a.destinatario]));
+          return (
+            <section className="panel login" style={{ marginTop: 24 }}>
+              <h2 className="login-t" style={{ fontSize: 18 }}>AMIZADES</h2>
+              <p className="login-s">&gt; adicione outros jogadores pra ver os posts marcados como &quot;amigos&quot;</p>
+
+              {erroAmizade && <p className="stat bad">FALHA :: {erroAmizade}</p>}
+
+              <div className="field" style={{ marginTop: 14 }}>
+                <label>buscar por apelido</label>
+                <input value={buscaApelido} onChange={(e) => setBuscaApelido(e.target.value)} placeholder="digite ao menos 2 letras" />
+              </div>
+              {buscando && <p className="dica">buscando...</p>}
+              {resultadosBusca.map((p) => (
+                <div className="linha" key={p.user_id} style={{ padding: '8px 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Avatar url={p.avatar_url} nome={p.apelido} tamanho={26} />
+                    <strong>{p.apelido}</strong>
+                  </div>
+                  {!idsConhecidos.has(p.user_id) && (
+                    <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => pedirAmizade(p.user_id), p)}>+ adicionar</button>
+                  )}
+                </div>
+              ))}
+
+              {carregandoAmizades ? (
+                <div className="load"><span /><span /><span /></div>
+              ) : (
+                <>
+                  {pedidosRecebidos.length > 0 && (
+                    <div style={{ marginTop: 18 }}>
+                      <h3 style={{ fontSize: 13, letterSpacing: 1, color: 'var(--g)' }}>PEDIDOS RECEBIDOS</h3>
+                      {pedidosRecebidos.map((a) => {
+                        const p = perfisAmizade.get(a.solicitante);
+                        return (
+                          <div className="linha" key={a.solicitante} style={{ padding: '8px 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
+                              <strong>{p?.apelido ?? 'membro'}</strong>
+                            </div>
+                            <span style={{ display: 'flex', gap: 8 }}>
+                              <button type="button" className="mini-btn" onClick={() => acaoAmizade(() => aceitarAmizade(a.solicitante), p!)}>✓ aceitar</button>
+                              <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => recusarAmizade(a.solicitante), p!)}>✕ recusar</button>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 18 }}>
+                    <h3 style={{ fontSize: 13, letterSpacing: 1, color: 'var(--g)' }}>MEUS AMIGOS{amigos.length > 0 ? ` (${amigos.length})` : ''}</h3>
+                    {amigos.length === 0 ? (
+                      <p className="vazio">nenhum amigo ainda — busque um apelido acima</p>
+                    ) : (
+                      amigos.map((a) => {
+                        const p = perfisAmizade.get(a.destinatario);
+                        return (
+                          <div className="linha" key={a.destinatario} style={{ padding: '8px 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Avatar url={p?.avatar_url} nome={p?.apelido} tamanho={26} />
+                              <Link href={`/jogador/${a.destinatario}`}><strong>{p?.apelido ?? 'membro'}</strong></Link>
+                            </div>
+                            <button type="button" className="mini-btn dim" onClick={() => acaoAmizade(() => desfazerAmizade(a.destinatario), p!)}>desfazer</button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </section>
+          );
+        })()}
+
         {!carregandoPerfil && (
           <section className="panel login" style={{ marginTop: 24 }}>
             <h2 className="login-t" style={{ fontSize: 18 }}>MEUS ENVIOS</h2>
@@ -296,6 +425,14 @@ export default function PerfilPage() {
                 ))}
               </>
             )}
+          </section>
+        )}
+
+        {!carregandoPerfil && userId && (
+          <section style={{ marginTop: 24 }}>
+            <h2 style={{ fontSize: 18, marginBottom: 4 }}>MINHA LINHA DO TEMPO</h2>
+            <p className="login-s" style={{ marginBottom: 16 }}>&gt; suas postagens e o que você escreveu ou comentou nas cenas</p>
+            <PerfilTimeline alvo={userId} ehProprioPerfil ehAdmin={ehAdmin} />
           </section>
         )}
 

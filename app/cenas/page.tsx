@@ -290,7 +290,7 @@ export default function CenasPage() {
           {cenas.map(c => <article key={c.id} className={`${s.painel} ${s.cena}`}><div className={s.linha}><span className={s.tipo}>{c.tipo}</span><time dateTime={c.created_at}>{new Date(c.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time></div>
             {perfis.get(c.user_id) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 -6px', fontSize: 12, color: '#9ab3a2' }}>
               <Avatar url={perfis.get(c.user_id)!.avatar_url} nome={perfis.get(c.user_id)!.apelido} tamanho={22} />
-              <span>{perfis.get(c.user_id)!.apelido}</span>
+              <Link href={`/jogador/${c.user_id}`}>{perfis.get(c.user_id)!.apelido}</Link>
               {ehAdmin && emails.get(c.user_id) && <span style={{ color: '#6f8a79' }}>({emails.get(c.user_id)})</span>}
               {ehAdmin && c.user_id !== userId && <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
                 <button type="button" onClick={() => silenciarRapido(c.user_id)}>🔇 1h</button>
