@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { slugify } from '../lib/db';
 import { supabase } from '../lib/db';
 import {
-  CATEGORIAS_GLOSSARIO, slugLivre, mensagemGlossario, LIMITES_GLOSSARIO, type Termo,
+  CATEGORIAS_GLOSSARIO, slugLivre, mensagemGlossario, LIMITES_GLOSSARIO,
+  validarImagemGlossario, subirImagemGlossario, apagarImagemGlossario, type Termo,
 } from '../lib/glossario';
 
 export type CamposTermo = { termo: string; categoria: string; resumo: string; definicao: string };
@@ -26,10 +27,27 @@ export default function GlossarioForm({ inicial }: { inicial?: Termo | null }) {
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
       setF((s) => ({ ...s, [k]: e.target.value }));
 
+  const [imagem, setImagem] = useState<File | null>(null);
+  const [preview, setPreview] = useState('');
+  const [imagemAtual, setImagemAtual] = useState<string | null>(inicial?.imagem ?? null);
+  const [removerImagem, setRemoverImagem] = useState(false);
+  const [erroImagem, setErroImagem] = useState('');
+
   const [trocarSlug, setTrocarSlug] = useState(false);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [destino, setDestino] = useState<string | null>(null);
+
+  const escolherImagem = (file: File | null) => {
+    setErroImagem('');
+    if (!file) return;
+    const problema = validarImagemGlossario(file);
+    if (problema) { setErroImagem(problema); return; }
+    if (preview) URL.revokeObjectURL(preview);
+    setImagem(file);
+    setPreview(URL.createObjectURL(file));
+    setRemoverImagem(false);
+  };
 
   const novoSlug = slugify(f.termo || 'termo');
 
@@ -39,20 +57,35 @@ export default function GlossarioForm({ inicial }: { inicial?: Termo | null }) {
     setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
     setDestino(null);
 
-    const linha = {
-      termo: f.termo.trim().slice(0, LIMITES_GLOSSARIO.termo),
-      categoria: f.categoria,
-      resumo: f.resumo.trim().slice(0, LIMITES_GLOSSARIO.resumo) || null,
-      definicao: f.definicao.trim().slice(0, LIMITES_GLOSSARIO.definicao) || null,
-    };
-
+    let subiuAgora: string | null = null;
     try {
+      let imagemUrl = removerImagem ? null : imagemAtual;
+      if (imagem) {
+        setStatus('ENVIANDO IMAGEM...');
+        imagemUrl = await subirImagemGlossario(imagem, f.termo || 'termo');
+        subiuAgora = imagemUrl;
+        setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
+      }
+
+      const linha = {
+        termo: f.termo.trim().slice(0, LIMITES_GLOSSARIO.termo),
+        categoria: f.categoria,
+        resumo: f.resumo.trim().slice(0, LIMITES_GLOSSARIO.resumo) || null,
+        definicao: f.definicao.trim().slice(0, LIMITES_GLOSSARIO.definicao) || null,
+        imagem: imagemUrl,
+      };
+
       if (editando && inicial) {
         const slug = trocarSlug ? await slugLivre(slugify(f.termo), inicial.slug) : inicial.slug;
         const { error } = await supabase.from('glossario').update({ ...linha, slug }).eq('id', inicial.id);
         if (error) throw error;
+        if (imagem || removerImagem) await apagarImagemGlossario(inicial.imagem);
         setStatus('TERMO ATUALIZADO');
         setDestino(slug);
+        setImagemAtual(imagemUrl);
+        setImagem(null);
+        setPreview('');
+        setRemoverImagem(false);
         setTrocarSlug(false);
       } else {
         const slug = await slugLivre(novoSlug);
@@ -61,14 +94,19 @@ export default function GlossarioForm({ inicial }: { inicial?: Termo | null }) {
         setStatus('TERMO GRAVADO');
         setDestino(slug);
         setF(VAZIO);
+        setImagem(null);
+        setPreview('');
+        setImagemAtual(null);
       }
     } catch (err) {
+      if (subiuAgora) await apagarImagemGlossario(subiuAgora);
       setStatus('FALHA :: ' + mensagemGlossario(err));
     }
     setLoading(false);
   };
 
   const ruim = status.startsWith('FALHA');
+  const mostrarAtual = editando && imagemAtual && !preview && !removerImagem;
 
   return (
     <form className="panel" onSubmit={submit}>
@@ -115,6 +153,55 @@ export default function GlossarioForm({ inicial }: { inicial?: Termo | null }) {
           <textarea value={f.definicao} onChange={set('definicao')} rows={9} maxLength={LIMITES_GLOSSARIO.definicao}
             placeholder="O que é, de onde vem, como funciona no mundo Drukale." />
         </div>
+      </div>
+
+      <div className="grupo">
+        <span className="grupo-t">imagem</span>
+
+        {preview ? (
+          <div className="done">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={preview} alt="" className="rd" />
+            <div className="done-txt">
+              <strong>NOVA IMAGEM PRONTA</strong>
+              <span>{imagem?.name}</span>
+              <button type="button" className="lnk dim" onClick={() => { if (preview) URL.revokeObjectURL(preview); setImagem(null); setPreview(''); }}>
+                descartar
+              </button>
+            </div>
+          </div>
+        ) : mostrarAtual ? (
+          <div className="done">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imagemAtual as string} alt="" className="rd" />
+            <div className="done-txt">
+              <strong>IMAGEM ATUAL</strong>
+              <label className="lnk" style={{ cursor: 'pointer' }}>
+                trocar imagem
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }}
+                  onChange={(e) => { escolherImagem(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              </label>
+              <button type="button" className="lnk dim" onClick={() => setRemoverImagem(true)}>remover imagem</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <label className="drop">
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => { escolherImagem(e.target.files?.[0] ?? null); e.target.value = ''; }} />
+              <div className="drop-ico">[ + ]</div>
+              <div className="drop-t">clique para escolher uma imagem (opcional)</div>
+              <div className="drop-s">jpg · png · webp · gif · até 8 MB</div>
+            </label>
+            {removerImagem && (
+              <p className="dica" style={{ marginTop: 10, color: 'rgba(255,120,120,.75)' }}>
+                a imagem atual será apagada ao salvar —{' '}
+                <button type="button" className="lnk" onClick={() => setRemoverImagem(false)}>cancelar</button>
+              </p>
+            )}
+          </>
+        )}
+        {erroImagem && <p className="erro" style={{ marginTop: 12 }}>{erroImagem}</p>}
       </div>
 
       <button className="go" disabled={loading}>

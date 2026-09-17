@@ -17,6 +17,7 @@ export default function TermoPage() {
   const [loading, setLoading] = useState(true);
   const [naoEncontrado, setNaoEncontrado] = useState(false);
   const [erro, setErro] = useState('');
+  const [quebrada, setQuebrada] = useState(false);
   const { beep } = useBeep();
 
   useEffect(() => {
@@ -80,6 +81,13 @@ export default function TermoPage() {
 
         <span className="epi">{alvo.categoria}</span>
         <h1 data-txt={alvo.termo}>{alvo.termo}</h1>
+
+        {alvo.imagem && !quebrada && (
+          <figure className="painel-foto">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={alvo.imagem} alt={alvo.termo} onError={() => setQuebrada(true)} />
+          </figure>
+        )}
 
         {alvo.resumo && <p className="cit">{alvo.resumo}</p>}
 
