@@ -3,25 +3,15 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
-import Avatar from '../components/Avatar';
+import PostComposer from '../components/PostComposer';
+import PostCard from '../components/PostCard';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
-import { urlAnexoComentario, type AnexoComentario } from '../lib/comentarios';
-import { mensagemPerfilPost, type PerfilPost } from '../lib/perfilPosts';
+import { buscarFeedPublico, mensagemPerfilPost, type PerfilPost } from '../lib/perfilPosts';
 
 type PerfilLeve = { apelido: string; avatar_url: string | null };
-
-function Midia({ anexo }: { anexo: AnexoComentario }) {
-  const [falhou, setFalhou] = useState(false);
-  const url = urlAnexoComentario(anexo);
-  const video = anexo.tipo === 'video/mp4' || anexo.tipo === 'video/webm';
-  if (falhou) return <p className="dica">Não foi possível exibir {anexo.nome}.</p>;
-  return video
-    ? <video src={url} controls preload="metadata" playsInline aria-label={anexo.nome} onError={() => setFalhou(true)} />
-    : <img src={url} alt={anexo.nome} loading="lazy" onError={() => setFalhou(true)} />;
-}
+const POR_PAGINA = 21;
 
 /**
  * A "linha do tempo" agora é o mural público do império: todo post que
@@ -33,34 +23,54 @@ function Midia({ anexo }: { anexo: AnexoComentario }) {
 export default function LinhaDoTempoPage() {
   const [posts, setPosts] = useState<PerfilPost[]>([]);
   const [perfis, setPerfis] = useState<Map<string, PerfilLeve>>(new Map());
+  const [userId, setUserId] = useState<string | null>(null);
+  const [ehAdmin, setEhAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [temMais, setTemMais] = useState(true);
   const [erro, setErro] = useState('');
   const { beep, muted, setMuted } = useBeep();
 
+  const carregarPerfis = async (lista: PerfilPost[]) => {
+    const ids = [...new Set(lista.map((p) => p.user_id))];
+    if (!ids.length) return;
+    const { data } = await supabase.from('profiles').select('user_id,apelido,avatar_url').in('user_id', ids);
+    if (data) setPerfis((prev) => new Map([...prev, ...(data as (PerfilLeve & { user_id: string })[]).map((p): [string, PerfilLeve] => [p.user_id, p])]));
+  };
+
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+    supabase.rpc('drk_e_admin').then(({ data }) => setEhAdmin(data === true));
     (async () => {
-      const { data, error } = await supabase
-        .from('perfil_posts')
-        .select('*')
-        .eq('visibilidade', 'publico')
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) { setErro(mensagemPerfilPost(error)); setLoading(false); return; }
-      const lista = (data ?? []) as PerfilPost[];
-      setPosts(lista);
-      const ids = [...new Set(lista.map((p) => p.user_id))];
-      if (ids.length) {
-        const { data: perfisData } = await supabase.from('profiles').select('user_id,apelido,avatar_url').in('user_id', ids);
-        if (perfisData) setPerfis(new Map((perfisData as (PerfilLeve & { user_id: string })[]).map((p) => [p.user_id, p])));
+      try {
+        const lista = await buscarFeedPublico(0);
+        setPosts(lista);
+        setTemMais(lista.length === POR_PAGINA);
+        await carregarPerfis(lista);
+      } catch (e) {
+        setErro(mensagemPerfilPost(e));
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
-  return (
-    <div className="term">
-      <MatrixRain />
+  const carregarMais = async () => {
+    setCarregandoMais(true);
+    try {
+      const lista = await buscarFeedPublico(posts.length);
+      setPosts((prev) => [...prev, ...lista]);
+      setTemMais(lista.length === POR_PAGINA);
+      await carregarPerfis(lista);
+    } catch (e) {
+      setErro(mensagemPerfilPost(e));
+    } finally {
+      setCarregandoMais(false);
+    }
+  };
 
+  return (
+    <div className="term drukale">
       <main className="wrap narrow">
        <PrecisaAprovacao>
         <header className="hd">
@@ -82,29 +92,35 @@ export default function LinhaDoTempoPage() {
           <p className="sub">&gt; o que todo mundo está compartilhando publicamente <span className="cur" /></p>
         </header>
 
+        {userId && <PostComposer visibilidadeFixa="publico" onPublicado={(post) => setPosts((prev) => [post, ...prev])} />}
+
         {erro && <p className="erro">FALHA :: {erro}</p>}
 
         {loading ? (
           <div className="load"><span /><span /><span /><p>decodificando arquivo...</p></div>
         ) : posts.length === 0 ? (
-          <p className="vazio">ninguém postou nada público ainda — seja o primeiro em /perfil</p>
+          <p className="vazio">ninguém postou nada público ainda — seja o primeiro aqui em cima</p>
         ) : (
-          <div className="novidades-lista">
-            {posts.map((post) => {
-              const perfil = perfis.get(post.user_id);
-              return (
-                <article className="novidade" key={post.id}>
-                  <div className="novidade-topo">
-                    <Avatar url={perfil?.avatar_url} nome={perfil?.apelido} tamanho={22} />
-                    <Link href={`/jogador/${post.user_id}`}><strong>{perfil?.apelido ?? 'membro'}</strong></Link>
-                    <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
-                  </div>
-                  {post.texto && <p className="novidade-texto">{post.texto}</p>}
-                  {post.anexo && <figure className="novidade-midia"><Midia anexo={post.anexo} /></figure>}
-                </article>
-              );
-            })}
-          </div>
+          <>
+            <div className="novidades-lista">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  autor={perfis.get(post.user_id)}
+                  userId={userId}
+                  ehAdmin={ehAdmin}
+                  mostrarVisibilidade={false}
+                  onApagado={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+                />
+              ))}
+            </div>
+            {temMais && (
+              <button type="button" className="mini-btn" disabled={carregandoMais} onClick={carregarMais} style={{ margin: '18px auto', display: 'block' }}>
+                {carregandoMais ? '// carregando...' : 'carregar mais'}
+              </button>
+            )}
+          </>
         )}
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
