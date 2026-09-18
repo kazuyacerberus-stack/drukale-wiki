@@ -1513,6 +1513,10 @@ html, body { margin: 0; padding: 0; background: #000; }
    dos botões de navegação, e o perfil precisa continuar com latão.
    ============================================================ */
 .term.drukale {
+  /* sobrescreve as próprias variáveis verdes que o resto do site usa
+     (botões, selos, grade, abas...) — assim tudo vira âmbar sozinho,
+     sem precisar reescrever cada componente que usa var(--g)/var(--g2). */
+  --g: #d8a85c; --g2: #f0dfb8;
   --d-osso: #f0dfb8; --d-cromo: #b89a6a; --d-cromo-fraco: #6d5a30;
   --d-roxo: #d8a85c; --d-sangue: #d1264a;
   color: var(--d-osso);
@@ -1532,6 +1536,29 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .drukale .hd-path { color: var(--d-cromo); }
 .drukale .dot { background: var(--d-roxo); box-shadow: 0 0 8px rgba(216,168,92,.6); }
+
+/* Trocando var(--g)/var(--g2) já ficou correto na maior parte do site,
+   mas várias classes aqui usam a cor verde escrita direto (não pela
+   variável) — essas precisam de um ajuste explícito pra não ficarem
+   "meio verdes, meio âmbar" numa página com este tema. */
+.drukale .srch { color: var(--d-osso); background: rgba(216,168,92,.05); border-color: rgba(216,168,92,.25); }
+.drukale .srch::placeholder { color: rgba(240,223,184,.3); }
+.drukale .srch:focus { background: rgba(216,168,92,.09); box-shadow: 0 0 0 1px rgba(216,168,92,.3), 0 0 22px rgba(216,168,92,.16); }
+.drukale .count { color: rgba(216,168,92,.6); }
+.drukale .abas-rot { color: rgba(240,223,184,.35); }
+.drukale .aba { border-color: rgba(216,168,92,.2); color: rgba(240,223,184,.6); }
+.drukale .aba:hover { border-color: rgba(216,168,92,.55); color: var(--d-osso); }
+.drukale .aba .n { color: rgba(216,168,92,.45); }
+.drukale .aba.on { background: rgba(216,168,92,.09); text-shadow: 0 0 8px rgba(216,168,92,.55); box-shadow: 0 0 14px rgba(216,168,92,.22), inset 0 0 18px rgba(216,168,92,.06); }
+.drukale .aba.on .n { color: rgba(216,168,92,.85); }
+.drukale .vazio { color: rgba(240,223,184,.4); }
+.drukale .load p { color: rgba(240,223,184,.45); }
+.drukale .ring { border-color: rgba(216,168,92,.25); }
+.drukale .ring2 { background: conic-gradient(from 0deg, transparent 0deg, rgba(216,168,92,.85) 42deg, transparent 88deg); }
+.drukale .node:hover .ring { border-color: rgba(216,168,92,.6); }
+.drukale .orb { background: #0c0903; border-color: rgba(216,168,92,.4); box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 18px rgba(216,168,92,.18); }
+.drukale .node:hover .orb { box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 0 28px rgba(216,168,92,.5), 0 14px 34px rgba(0,0,0,.65); }
+.drukale .ini { color: rgba(216,168,92,.7); text-shadow: 0 0 16px rgba(216,168,92,.6); }
 
 .drukale-layout { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 26px; align-items: start; }
 .drukale-lateral { position: sticky; top: 20px; }

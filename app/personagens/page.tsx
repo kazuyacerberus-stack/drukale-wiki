@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase, type Character } from '../lib/db';
@@ -114,8 +113,7 @@ export default function PersonagensPage() {
   );
 
   return (
-    <div className="term">
-      <MatrixRain />
+    <div className="term drukale">
 
       <main className="wrap">
        <PrecisaAprovacao>
@@ -133,7 +131,8 @@ export default function PersonagensPage() {
               </button>
               <Link className="ico" href="/" title="a página inicial do império">← arquivo</Link>
               <Link className="ico" href="/faccoes" title="casas e organizações do império">⌂ facções</Link>
-              <Link className="ico" href="/linha-do-tempo" title="os grandes marcos do império">⏱ linha do tempo</Link>
+              <Link className="ico" href="/linha-do-tempo" title="o que todo mundo está compartilhando">⏱ linha do tempo</Link>
+              <Link className="ico" href="/cronicas" title="os grandes marcos do império">📜 crônicas</Link>
               <Link className="ico" href="/eventos" title="as novidades do grupo">✦ eventos</Link>
               <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
