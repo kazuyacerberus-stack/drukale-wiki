@@ -9,8 +9,19 @@ export type Faccao = {
   resumo: string | null;
   historia: string | null;
   territorio: string | null;
+  user_id: string | null;
+  status_aprovacao: 'pendente' | 'aprovado' | 'reprovado';
+  motivo_reprovacao: string | null;
   created_at: string;
 };
+
+export type MembroFaccao = { faccao_id: string; user_id: string; status: 'pendente' | 'aceito'; created_at: string };
+
+export const solicitarFaccao = (alvo_faccao: string) => supabase.rpc('drk_solicitar_faccao', { alvo_faccao });
+export const convidarParaFaccao = (alvo_faccao: string, alvo_user: string) => supabase.rpc('drk_convidar_para_faccao', { alvo_faccao, alvo_user });
+export const aceitarMembro = (alvo_faccao: string, alvo_user: string) => supabase.rpc('drk_aceitar_membro', { alvo_faccao, alvo_user });
+export const recusarMembro = (alvo_faccao: string, alvo_user: string) => supabase.rpc('drk_recusar_membro', { alvo_faccao, alvo_user });
+export const sairFaccao = (alvo_faccao: string) => supabase.rpc('drk_sair_faccao', { alvo_faccao });
 
 export const BUCKET_FACCOES = 'faccoes';
 export const SIMBOLO_MAX_BYTES = 8 * 1024 * 1024;

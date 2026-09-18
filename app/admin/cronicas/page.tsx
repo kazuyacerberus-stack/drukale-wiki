@@ -8,7 +8,7 @@ import Protegido from '../../components/Protegido';
 import { supabase } from '../../lib/db';
 import { mensagemEvento, type Evento } from '../../lib/eventos';
 
-export default function PainelLinhaDoTempo() {
+export default function PainelCronicas() {
   const [lista, setLista] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
@@ -56,7 +56,7 @@ export default function PainelLinhaDoTempo() {
       setAviso('FALHA :: ' + mensagemEvento(error));
     } else {
       setLista((l) => l.filter((x) => x.id !== ev.id));
-      setAviso(`EVENTO "${ev.titulo}" REMOVIDO`);
+      setAviso(`CRÔNICA "${ev.titulo}" REMOVIDA`);
     }
     setOcupado(null);
     setConfirmar(null);
@@ -72,13 +72,13 @@ export default function PainelLinhaDoTempo() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/linha-do-tempo</span>
+            <span className="hd-path">drukale://admin/cronicas</span>
             <div className="hd-act">
               <Link className="ico" href="/admin">← painel</Link>
-              <Link className="ico" href="/admin/linha-do-tempo/nova">+ novo evento</Link>
+              <Link className="ico" href="/admin/cronicas/nova">+ nova crônica</Link>
             </div>
           </div>
-          <h1 data-txt="LINHA DO TEMPO">LINHA DO TEMPO</h1>
+          <h1 data-txt="CRÔNICAS">CRÔNICAS</h1>
           <p className="sub">&gt; a ordem aqui é a ordem que aparece no site — use ↑/↓ pra ajustar <span className="cur" /></p>
         </header>
 
@@ -86,9 +86,9 @@ export default function PainelLinhaDoTempo() {
         {aviso && <p className={'stat ' + (ruim ? 'bad' : 'ok')} style={{ textAlign: 'left', margin: '0 0 20px' }}>{aviso}</p>}
 
         {loading ? (
-          <div className="load"><span /><span /><span /><p>lendo a linha do tempo...</p></div>
+          <div className="load"><span /><span /><span /><p>lendo as crônicas...</p></div>
         ) : lista.length === 0 ? (
-          <p className="vazio">nenhum evento cadastrado ainda</p>
+          <p className="vazio">nenhuma crônica cadastrada ainda</p>
         ) : (
           <div className="lista">
             {lista.map((ev, i) => {
@@ -113,7 +113,7 @@ export default function PainelLinhaDoTempo() {
                     </div>
                   ) : (
                     <div className="acoes">
-                      <Link className="mini-btn" href={`/admin/linha-do-tempo/editar/${ev.id}`}>editar</Link>
+                      <Link className="mini-btn" href={`/admin/cronicas/editar/${ev.id}`}>editar</Link>
                       <button className="mini-btn dim" onClick={() => { setConfirmar(ev.id); setAviso(''); }}>excluir</button>
                     </div>
                   )}

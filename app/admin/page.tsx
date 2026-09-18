@@ -190,7 +190,7 @@ export default function Painel() {
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/admin/novo">+ novo registro</Link>
               <Link className="ico" href="/admin/faccoes">facções</Link>
-              <Link className="ico" href="/admin/linha-do-tempo">linha do tempo</Link>
+              <Link className="ico" href="/admin/cronicas">crônicas</Link>
               <Link className="ico" href="/admin/glossario">glossário</Link>
               <Link className="ico" href="/admin/comunidade">comunidade</Link>
               <button
@@ -281,12 +281,12 @@ export default function Painel() {
 
         {eventosPendentes.length > 0 && (
           <section style={{ marginBottom: 34 }}>
-            <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>eventos da linha do tempo aguardando aprovação ({eventosPendentes.length})</h2>
+            <h2 style={{ margin: '0 0 14px', fontSize: 16 }}>crônicas aguardando aprovação ({eventosPendentes.length})</h2>
             {eventosPendentes.map((ev) => (
               <div key={ev.id} className="linha" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '12px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
                   <strong>{ev.titulo}</strong>
-                  <Link href="/linha-do-tempo" style={{ fontSize: 12 }}>ver</Link>
+                  <Link href="/cronicas" style={{ fontSize: 12 }}>ver</Link>
                   <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                     <button type="button" className="mini-btn" disabled={avaliando === ev.id} onClick={() => aprovarEvento(ev.id)}>✓ aprovar</button>
                     <button type="button" className="mini-btn dim" disabled={avaliando === ev.id} onClick={() => setMostrarMotivoPara(mostrarMotivoPara === ev.id ? null : ev.id)}>✕ reprovar</button>

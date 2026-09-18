@@ -4,9 +4,9 @@ import Link from 'next/link';
 import '../../matrix.css';
 import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
-import EventoForm from '../../components/EventoForm';
+import FaccaoForm from '../../components/FaccaoForm';
 
-export default function NovoEventoPublico() {
+export default function NovaFaccaoPublica() {
   return (
     <div className="term">
       <MatrixRain />
@@ -16,17 +16,17 @@ export default function NovoEventoPublico() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/linha-do-tempo/nova</span>
+            <span className="hd-path">drukale://arquivo/faccoes/nova</span>
             <div className="hd-act">
-              <Link className="ico" href="/linha-do-tempo">← linha do tempo</Link>
+              <Link className="ico" href="/faccoes">← facções</Link>
               <Link className="ico" href="/perfil">meus envios</Link>
             </div>
           </div>
-          <h1 data-txt="ENVIAR EVENTO">ENVIAR EVENTO</h1>
-          <p className="sub">&gt; o evento entra em análise antes de aparecer aprovado <span className="cur" /></p>
+          <h1 data-txt="PROPOR FACÇÃO">PROPOR FACÇÃO</h1>
+          <p className="sub">&gt; a facção entra em análise antes de aparecer aprovada <span className="cur" /></p>
         </header>
 
-        <EventoForm />
+        <FaccaoForm />
 
         <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>

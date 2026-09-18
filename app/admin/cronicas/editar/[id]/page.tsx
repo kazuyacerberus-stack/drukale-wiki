@@ -10,7 +10,7 @@ import EventoForm from '../../../../components/EventoForm';
 import { supabase } from '../../../../lib/db';
 import { type Evento } from '../../../../lib/eventos';
 
-export default function EditarEvento() {
+export default function EditarCronica() {
   const params = useParams<{ id: string }>();
   const id = decodeURIComponent(String(params?.id ?? ''));
 
@@ -36,12 +36,12 @@ export default function EditarEvento() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/linha-do-tempo/editar</span>
+            <span className="hd-path">drukale://admin/cronicas/editar</span>
             <div className="hd-act">
-              <Link className="ico" href="/admin/linha-do-tempo">← linha do tempo</Link>
+              <Link className="ico" href="/admin/cronicas">← crônicas</Link>
             </div>
           </div>
-          <h1 data-txt="EDITAR EVENTO">EDITAR EVENTO</h1>
+          <h1 data-txt="EDITAR CRÔNICA">EDITAR CRÔNICA</h1>
           <p className="sub">&gt; {loading ? 'carregando...' : alvo?.titulo ?? 'não encontrado'} <span className="cur" /></p>
         </header>
 
@@ -49,8 +49,8 @@ export default function EditarEvento() {
           <div className="load"><span /><span /><span /><p>acessando registro...</p></div>
         ) : !alvo ? (
           <p className="vazio">
-            nenhum evento encontrado —{' '}
-            <Link href="/admin/linha-do-tempo" style={{ color: 'var(--g)' }}>voltar à lista</Link>
+            nenhuma crônica encontrada —{' '}
+            <Link href="/admin/cronicas" style={{ color: 'var(--g)' }}>voltar à lista</Link>
           </p>
         ) : (
           <EventoForm inicial={alvo} />

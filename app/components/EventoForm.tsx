@@ -101,7 +101,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         const ordem = proximaOrdem((todos ?? []) as { ordem: number }[]);
         const { error } = await supabase.from('eventos').insert([{ ...linha, ordem }]);
         if (error) throw error;
-        setStatus(pendente ? 'EVENTO ENVIADO PARA ANÁLISE DO ADMINISTRADOR' : 'EVENTO GRAVADO NO FIM DA LINHA DO TEMPO');
+        setStatus(pendente ? 'CRÔNICA ENVIADA PARA ANÁLISE DO ADMINISTRADOR' : 'CRÔNICA GRAVADA NO FIM DA LISTA');
         setF(VAZIO);
         setAnexo(null);
         setPreview('');
@@ -130,7 +130,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         <div className="field">
           <label>data ou período</label>
           <input value={f.data} onChange={set('data')} placeholder="Ano 12 depois da Queda" />
-          <p className="dica">texto livre — só o que aparece escrito na linha do tempo. A posição dela é ajustada depois, na lista, com os botões de subir/descer.</p>
+          <p className="dica">texto livre — só o que aparece escrito nas crônicas. A posição dela é ajustada depois, na lista, com os botões de subir/descer.</p>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         <div className="field">
           <label>resumo</label>
           <textarea value={f.resumo} onChange={set('resumo')} rows={3} maxLength={LIMITES_EVENTO.resumo}
-            placeholder="Uma ou duas frases — é o que aparece direto na linha do tempo." />
+            placeholder="Uma ou duas frases — é o que aparece direto nas crônicas." />
         </div>
         <div className="field">
           <label>descrição completa</label>
@@ -202,7 +202,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
       </div>
 
       <button className="go" disabled={loading}>
-        {loading ? '// salvando...' : editando ? 'SALVAR ALTERAÇÕES' : 'GRAVAR EVENTO'}
+        {loading ? '// salvando...' : editando ? 'SALVAR ALTERAÇÕES' : 'GRAVAR CRÔNICA'}
       </button>
 
       {status && (
@@ -211,11 +211,11 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
           {salvo && (
             <>
               {' — '}
-              <Link href="/linha-do-tempo">ver a linha do tempo</Link>
+              <Link href="/cronicas">ver as crônicas</Link>
               {' · '}
               {enviouPendente
                 ? <Link href="/perfil">ver meus envios</Link>
-                : <Link href="/admin/linha-do-tempo">voltar à lista</Link>}
+                : <Link href="/admin/cronicas">voltar à lista</Link>}
             </>
           )}
         </p>

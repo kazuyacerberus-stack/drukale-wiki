@@ -6,34 +6,34 @@ import { useParams } from 'next/navigation';
 import '../../../matrix.css';
 import MatrixRain from '../../../components/MatrixRain';
 import PrecisaAprovacao from '../../../components/PrecisaAprovacao';
-import EventoForm from '../../../components/EventoForm';
+import FaccaoForm from '../../../components/FaccaoForm';
 import { supabase } from '../../../lib/db';
-import { type Evento } from '../../../lib/eventos';
+import { type Faccao } from '../../../lib/faccoes';
 
-/** Edição pública: só o dono do envio (ou o admin) consegue mexer nele. */
-export default function EditarEventoPublico() {
-  const params = useParams<{ id: string }>();
-  const id = decodeURIComponent(String(params?.id ?? ''));
+/** Edição pública: só o dono do envio (ou o admin) consegue mexer nela. */
+export default function EditarFaccaoPublica() {
+  const params = useParams<{ slug: string }>();
+  const slug = decodeURIComponent(String(params?.slug ?? ''));
 
-  const [alvo, setAlvo] = useState<Evento | null>(null);
+  const [alvo, setAlvo] = useState<Faccao | null>(null);
   const [podeEditar, setPodeEditar] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
+    if (!slug) return;
     (async () => {
       setLoading(true);
-      const [{ data: auth }, { data: admin }, { data: evento }] = await Promise.all([
+      const [{ data: auth }, { data: admin }, { data: faccao }] = await Promise.all([
         supabase.auth.getUser(),
         supabase.rpc('drk_e_admin'),
-        supabase.from('eventos').select('*').eq('id', id).maybeSingle(),
+        supabase.from('faccoes').select('*').eq('slug', slug).maybeSingle(),
       ]);
-      const e = evento as Evento | null;
-      setAlvo(e);
-      setPodeEditar(Boolean(e) && (admin === true || e?.user_id === auth.user?.id));
+      const f = faccao as Faccao | null;
+      setAlvo(f);
+      setPodeEditar(Boolean(f) && (admin === true || f?.user_id === auth.user?.id));
       setLoading(false);
     })();
-  }, [id]);
+  }, [slug]);
 
   return (
     <div className="term">
@@ -44,14 +44,14 @@ export default function EditarEventoPublico() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/linha-do-tempo/editar/{id}</span>
+            <span className="hd-path">drukale://arquivo/faccoes/editar/{slug}</span>
             <div className="hd-act">
               <Link className="ico" href="/perfil">← meus envios</Link>
             </div>
           </div>
           <h1 data-txt="EDITAR E REENVIAR">EDITAR E REENVIAR</h1>
           <p className="sub">
-            &gt; {loading ? 'carregando...' : alvo?.titulo ?? 'não encontrado'} <span className="cur" />
+            &gt; {loading ? 'carregando...' : alvo?.nome ?? 'não encontrada'} <span className="cur" />
           </p>
         </header>
 
@@ -59,7 +59,7 @@ export default function EditarEventoPublico() {
           <div className="load"><span /><span /><span /><p>acessando registro...</p></div>
         ) : !alvo || !podeEditar ? (
           <p className="vazio">
-            {alvo ? 'este evento não é seu para editar' : `nenhum evento responde por "${id}"`} —{' '}
+            {alvo ? 'esta facção não é sua para editar' : `nenhuma facção responde por "${slug}"`} —{' '}
             <Link href="/perfil" style={{ color: 'var(--g)' }}>voltar aos meus envios</Link>
           </p>
         ) : (
@@ -69,7 +69,7 @@ export default function EditarEventoPublico() {
                 Motivo da reprovação: {alvo.motivo_reprovacao}
               </p>
             )}
-            <EventoForm inicial={alvo} />
+            <FaccaoForm inicial={alvo} />
           </>
         )}
 

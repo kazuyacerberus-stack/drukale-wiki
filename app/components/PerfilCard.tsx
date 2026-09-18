@@ -1,10 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Avatar from './Avatar';
+import { supabase } from '../lib/db';
 import { salvarPerfil, validarAvatar, validarCapa, mensagemPerfil, LIMITE_BIO, type Perfil } from '../lib/perfil';
 import type { EstadoAmizade } from '../lib/amizades';
+import type { Faccao } from '../lib/faccoes';
 
 type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; banidos: number };
 
@@ -31,6 +33,21 @@ export default function PerfilCard({ perfil, ehProprioPerfil, ehAdmin, resumo, o
   const [erro, setErro] = useState('');
   const avatarRef = useRef<HTMLInputElement>(null);
   const capaRef = useRef<HTMLInputElement>(null);
+  const [faccao, setFaccao] = useState<Faccao | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: membro } = await supabase
+        .from('faccao_membros')
+        .select('faccao_id')
+        .eq('user_id', perfil.user_id)
+        .eq('status', 'aceito')
+        .maybeSingle();
+      if (!membro) { setFaccao(null); return; }
+      const { data: f } = await supabase.from('faccoes').select('*').eq('id', membro.faccao_id).maybeSingle();
+      setFaccao((f as Faccao) ?? null);
+    })();
+  }, [perfil.user_id]);
 
   const escolherAvatar = (file: File | null) => {
     setErro('');
@@ -76,6 +93,17 @@ export default function PerfilCard({ perfil, ehProprioPerfil, ehAdmin, resumo, o
       <div className="perfil-avatar-sobre">
         <Avatar url={previewAvatar || perfil.avatar_url} nome={perfil.apelido} tamanho={84} />
       </div>
+      {faccao && (
+        <Link href={`/faccoes/${faccao.slug}`} className="perfil-estandarte" style={{ borderColor: faccao.cor, color: faccao.cor }}>
+          {faccao.simbolo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={faccao.simbolo} alt="" />
+          ) : (
+            <span className="perfil-estandarte-ini" style={{ borderColor: faccao.cor }}>{(faccao.nome.trim()[0] ?? '?').toUpperCase()}</span>
+          )}
+          <span>{faccao.nome}</span>
+        </Link>
+      )}
       <div className="perfil-cartao-corpo">
         {editando ? (
           <form onSubmit={salvar}>

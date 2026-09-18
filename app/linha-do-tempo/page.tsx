@@ -1,71 +1,61 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import MatrixRain from '../components/MatrixRain';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
+import Avatar from '../components/Avatar';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
-import { mensagemEvento, urlAnexoEvento, type Evento } from '../lib/eventos';
+import { urlAnexoComentario, type AnexoComentario } from '../lib/comentarios';
+import { mensagemPerfilPost, type PerfilPost } from '../lib/perfilPosts';
 
-function Midia({ caminho, tipo, nome }: { caminho: string; tipo: string; nome: string }) {
+type PerfilLeve = { apelido: string; avatar_url: string | null };
+
+function Midia({ anexo }: { anexo: AnexoComentario }) {
   const [falhou, setFalhou] = useState(false);
-  const url = urlAnexoEvento(caminho);
-  if (falhou) return <p className="dica">Não foi possível exibir {nome}.</p>;
-  return tipo.startsWith('video/')
-    ? <video src={url} controls preload="metadata" playsInline aria-label={nome} onError={() => setFalhou(true)} />
-    : <img src={url} alt={nome} loading="lazy" onError={() => setFalhou(true)} />;
+  const url = urlAnexoComentario(anexo);
+  const video = anexo.tipo === 'video/mp4' || anexo.tipo === 'video/webm';
+  if (falhou) return <p className="dica">Não foi possível exibir {anexo.nome}.</p>;
+  return video
+    ? <video src={url} controls preload="metadata" playsInline aria-label={anexo.nome} onError={() => setFalhou(true)} />
+    : <img src={url} alt={anexo.nome} loading="lazy" onError={() => setFalhou(true)} />;
 }
 
+/**
+ * A "linha do tempo" agora é o mural público do império: todo post que
+ * alguém marcar como "qualquer jogador" no próprio perfil aparece aqui,
+ * de todo mundo, em ordem cronológica — sem precisar visitar perfil por
+ * perfil. A história antiga do império (curada pelo admin) mudou para
+ * /cronicas.
+ */
 export default function LinhaDoTempoPage() {
-  const [lista, setLista] = useState<Evento[]>([]);
+  const [posts, setPosts] = useState<PerfilPost[]>([]);
+  const [perfis, setPerfis] = useState<Map<string, PerfilLeve>>(new Map());
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
-  const [ehAdmin, setEhAdmin] = useState(false);
-  const [avaliando, setAvaliando] = useState<string | null>(null);
-  const [abrirMotivo, setAbrirMotivo] = useState<string | null>(null);
-  const [motivo, setMotivo] = useState('');
-  const [erroAvaliacao, setErroAvaliacao] = useState('');
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUserId(data.session?.user.id ?? null);
-      if (!data.session) { setEhAdmin(false); return; }
-      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
-    });
-  }, []);
-
-  useEffect(() => {
     (async () => {
-      // reprovado não aparece aqui — só para o autor (em /perfil) e o admin
-      const { data, error } = await supabase.from('eventos').select('*').neq('status_aprovacao', 'reprovado').order('ordem', { ascending: true });
-      if (error) setErro(mensagemEvento(error));
-      else setLista((data ?? []) as Evento[]);
+      const { data, error } = await supabase
+        .from('perfil_posts')
+        .select('*')
+        .eq('visibilidade', 'publico')
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) { setErro(mensagemPerfilPost(error)); setLoading(false); return; }
+      const lista = (data ?? []) as PerfilPost[];
+      setPosts(lista);
+      const ids = [...new Set(lista.map((p) => p.user_id))];
+      if (ids.length) {
+        const { data: perfisData } = await supabase.from('profiles').select('user_id,apelido,avatar_url').in('user_id', ids);
+        if (perfisData) setPerfis(new Map((perfisData as (PerfilLeve & { user_id: string })[]).map((p) => [p.user_id, p])));
+      }
       setLoading(false);
     })();
   }, []);
-
-  const aprovar = async (id: string) => {
-    setAvaliando(id); setErroAvaliacao('');
-    const { error } = await supabase.rpc('drk_aprovar_evento', { alvo_id: id });
-    setAvaliando(null);
-    if (error) { setErroAvaliacao(error.message); return; }
-    setLista((prev) => prev.map((e) => (e.id === id ? { ...e, status_aprovacao: 'aprovado', motivo_reprovacao: null } : e)));
-  };
-
-  const reprovar = async (id: string) => {
-    if (!motivo.trim()) { setErroAvaliacao('Escreva o motivo da reprovação.'); return; }
-    setAvaliando(id); setErroAvaliacao('');
-    const { error } = await supabase.rpc('drk_reprovar_evento', { alvo_id: id, motivo: motivo.trim() });
-    setAvaliando(null);
-    if (error) { setErroAvaliacao(error.message); return; }
-    setLista((prev) => prev.filter((e) => e.id !== id));
-    setAbrirMotivo(null);
-    setMotivo('');
-  };
 
   return (
     <div className="term">
@@ -82,62 +72,38 @@ export default function LinhaDoTempoPage() {
                 {muted ? '♪ off' : '♪ on'}
               </button>
               <Link className="ico" href="/">← arquivo</Link>
-              <Link className="ico" href="/personagens">personagens</Link>
-              <Link className="ico" href="/faccoes">facções</Link>
+              <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/eventos">✦ eventos</Link>
-              <Link className="ico" href="/glossario">glossário</Link>
-              {userId && <Link className="ico" href="/linha-do-tempo/nova">+ enviar evento</Link>}
-              <Link className="ico" href="/admin/linha-do-tempo">+ novo</Link>
+              <Link className="ico" href="/perfil">meu perfil</Link>
             </div>
           </div>
 
           <h1 data-txt="LINHA DO TEMPO">LINHA DO TEMPO</h1>
-          <p className="sub">&gt; os grandes marcos do império, em ordem <span className="cur" /></p>
+          <p className="sub">&gt; o que todo mundo está compartilhando publicamente <span className="cur" /></p>
         </header>
 
         {erro && <p className="erro">FALHA :: {erro}</p>}
 
         {loading ? (
           <div className="load"><span /><span /><span /><p>decodificando arquivo...</p></div>
-        ) : lista.length === 0 ? (
-          <p className="vazio">nenhum evento cadastrado ainda</p>
+        ) : posts.length === 0 ? (
+          <p className="vazio">ninguém postou nada público ainda — seja o primeiro em /perfil</p>
         ) : (
-          <div className="linha-tempo">
-            {lista.map((ev, i) => (
-              <article className="evento-tempo" key={ev.id} style={{ animationDelay: `${Math.min(i * 70, 700)}ms` }}>
-                <span className="evento-marca" />
-                {ev.data && <span className="evento-data">{ev.data}</span>}
-                <h2>{ev.titulo}</h2>
-                {ev.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
-                {ehAdmin && ev.status_aprovacao === 'pendente' && (
-                  <div className="acoes-aprovacao">
-                    <button type="button" className="mini-btn" disabled={avaliando === ev.id} onClick={() => aprovar(ev.id)}>✓ aprovar</button>
-                    <button type="button" className="mini-btn dim" disabled={avaliando === ev.id} onClick={() => setAbrirMotivo(abrirMotivo === ev.id ? null : ev.id)}>
-                      ✕ reprovar
-                    </button>
-                    {abrirMotivo === ev.id && (
-                      <div style={{ width: '100%' }}>
-                        <textarea
-                          rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)}
-                          placeholder="explique o motivo — o autor vai ver isto para corrigir e reenviar"
-                        />
-                        <button type="button" className="mini-btn dim" disabled={avaliando === ev.id} onClick={() => reprovar(ev.id)} style={{ marginTop: 8 }}>
-                          confirmar reprovação
-                        </button>
-                      </div>
-                    )}
-                    {erroAvaliacao && <p className="erro">{erroAvaliacao}</p>}
+          <div className="novidades-lista">
+            {posts.map((post) => {
+              const perfil = perfis.get(post.user_id);
+              return (
+                <article className="novidade" key={post.id}>
+                  <div className="novidade-topo">
+                    <Avatar url={perfil?.avatar_url} nome={perfil?.apelido} tamanho={22} />
+                    <Link href={`/jogador/${post.user_id}`}><strong>{perfil?.apelido ?? 'membro'}</strong></Link>
+                    <time dateTime={post.created_at}>{new Date(post.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
                   </div>
-                )}
-                {ev.anexo && (
-                  <figure className="evento-midia">
-                    <Midia caminho={ev.anexo.caminho} tipo={ev.anexo.tipo} nome={ev.anexo.nome} />
-                  </figure>
-                )}
-                {ev.resumo && <p className="evento-resumo">{ev.resumo}</p>}
-                {ev.descricao && <p className="evento-desc">{ev.descricao}</p>}
-              </article>
-            ))}
+                  {post.texto && <p className="novidade-texto">{post.texto}</p>}
+                  {post.anexo && <figure className="novidade-midia"><Midia anexo={post.anexo} /></figure>}
+                </article>
+              );
+            })}
           </div>
         )}
 

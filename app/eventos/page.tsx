@@ -34,6 +34,7 @@ export default function EventosPage() {
   const { beep, muted, setMuted } = useBeep();
 
   const [titulo, setTitulo] = useState('');
+  const [quando, setQuando] = useState('');
   const [texto, setTexto] = useState('');
   const [anexo, setAnexo] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
@@ -106,6 +107,7 @@ export default function EventosPage() {
         .insert({
           user_id: auth.user.id,
           titulo: titulo.trim().slice(0, LIMITES_NOVIDADE.titulo),
+          quando: quando.trim() || null,
           texto: texto.trim().slice(0, LIMITES_NOVIDADE.texto),
           anexo: anexoLinha,
         })
@@ -118,7 +120,7 @@ export default function EventosPage() {
         const { data: proprio } = await supabase.from('profiles').select('user_id,apelido,avatar_url').eq('user_id', auth.user.id).maybeSingle();
         if (proprio) setPerfis((prev) => new Map(prev).set(auth.user!.id, proprio as PerfilLeve));
       }
-      setTitulo(''); setTexto(''); descartarAnexo();
+      setTitulo(''); setQuando(''); setTexto(''); descartarAnexo();
     } catch (e) {
       if (subiuAgora) await apagarAnexoNovidade(subiuAgora);
       setErroForm(mensagemNovidade(e));
@@ -153,6 +155,7 @@ export default function EventosPage() {
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
+              <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/cenas">cenas</Link>
               <Link className="ico" href="/chat">chat</Link>
             </div>
@@ -169,6 +172,11 @@ export default function EventosPage() {
               <div className="field">
                 <label>título *</label>
                 <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="O que rolou de novo?" maxLength={LIMITES_NOVIDADE.titulo} required />
+              </div>
+              <div className="field">
+                <label>quando (opcional)</label>
+                <input value={quando} onChange={(e) => setQuando(e.target.value)} placeholder="ex.: sábado às 20h, próxima sessão..." maxLength={120} />
+                <p className="dica">preencha se este post é um chamado — data/horário aparecem em destaque no card</p>
               </div>
               <div className="field">
                 <label>texto *</label>
@@ -229,6 +237,7 @@ export default function EventosPage() {
                     <strong>{perfil?.apelido ?? 'membro'}</strong>
                     <time dateTime={n.created_at}>{new Date(n.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
                   </div>
+                  {n.quando && <p className="novidade-chamado">📢 {n.quando}</p>}
                   <h2>{n.titulo}</h2>
                   <p className="novidade-texto">{n.texto}</p>
                   {n.anexo && (

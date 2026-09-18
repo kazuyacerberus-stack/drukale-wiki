@@ -15,11 +15,17 @@ export default function FaccoesPage() {
   const [erro, setErro] = useState('');
   const [query, setQuery] = useState('');
   const [broken, setBroken] = useState<Record<string, boolean>>({});
+  const [userId, setUserId] = useState<string | null>(null);
   const { beep, muted, setMuted } = useBeep();
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+  }, []);
+
+  useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.from('faccoes').select('*').order('nome', { ascending: true });
+      // reprovada não aparece aqui — só para quem propôs (em /perfil) e o admin
+      const { data, error } = await supabase.from('faccoes').select('*').neq('status_aprovacao', 'reprovado').order('nome', { ascending: true });
       if (error) setErro(mensagemFaccao(error));
       else setLista((data ?? []) as Faccao[]);
       setLoading(false);
@@ -47,8 +53,10 @@ export default function FaccoesPage() {
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
+              <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/eventos">eventos</Link>
               <Link className="ico" href="/glossario">glossário</Link>
+              {userId && <Link className="ico" href="/faccoes/nova">+ propor facção</Link>}
               <Link className="ico" href="/admin/faccoes">+ nova</Link>
             </div>
           </div>
@@ -96,6 +104,7 @@ export default function FaccoesPage() {
                   </div>
                   <h3>{f.nome}</h3>
                   <p className="desc">{f.resumo || ''}</p>
+                  {f.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
                 </Link>
               );
             })}

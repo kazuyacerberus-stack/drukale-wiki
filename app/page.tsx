@@ -24,7 +24,8 @@ const FORCAS_CORRUPTORAS = [
 
 const GUIAS = [
   { href: '/faccoes', icone: '⌂', titulo: 'Facções', desc: 'as casas e cultos que disputam o poder' },
-  { href: '/linha-do-tempo', icone: '⏱', titulo: 'Linha do tempo', desc: 'os marcos que forjaram o império' },
+  { href: '/linha-do-tempo', icone: '⏱', titulo: 'Linha do tempo', desc: 'o que todo mundo está compartilhando' },
+  { href: '/cronicas', icone: '📜', titulo: 'Crônicas', desc: 'os marcos que forjaram o império' },
   { href: '/glossario', icone: '◈', titulo: 'Glossário', desc: 'raças, magia, tecnologia e mais' },
   { href: '/personagens', icone: '◉', titulo: 'Personagens', desc: 'o arquivo de quem habita Drukale' },
   { href: '/eventos', icone: '✦', titulo: 'Eventos', desc: 'as novidades do grupo, em tempo real' },
@@ -267,7 +268,7 @@ export default function Home() {
           <div className="imp-numeros">
             <div className="imp-numero"><strong>{numeros.personagens}</strong><span>personagens</span></div>
             <div className="imp-numero"><strong>{numeros.faccoes}</strong><span>facções</span></div>
-            <div className="imp-numero"><strong>{numeros.linhaDoTempo}</strong><span>linha do tempo</span></div>
+            <div className="imp-numero"><strong>{numeros.linhaDoTempo}</strong><span>crônicas</span></div>
             <div className="imp-numero"><strong>{numeros.novidades}</strong><span>eventos</span></div>
             <div className="imp-numero"><strong>{numeros.termos}</strong><span>termos</span></div>
             <div className="imp-numero"><strong>{numeros.locais}</strong><span>locais</span></div>

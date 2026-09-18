@@ -7,6 +7,7 @@ export type Novidade = {
   user_id: string;
   titulo: string;
   texto: string;
+  quando: string | null;
   anexo: AnexoNovidade | null;
   created_at: string;
 };

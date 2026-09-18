@@ -6,7 +6,7 @@ import MatrixRain from '../../../components/MatrixRain';
 import Protegido from '../../../components/Protegido';
 import EventoForm from '../../../components/EventoForm';
 
-export default function NovoEvento() {
+export default function NovaCronica() {
   return (
     <div className="term">
       <MatrixRain />
@@ -16,12 +16,12 @@ export default function NovoEvento() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/linha-do-tempo/novo</span>
+            <span className="hd-path">drukale://admin/cronicas/nova</span>
             <div className="hd-act">
-              <Link className="ico" href="/admin/linha-do-tempo">← linha do tempo</Link>
+              <Link className="ico" href="/admin/cronicas">← crônicas</Link>
             </div>
           </div>
-          <h1 data-txt="NOVO EVENTO">NOVO EVENTO</h1>
+          <h1 data-txt="NOVA CRÔNICA">NOVA CRÔNICA</h1>
           <p className="sub">&gt; mais um marco na história do império <span className="cur" /></p>
         </header>
 

@@ -11,6 +11,7 @@ import { supabase, type Character } from '../lib/db';
 import { sair } from '../lib/auth';
 import { garantirPerfil, estaMudo, type Perfil } from '../lib/perfil';
 import { type Evento } from '../lib/eventos';
+import { type Faccao } from '../lib/faccoes';
 import { buscarMinhasAmizades, pedirAmizade, aceitarAmizade, recusarAmizade, desfazerAmizade, mensagemAmizade, type Amizade } from '../lib/amizades';
 
 const ROTULO_STATUS: Record<string, string> = { pendente: 'em análise', aprovado: 'aprovado', reprovado: 'reprovado' };
@@ -28,6 +29,7 @@ export default function PerfilPage() {
 
   const [meusPersonagens, setMeusPersonagens] = useState<Character[]>([]);
   const [meusEventos, setMeusEventos] = useState<Evento[]>([]);
+  const [minhasFaccoes, setMinhasFaccoes] = useState<Faccao[]>([]);
   const [carregandoEnvios, setCarregandoEnvios] = useState(true);
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -54,16 +56,18 @@ export default function PerfilPage() {
       if (!data.session) { router.replace('/admin/login'); return; }
       const uid = data.session.user.id;
       setUserId(uid);
-      const [p, personagens, eventos, admin] = await Promise.all([
+      const [p, personagens, eventos, faccoes, admin] = await Promise.all([
         garantirPerfil(),
         supabase.from('characters').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
         supabase.from('eventos').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
+        supabase.from('faccoes').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
         supabase.rpc('drk_e_admin'),
       ]);
       if (!vivo) return;
       setPerfil(p);
       setMeusPersonagens((personagens.data ?? []) as Character[]);
       setMeusEventos((eventos.data ?? []) as Evento[]);
+      setMinhasFaccoes((faccoes.data ?? []) as Faccao[]);
       setCarregandoPerfil(false);
       setCarregandoEnvios(false);
       setEhAdmin(admin.data === true);
@@ -299,16 +303,18 @@ export default function PerfilPage() {
 
               <section className="panel login" style={{ marginTop: 24 }}>
                 <h2 className="login-t" style={{ fontSize: 18 }}>MEUS ENVIOS</h2>
-                <p className="login-s">&gt; fichas e eventos que você enviou para análise</p>
+                <p className="login-s">&gt; fichas e crônicas que você enviou para análise</p>
 
                 {carregandoEnvios ? (
                   <div className="load"><span /><span /><span /></div>
-                ) : meusPersonagens.length === 0 && meusEventos.length === 0 ? (
+                ) : meusPersonagens.length === 0 && meusEventos.length === 0 && minhasFaccoes.length === 0 ? (
                   <p className="vazio">
                     nenhum envio ainda —{' '}
                     <Link href="/personagens/nova" style={{ color: 'var(--d-osso)' }}>enviar personagem</Link>
-                    {' '}ou{' '}
-                    <Link href="/linha-do-tempo/nova" style={{ color: 'var(--d-osso)' }}>enviar evento</Link>
+                    {', '}
+                    <Link href="/cronicas/nova" style={{ color: 'var(--d-osso)' }}>enviar crônica</Link>
+                    {' ou '}
+                    <Link href="/faccoes/nova" style={{ color: 'var(--d-osso)' }}>propor facção</Link>
                   </p>
                 ) : (
                   <>
@@ -333,8 +339,21 @@ export default function PerfilPage() {
                           <p className="dica" style={{ margin: '6px 0' }}>motivo: {ev.motivo_reprovacao}</p>
                         )}
                         <div style={{ marginTop: 6 }}>
-                          {ev.status_aprovacao === 'aprovado' && <Link href="/linha-do-tempo">ver a linha do tempo</Link>}
-                          {ev.status_aprovacao !== 'aprovado' && <Link href={`/linha-do-tempo/editar/${ev.id}`}>editar e reenviar</Link>}
+                          {ev.status_aprovacao === 'aprovado' && <Link href="/cronicas">ver a crônica</Link>}
+                          {ev.status_aprovacao !== 'aprovado' && <Link href={`/cronicas/editar/${ev.id}`}>editar e reenviar</Link>}
+                        </div>
+                      </div>
+                    ))}
+                    {minhasFaccoes.map((fa) => (
+                      <div className="linha" key={fa.id} style={{ padding: '10px 0', borderBottom: '1px solid rgba(233,228,218,.12)' }}>
+                        <strong>{fa.nome}</strong>
+                        <span className={`selo-${fa.status_aprovacao}`} style={{ marginLeft: 10 }}>{ROTULO_STATUS[fa.status_aprovacao]}</span>
+                        {fa.status_aprovacao === 'reprovado' && fa.motivo_reprovacao && (
+                          <p className="dica" style={{ margin: '6px 0' }}>motivo: {fa.motivo_reprovacao}</p>
+                        )}
+                        <div style={{ marginTop: 6 }}>
+                          {fa.status_aprovacao === 'aprovado' && <Link href={`/faccoes/${fa.slug}`}>ver a página</Link>}
+                          {fa.status_aprovacao !== 'aprovado' && <Link href={`/faccoes/editar/${fa.slug}`}>editar e reenviar</Link>}
                         </div>
                       </div>
                     ))}

@@ -51,6 +51,7 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [destino, setDestino] = useState<string | null>(null);
+  const [enviouPendente, setEnviouPendente] = useState(false);
 
   const escolherSimbolo = (file: File | null) => {
     setErroSimbolo('');
@@ -81,7 +82,7 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
         setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
       }
 
-      const linha = {
+      const linha: Record<string, unknown> = {
         nome: f.nome.trim().slice(0, LIMITES_FACCAO.nome),
         cor: f.cor || '#8affc0',
         resumo: f.resumo.trim().slice(0, LIMITES_FACCAO.resumo) || null,
@@ -90,12 +91,24 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
         simbolo: imagem,
       };
 
+      // quem não é admin só grava como pendente e em nome de si mesmo —
+      // a política do banco garante isso de qualquer jeito, mas decidir
+      // aqui também evita uma ida a mais só para descobrir que foi recusado
+      const { data: auth } = await supabase.auth.getUser();
+      const { data: admin } = await supabase.rpc('drk_e_admin');
+      const pendente = admin !== true;
+      if (pendente) {
+        linha.user_id = auth.user?.id ?? null;
+        linha.status_aprovacao = 'pendente';
+        linha.motivo_reprovacao = null;
+      }
+
       if (editando && inicial) {
         const slug = trocarSlug ? await slugLivre(slugify(f.nome), inicial.slug) : inicial.slug;
         const { error } = await supabase.from('faccoes').update({ ...linha, slug }).eq('id', inicial.id);
         if (error) throw error;
         if (simbolo || removerSimbolo) await apagarSimbolo(inicial.simbolo);
-        setStatus('FACÇÃO ATUALIZADA');
+        setStatus(pendente ? 'FACÇÃO REENVIADA PARA ANÁLISE' : 'FACÇÃO ATUALIZADA');
         setDestino(slug);
         setSimboloAtual(imagem);
         setSimbolo(null);
@@ -106,13 +119,14 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
         const slug = await slugLivre(novoSlug);
         const { error } = await supabase.from('faccoes').insert([{ ...linha, slug }]);
         if (error) throw error;
-        setStatus('FACÇÃO GRAVADA');
+        setStatus(pendente ? 'FACÇÃO ENVIADA PARA ANÁLISE DO ADMINISTRADOR' : 'FACÇÃO GRAVADA');
         setDestino(slug);
         setF(VAZIO);
         setSimbolo(null);
         setPreview('');
         setSimboloAtual(null);
       }
+      setEnviouPendente(pendente);
     } catch (err) {
       if (subiuAgora) await apagarSimbolo(subiuAgora);
       setStatus('FALHA :: ' + mensagemFaccao(err));
@@ -235,7 +249,9 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
               {' — '}
               <Link href={`/faccoes/${destino}`}>ver a página</Link>
               {' · '}
-              <Link href="/admin/faccoes">voltar à lista</Link>
+              {enviouPendente
+                ? <Link href="/perfil">ver meus envios</Link>
+                : <Link href="/admin/faccoes">voltar à lista</Link>}
             </>
           )}
         </p>
