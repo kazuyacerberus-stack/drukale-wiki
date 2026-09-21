@@ -19,10 +19,23 @@ export type ComentarioRegra = {
   created_at: string;
 };
 
+export type PerguntaRegra = {
+  id: string;
+  regra_id: string;
+  user_id: string;
+  pergunta: string;
+  resposta: string | null;
+  respondida_por: string | null;
+  respondida_em: string | null;
+  created_at: string;
+};
+
 export const BUCKET_REGRAS = 'regras';
 export const MAX_BYTES_MIDIA_REGRA = 40 * 1024 * 1024;
 export const MIMES_MIDIA_REGRA = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
 export const LIMITE_COMENTARIO_REGRA = 2000;
+export const LIMITE_PERGUNTA_REGRA = 1000;
+export const LIMITE_RESPOSTA_REGRA = 4000;
 
 export function validarMidiaRegra(f: Pick<File, 'size' | 'type'>): string | null {
   if (!MIMES_MIDIA_REGRA.includes(f.type)) return 'Use JPG, PNG, WebP, GIF, MP4 ou WebM.';
@@ -179,5 +192,5 @@ export function grifar(texto: string, agulhas: string[]): { t: string; marca: bo
 }
 
 export function mensagemRegra(erro: unknown): string {
-  return traduzErroSupabase(erro, () => null, 'sql/33-regras.sql');
+  return traduzErroSupabase(erro, () => null, 'sql/33-regras.sql e sql/34-regra-perguntas.sql');
 }

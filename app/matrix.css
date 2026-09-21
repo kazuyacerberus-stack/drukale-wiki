@@ -1719,9 +1719,6 @@ html, body { margin: 0; padding: 0; background: #000; }
 .regra-barra { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .regra-previa { padding: 16px 18px; border: 1px dashed rgba(var(--g-rgb), .3); border-radius: 3px; min-height: 200px; }
 
-.regra-comentarios { margin-top: 40px; padding-top: 22px; border-top: 1px dashed rgba(var(--g-rgb), .25); display: flex; flex-direction: column; gap: 14px; }
-.regra-comentarios h3 { margin: 0; font-size: 13px; font-weight: normal; letter-spacing: 2.5px; text-transform: uppercase; color: var(--g); }
-.regra-comentarios .dica { margin: 0; font-size: 12.5px; color: rgba(var(--g2-rgb), .45); }
 .regra-comentario-form { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .regra-comentario-form textarea {
   width: 100%; resize: vertical; min-height: 70px; padding: 10px 12px; font-family: inherit; font-size: 14px;
@@ -1771,42 +1768,8 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 .regra-painel.fonte-0 .regra-texto { font-size: 17px; }
 .regra-painel.fonte-2 .regra-texto { font-size: 23px; }
 
-.regra-indice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 22px; padding: 12px 14px; border: 1px solid rgba(var(--g-rgb), .2); border-radius: 3px; background: rgba(0,0,0,.25); }
-.regra-indice span { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(var(--g2-rgb), .5); margin-right: 4px; }
-.regra-indice button {
-  padding: 5px 12px; font-family: inherit; font-size: 15px; color: var(--g2); cursor: pointer;
-  background: rgba(var(--g-rgb), .08); border: 1px solid rgba(var(--g-rgb), .25); border-radius: 20px;
-  transition: background .15s, transform .12s ease-out;
-}
-.regra-indice button:hover { background: rgba(var(--g-rgb), .2); color: #fff; }
-.regra-indice button:active { transform: scale(.95); }
-.regra-indice .regra-indice-tudo { margin-left: auto; border-style: dashed; background: none; color: rgba(var(--g2-rgb), .7); }
 
-.regra-secao { margin: 0 0 12px; border: 1px solid rgba(var(--g-rgb), .16); border-radius: 3px; background: rgba(0,0,0,.18); scroll-margin-top: 12px; }
-.regra-secao-titulo { margin: 0; }
-.regra-secao-titulo button {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; text-align: left; cursor: pointer;
-  font-family: 'Cinzel', Georgia, serif; font-size: 15.5px; font-weight: 500; letter-spacing: 1.6px; text-transform: uppercase;
-  color: var(--g); background: none; border: none; transition: background .15s;
-}
-.regra-secao-titulo button:hover { background: rgba(var(--g-rgb), .08); }
-.regra-secao-titulo button span { flex: none; width: 14px; font-size: 13px; color: var(--g2); }
-.regra-secao-corpo { padding: 4px 18px 8px; border-top: 1px dashed rgba(var(--g-rgb), .16); }
-.regra-secao-corpo[hidden] { display: none; }
 
-.regra-cartao {
-  display: flex; gap: 14px; margin: 0 0 12px; padding: 13px 16px; border: 1px solid rgba(var(--g-rgb), .16); border-left: 3px solid var(--g);
-  border-radius: 3px; background: rgba(var(--g-rgb), .05); transition: background .2s, border-color .2s;
-}
-.regra-cartao:hover { background: rgba(var(--g-rgb), .1); }
-.regra-cartao-num {
-  flex: none; align-self: flex-start; min-width: 44px; padding: 3px 8px; text-align: center; font-family: 'Share Tech Mono', monospace;
-  font-size: 14px; letter-spacing: 1px; color: #16110a; background: var(--g); border-radius: 3px;
-}
-.regra-cartao > div { min-width: 0; }
-.regra-cartao-titulo { display: block; margin-bottom: 3px; font-size: 1.05em; color: #fff; }
-.regra-cartao p { margin: 0 0 6px; }
-.regra-cartao p:last-child { margin-bottom: 0; }
 
 .regras-vaivem { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 30px 0 0; }
 .regras-vaivem button {
@@ -1824,5 +1787,70 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
   .regras-topo { flex-direction: column; }
   .regras-ferramentas { justify-content: flex-start; }
   .regras-vaivem { grid-template-columns: 1fr; }
-  .regra-cartao { flex-direction: column; gap: 8px; }
+}
+
+/* ---------- Regras: cada regra inteira num único bloco ---------- */
+.regra-bloco {
+  padding: 24px 28px 20px; border: 1px solid rgba(var(--g-rgb), .25); border-radius: 4px;
+  background: linear-gradient(170deg, rgba(0,0,0,.42), rgba(0,0,0,.28));
+  box-shadow: 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(var(--g-rgb), .08);
+}
+.regra-bloco .regras-topo { margin-bottom: 20px; }
+/* o número que abre um item ("3.1 Tentativa de acordo") ganha cor, sem virar caixinha */
+.regra-texto p > span:first-child > strong:first-child { color: var(--g); }
+.regra-texto.so-trechos .regra-trecho { margin-bottom: 4px; padding-bottom: 6px; border-bottom: 1px dashed rgba(var(--g-rgb), .16); }
+.regra-texto.so-trechos .regra-trecho:last-child { border-bottom: none; }
+.regra-texto.so-trechos h3 { margin-top: 10px; font-size: 13px; color: rgba(var(--g2-rgb), .6); }
+
+/* comentários recolhidos atrás de um botão */
+.regra-comentarios { margin-top: 26px; padding-top: 16px; border-top: 1px dashed rgba(var(--g-rgb), .22); }
+.regra-comentarios-botao {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; text-align: left; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; letter-spacing: .5px; color: var(--g2);
+  background: rgba(var(--g-rgb), .06); border: 1px solid rgba(var(--g-rgb), .22); border-radius: 3px;
+  transition: background .15s, border-color .15s, transform .12s ease-out;
+}
+.regra-comentarios-botao:hover { background: rgba(var(--g-rgb), .13); border-color: var(--g); }
+.regra-comentarios-botao:active { transform: scale(.985); }
+.regra-comentarios-botao em { margin-left: auto; font-style: normal; color: var(--g); }
+.regra-interacao-corpo { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+
+/* ---------- Regras: perguntas e respostas ---------- */
+.regra-interacao-botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.regra-pendente-etiqueta {
+  font-weight: normal; font-size: 10.5px; letter-spacing: .5px; padding: 2px 7px; border-radius: 10px;
+  color: #ffcf6b; background: rgba(255,207,107,.12); border: 1px solid rgba(255,207,107,.4);
+}
+.regra-pergunta { padding-bottom: 12px; border-bottom: 1px dashed rgba(var(--g-rgb), .14); }
+.regra-pergunta:last-child { border-bottom: none; padding-bottom: 0; }
+.regra-pergunta-espera { font-size: 11px; color: #ffcf6b; }
+.regra-resposta {
+  margin: 8px 0 0 36px; padding: 10px 14px; border-left: 3px solid var(--g); border-radius: 0 3px 3px 0;
+  background: rgba(var(--g-rgb), .08);
+}
+.regra-resposta p { margin: 0; font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--g2); }
+.regra-resposta .regra-resposta-quem { margin-bottom: 4px; font-size: 11px; letter-spacing: .8px; color: rgba(var(--g2-rgb), .55); }
+.regra-resposta-quem span { color: var(--g); letter-spacing: 2px; }
+.regra-resposta-form { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 0 36px; }
+.regra-resposta-form textarea {
+  width: 100%; resize: vertical; min-height: 64px; padding: 10px 12px; font-family: inherit; font-size: 14px;
+  color: var(--g2); background: rgba(var(--g-rgb), .05); border: 1px solid rgba(var(--g-rgb), .3); border-radius: 3px; outline: none;
+}
+.regra-resposta-form textarea:focus { border-color: var(--g); }
+
+.regras-pendentes {
+  display: block; width: 100%; margin: 0 0 12px; padding: 7px 10px; text-align: left; cursor: pointer; font-family: inherit; font-size: 12px; line-height: 1.4;
+  color: #ffcf6b; background: rgba(255,207,107,.08); border: 1px solid rgba(255,207,107,.35); border-radius: 3px;
+  transition: background .15s, transform .12s ease-out;
+}
+.regras-pendentes:hover, .regras-pendentes.on { background: rgba(255,207,107,.18); }
+.regras-pendentes:active { transform: scale(.98); }
+.regras-item-pendente {
+  display: inline-block; margin-left: 8px; min-width: 16px; padding: 0 4px; text-align: center; font-size: 11px; line-height: 16px;
+  color: #16110a; background: #ffcf6b; border-radius: 8px;
+}
+
+@media (max-width: 860px) {
+  .regra-interacao-botoes { grid-template-columns: 1fr; }
+  .regra-resposta, .regra-resposta-form { margin-left: 0; }
 }

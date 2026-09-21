@@ -60,6 +60,8 @@ function RegrasConteudo() {
   const [fechados, setFechados] = useState<Set<number>>(new Set());
   const [editando, setEditando] = useState<'nova' | string | null>(null);
   const campoBusca = useRef<HTMLInputElement>(null);
+  const [pendentes, setPendentes] = useState<Set<string>>(new Set());
+  const [soPendentes, setSoPendentes] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -70,6 +72,10 @@ function RegrasConteudo() {
       ]);
       setUserId(auth.user?.id ?? null);
       setEhAdmin(admin === true);
+      if (admin === true) {
+        const { data: sem } = await supabase.from('regra_perguntas').select('regra_id').is('resposta', null);
+        setPendentes(new Set(((sem ?? []) as { regra_id: string }[]).map((x) => x.regra_id)));
+      }
       if (error) { setErro(mensagemRegra(error)); setCarregando(false); return; }
       const lista = ordenar((data ?? []) as Regra[]);
       setRegras(lista);
@@ -116,8 +122,9 @@ function RegrasConteudo() {
       .sort((a, b) => b.nota - a.nota || a.pos - b.pos);
   }, [regras, indice, consulta, buscando]);
 
+  const base = soPendentes ? regras.filter((r) => pendentes.has(r.id)) : regras;
   const grupos = docs
-    .map((d) => ({ ...d, itens: regras.filter((r) => r.doc_ordem === d.doc_ordem) }))
+    .map((d) => ({ ...d, itens: base.filter((r) => r.doc_ordem === d.doc_ordem) }))
     .filter((g) => g.itens.length > 0);
 
   const selecionada = regras.find((r) => r.id === selId) ?? null;
@@ -135,6 +142,13 @@ function RegrasConteudo() {
     window.history.replaceState(null, '', `#${id}`);
     if (window.innerWidth <= 860) document.getElementById('regra-painel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  /** O moderador respondeu (ou chegou pergunta nova): atualiza a marca na lateral. */
+  const atualizarPendentes = (regraId: string, n: number) => setPendentes((prev) => {
+    const novo = new Set(prev);
+    if (n > 0) novo.add(regraId); else novo.delete(regraId);
+    return novo;
+  });
 
   const alternarGrupo = (ordem: number) => setFechados((prev) => { const n = new Set(prev); n.has(ordem) ? n.delete(ordem) : n.add(ordem); return n; });
 
@@ -159,6 +173,12 @@ function RegrasConteudo() {
         <p className="regras-contagem">
           {buscando ? `${resultados.length} de ${regras.length} regras` : `${regras.length} regras`}
         </p>
+
+        {ehAdmin && !buscando && (pendentes.size > 0 || soPendentes) && (
+          <button type="button" className={soPendentes ? 'regras-pendentes on' : 'regras-pendentes'} onClick={() => setSoPendentes((v) => !v)}>
+            ❓ {pendentes.size} {pendentes.size === 1 ? 'regra com pergunta' : 'regras com perguntas'} sem resposta{soPendentes ? ' · mostrar todas' : ''}
+          </button>
+        )}
 
         {buscando ? (
           resultados.length === 0 ? (
@@ -200,6 +220,7 @@ function RegrasConteudo() {
                     onClick={() => selecionar(r.id)}
                   >
                     {r.titulo}
+                    {ehAdmin && pendentes.has(r.id) && <b className="regras-item-pendente" title="tem pergunta sem resposta">?</b>}
                   </button>
                 ))}
               </div>
@@ -246,6 +267,7 @@ function RegrasConteudo() {
             userId={userId}
             onEditar={() => setEditando(selecionada.id)}
             onSelecionar={selecionar}
+            onPendentes={atualizarPendentes}
           />
         ) : (
           <p className="vazio">

@@ -8,8 +8,10 @@ import Avatar from './Avatar';
 
 type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null };
 
-/** Ideias e melhorias dos jogadores para uma regra. */
-export default function RegraComentarios({ regraId, userId, ehAdmin }: { regraId: string; userId: string | null; ehAdmin: boolean }) {
+/** Ideias e melhorias dos jogadores para uma regra (aparece quando o botão é aberto). */
+export default function RegraComentarios({
+  regraId, userId, ehAdmin, onMudou,
+}: { regraId: string; userId: string | null; ehAdmin: boolean; onMudou: (delta: number) => void }) {
   const [lista, setLista] = useState<ComentarioRegra[]>([]);
   const [perfis, setPerfis] = useState<Map<string, PerfilLeve>>(new Map());
   const [carregando, setCarregando] = useState(true);
@@ -43,8 +45,8 @@ export default function RegraComentarios({ regraId, userId, ehAdmin }: { regraId
       .insert({ regra_id: regraId, user_id: userId, texto: texto.trim() }).select().single();
     setEnviando(false);
     if (error) { setErro(mensagemRegra(error)); return; }
-    const novo = data as ComentarioRegra;
-    setLista((prev) => [...prev, novo]);
+    setLista((prev) => [...prev, data as ComentarioRegra]);
+    onMudou(1);
     setTexto('');
     if (!perfis.has(userId)) {
       const { data: p } = await supabase.from('profiles').select('user_id,apelido,avatar_url').eq('user_id', userId).maybeSingle();
@@ -57,20 +59,18 @@ export default function RegraComentarios({ regraId, userId, ehAdmin }: { regraId
     const { error } = await supabase.from('regra_comentarios').delete().eq('id', id);
     if (error) { setErro(mensagemRegra(error)); return; }
     setLista((prev) => prev.filter((c) => c.id !== id));
+    onMudou(-1);
   };
 
   return (
-    <section className="regra-comentarios">
-      <h3>ideias e melhorias{lista.length > 0 ? ` (${lista.length})` : ''}</h3>
-      <p className="dica">tem uma sugestão para esta regra? Escreva aqui — os moderadores leem.</p>
-
+    <div className="regra-interacao-corpo">
       {userId && (
         <form onSubmit={enviar} className="regra-comentario-form">
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value.slice(0, LIMITE_COMENTARIO_REGRA))}
             rows={3}
-            placeholder="sua ideia ou sugestão de melhoria..."
+            placeholder="sua ideia ou sugestão para esta regra — os moderadores leem"
           />
           <button className="go" style={{ width: 'auto', padding: '9px 22px', fontSize: 13 }} disabled={enviando || !texto.trim()}>
             {enviando ? '...' : 'ENVIAR IDEIA'}
@@ -81,8 +81,6 @@ export default function RegraComentarios({ regraId, userId, ehAdmin }: { regraId
 
       {carregando ? (
         <p className="dica">carregando…</p>
-      ) : lista.length === 0 ? (
-        <p className="post-comentario-vazio">nenhuma ideia ainda — seja o primeiro.</p>
       ) : (
         lista.map((c) => {
           const p = perfis.get(c.user_id);
@@ -103,6 +101,6 @@ export default function RegraComentarios({ regraId, userId, ehAdmin }: { regraId
           );
         })
       )}
-    </section>
+    </div>
   );
 }

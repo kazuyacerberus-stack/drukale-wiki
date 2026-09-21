@@ -1,7 +1,6 @@
-'use client';
-
-import { useId, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import Realce from './Realce';
+import { normalizarBusca, textoPuro } from '../lib/regras';
 
 /**
  * Renderiza o texto de uma regra. O formato é um markdown enxuto — só o que
@@ -14,23 +13,21 @@ import Realce from './Realce';
  *   ![legenda](https://...)      imagem ou GIF
  *   @[legenda](https://...)      vídeo
  *   **negrito**  *itálico*  [texto](https://link)
- *   **2.1 Título** texto...      vira um cartão numerado
  *
- * Com `recolhivel`, cada "## subtítulo" vira uma seção que abre e fecha e
- * aparece um índice no topo. `destaque` grifa o que a busca encontrou.
+ * O texto inteiro da regra sai num bloco corrido. Com `soTrechos` (busca
+ * ativa), sai só o que contém o que foi buscado: parágrafos, itens de lista
+ * e linhas de tabela, cada um sob o subtítulo a que pertence, grifados.
  */
 
 type Bloco =
   | { t: 'h4'; texto: string }
   | { t: 'p'; linhas: string[] }
-  | { t: 'card'; num: string; titulo: string; corpo: string[] }
   | { t: 'ul'; itens: string[] }
   | { t: 'tabela'; cab: string[]; linhas: string[][] }
   | { t: 'midia'; alt: string; url: string; video: boolean };
 type Secao = { titulo: string | null; blocos: Bloco[] };
 
 const INLINE = /(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g;
-const CARTAO = /^\*\*(\d+(?:\.\d+)+)\s+([^*]+?)\*\*\s*(.*)$/;
 
 function celulas(linha: string): string[] {
   return linha.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
@@ -72,16 +69,9 @@ function parse(texto: string): Secao[] {
     const par: string[] = [];
     while (i < linhas.length && linhas[i].trim() && !/^(#{2,3} |- |\||!\[|@\[)/.test(linhas[i].trimStart())) { par.push(linhas[i]); i++; }
     if (!par.length) { par.push(l); i++; }
-    const card = par[0].match(CARTAO);
-    if (card) blocos().push({ t: 'card', num: card[1], titulo: card[2].trim(), corpo: [card[3], ...par.slice(1)].filter((x) => x.trim()) });
-    else blocos().push({ t: 'p', linhas: par });
+    blocos().push({ t: 'p', linhas: par });
   }
   return secoes;
-}
-
-/** Títulos dos "## subtítulos" de um texto (usado pelo índice). */
-export function listarSecoes(texto: string): string[] {
-  return parse(texto).slice(1).map((s) => s.titulo ?? '');
 }
 
 function inline(texto: string, chave: string, dest: string[]): ReactNode[] {
@@ -114,16 +104,6 @@ function BlocoView({ b, k, dest }: { b: Bloco; k: string; dest: string[] }) {
     case 'h4': return <h4>{inline(b.texto, k, dest)}</h4>;
     case 'midia': return <Midia alt={b.alt} url={b.url} video={b.video} />;
     case 'ul': return <ul>{b.itens.map((it, j) => <li key={j}>{inline(it, `${k}-${j}`, dest)}</li>)}</ul>;
-    case 'card':
-      return (
-        <div className="regra-cartao">
-          <span className="regra-cartao-num">{b.num}</span>
-          <div>
-            <strong className="regra-cartao-titulo"><Realce texto={b.titulo} agulhas={dest} /></strong>
-            {b.corpo.map((c, j) => <p key={j}>{inline(c, `${k}-${j}`, dest)}</p>)}
-          </div>
-        </div>
-      );
     case 'tabela':
       return (
         <div className="regra-tabela">
@@ -138,49 +118,48 @@ function BlocoView({ b, k, dest }: { b: Bloco; k: string; dest: string[] }) {
   }
 }
 
-export default function RegraTexto({ texto, destaque = [], recolhivel = false }: { texto: string; destaque?: string[]; recolhivel?: boolean }) {
-  const base = useId();
-  const secoes = parse(texto);
-  const comTitulo = secoes.length - 1;
-  const [fechadas, setFechadas] = useState<Set<number>>(new Set());
+const bate = (texto: string, dest: string[]): boolean => {
+  const n = normalizarBusca(textoPuro(texto));
+  return dest.some((a) => n.includes(a));
+};
 
-  const alternar = (i: number) => setFechadas((prev) => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
-  const irPara = (i: number) => {
-    setFechadas((prev) => { const n = new Set(prev); n.delete(i); return n; });
-    window.setTimeout(() => document.getElementById(`${base}-s${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
-  };
+/** Só o que contém a busca, mantendo o subtítulo de cada trecho. */
+function filtrar(secoes: Secao[], dest: string[]): Secao[] {
+  const saida: Secao[] = [];
+  for (const s of secoes) {
+    const achados: Bloco[] = [];
+    for (const b of s.blocos) {
+      if (b.t === 'h4' && bate(b.texto, dest)) achados.push(b);
+      else if (b.t === 'p' && bate(b.linhas.join(' '), dest)) achados.push(b);
+      else if (b.t === 'ul') {
+        const itens = b.itens.filter((it) => bate(it, dest));
+        if (itens.length) achados.push({ t: 'ul', itens });
+      } else if (b.t === 'tabela') {
+        const linhas = b.linhas.filter((r) => bate(r.join(' '), dest));
+        if (linhas.length || bate(b.cab.join(' '), dest)) achados.push({ t: 'tabela', cab: b.cab, linhas });
+      }
+    }
+    if (achados.length || (s.titulo && bate(s.titulo, dest))) saida.push({ titulo: s.titulo, blocos: achados });
+  }
+  return saida;
+}
+
+export default function RegraTexto({ texto, destaque = [], soTrechos = false }: { texto: string; destaque?: string[]; soTrechos?: boolean }) {
+  let secoes = parse(texto);
+  let recortado = false;
+  if (soTrechos && destaque.length) {
+    const f = filtrar(secoes, destaque);
+    if (f.some((s) => s.blocos.length)) { secoes = f; recortado = true; }
+  }
 
   return (
-    <div className="regra-texto">
-      {recolhivel && comTitulo >= 2 && (
-        <nav className="regra-indice" aria-label="Nesta regra">
-          <span>nesta regra</span>
-          {secoes.slice(1).map((s, j) => (
-            <button type="button" key={j} onClick={() => irPara(j + 1)}>{s.titulo}</button>
-          ))}
-          <button type="button" className="regra-indice-tudo" onClick={() => setFechadas(fechadas.size ? new Set() : new Set(secoes.slice(1).map((_, j) => j + 1)))}>
-            {fechadas.size ? 'expandir tudo' : 'recolher tudo'}
-          </button>
-        </nav>
-      )}
-
-      {secoes.map((s, si) => {
-        const corpo = s.blocos.map((b, bi) => <BlocoView key={bi} b={b} k={`s${si}b${bi}`} dest={destaque} />);
-        if (si === 0) return <div key={si}>{corpo}</div>;
-        if (!recolhivel) return <div key={si}><h3><Realce texto={s.titulo ?? ''} agulhas={destaque} /></h3>{corpo}</div>;
-        const aberta = !fechadas.has(si);
-        return (
-          <section className="regra-secao" key={si} id={`${base}-s${si}`}>
-            <h3 className="regra-secao-titulo">
-              <button type="button" onClick={() => alternar(si)} aria-expanded={aberta}>
-                <span aria-hidden="true">{aberta ? '▾' : '▸'}</span>
-                <Realce texto={s.titulo ?? ''} agulhas={destaque} />
-              </button>
-            </h3>
-            <div className="regra-secao-corpo" hidden={!aberta}>{corpo}</div>
-          </section>
-        );
-      })}
+    <div className={recortado ? 'regra-texto so-trechos' : 'regra-texto'}>
+      {secoes.map((s, si) => (
+        <div key={si} className={recortado ? 'regra-trecho' : undefined}>
+          {s.titulo && <h3><Realce texto={s.titulo} agulhas={destaque} /></h3>}
+          {s.blocos.map((b, bi) => <BlocoView key={bi} b={b} k={`s${si}b${bi}`} dest={destaque} />)}
+        </div>
+      ))}
     </div>
   );
 }
