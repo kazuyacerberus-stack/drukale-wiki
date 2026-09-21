@@ -158,7 +158,7 @@ function PersonagemPageInterna() {
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">
-            drukale://arquivo/personagem/{alvo.slug || alvo.id}
+            terranova://arquivo/personagem/{alvo.slug || alvo.id}
           </span>
           <div className="hd-act">
             <button
@@ -319,7 +319,7 @@ function PersonagemPageInterna() {
           </nav>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
     </>
   );
 }

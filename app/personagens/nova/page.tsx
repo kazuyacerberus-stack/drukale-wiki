@@ -16,7 +16,7 @@ export default function NovoPersonagemPublico() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/personagens/nova</span>
+            <span className="hd-path">terranova://arquivo/personagens/nova</span>
             <div className="hd-act">
               <Link className="ico" href="/personagens">← personagens</Link>
               <Link className="ico" href="/perfil">meus envios</Link>
@@ -28,7 +28,7 @@ export default function NovoPersonagemPublico() {
 
         <FichaForm />
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

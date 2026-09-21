@@ -62,7 +62,7 @@ function TermoPageInterna() {
       <header className="hd">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">drukale://arquivo/glossario/{chave}</span>
+          <span className="hd-path">terranova://arquivo/glossario/{chave}</span>
           <div className="hd-act"><Link className="ico" href="/glossario">← glossário</Link></div>
         </div>
         <h1 data-txt="TERMO NÃO ENCONTRADO">TERMO NÃO ENCONTRADO</h1>
@@ -75,7 +75,7 @@ function TermoPageInterna() {
     <>
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">drukale://arquivo/glossario/{alvo.slug}</span>
+          <span className="hd-path">terranova://arquivo/glossario/{alvo.slug}</span>
           <div className="hd-act">
             <Link className="ico" href="/glossario" onClick={() => beep('close')}>← glossário</Link>
             <Link className="ico" href="/admin/glossario">gerenciar</Link>
@@ -105,7 +105,7 @@ function TermoPageInterna() {
           !alvo.resumo && <p className="vazio">nenhum conteúdo arquivado para este termo ainda.</p>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
     </>
   );
 }

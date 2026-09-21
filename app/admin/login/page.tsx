@@ -42,7 +42,7 @@ export default function Login() {
       <main className="wrap login-wrap">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">drukale://acesso-restrito</span>
+          <span className="hd-path">terranova://acesso-restrito</span>
           <div className="hd-act">
             <Link className="ico" href="/">← arquivo</Link>
           </div>
@@ -88,7 +88,7 @@ export default function Login() {
           </p>
         </form>
 
-        <footer className="ft">drukale_system v1.0 // canal criptografado</footer>
+        <footer className="ft">terranova_system v1.0 // canal criptografado</footer>
       </main>
     </div>
   );

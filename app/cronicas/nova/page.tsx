@@ -16,7 +16,7 @@ export default function NovaCronicaPublica() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/cronicas/nova</span>
+            <span className="hd-path">terranova://arquivo/cronicas/nova</span>
             <div className="hd-act">
               <Link className="ico" href="/cronicas">← crônicas</Link>
               <Link className="ico" href="/perfil">meus envios</Link>
@@ -28,7 +28,7 @@ export default function NovaCronicaPublica() {
 
         <EventoForm />
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

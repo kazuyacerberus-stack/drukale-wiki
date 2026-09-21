@@ -54,7 +54,7 @@ export default function PainelGlossario() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/glossario</span>
+            <span className="hd-path">terranova://admin/glossario</span>
             <div className="hd-act">
               <Link className="ico" href="/admin">← painel</Link>
               <Link className="ico" href="/admin/glossario/novo">+ novo termo</Link>
@@ -114,7 +114,7 @@ export default function PainelGlossario() {
           </div>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

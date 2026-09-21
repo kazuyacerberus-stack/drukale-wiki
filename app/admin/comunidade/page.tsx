@@ -89,7 +89,7 @@ export default function ComunidadeAdmin() {
           <header className="hd">
             <div className="hd-bar">
               <span className="dot" /><span className="dot" /><span className="dot" />
-              <span className="hd-path">drukale://admin/comunidade</span>
+              <span className="hd-path">terranova://admin/comunidade</span>
               <div className="hd-act">
                 <Link className="ico" href="/admin">← painel</Link>
                 <Link className="ico" href="/chat">chat</Link>
@@ -147,7 +147,7 @@ export default function ComunidadeAdmin() {
             </div>
           )}
 
-          <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+          <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
         </Protegido>
       </main>
     </div>

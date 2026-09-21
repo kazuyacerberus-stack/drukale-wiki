@@ -238,12 +238,12 @@ export default function CenasPage() {
   return <main className={s.terminal}>
     <div className={s.wrap}>
       <header className={s.topo}>
-        <span className={s.caminho}><i /> drukale://arquivo/cenas</span>
+        <span className={s.caminho}><i /> terranova://arquivo/cenas</span>
         <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">Facções</Link><Link href="/linha-do-tempo">Linha do tempo</Link><Link href="/cronicas">Crônicas</Link><Link href="/eventos">Eventos</Link><Link href="/glossario">Glossário</Link><Link href="/mundo">◍ Mundo</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
       </header>
       <PrecisaAprovacao>
       <section className={s.hero}>
-        <div><p className={s.eyebrow}>IMPÉRIO DRUKALE / REGISTROS NARRATIVOS</p><h1>ARQUIVO DE CENAS<span>_</span></h1><p>Cada personagem deixa um rastro. Registre o seu.</p></div>
+        <div><p className={s.eyebrow}>TERRA NOVA / REGISTROS NARRATIVOS</p><h1>ARQUIVO DE CENAS<span>_</span></h1><p>Cada personagem deixa um rastro. Registre o seu.</p></div>
         <button className={s.primario} ref={novaRef} disabled={!authPronto || salvando} onClick={novaCena}>＋ NOVA CENA</button>
       </section>
       <div className={s.status}><span>● {userId ? 'ACESSO IDENTIFICADO' : 'ARQUIVO PÚBLICO'}</span><span>TERMINAL DE MEMÓRIAS // 01</span></div>
@@ -280,7 +280,7 @@ export default function CenasPage() {
           <label>Tipo de cena<select value={filtroTipo} onChange={e => filtrar('tipo', e.target.value)}><option value="">Todos os tipos</option>{TIPOS_CENA.map(t => <option key={t}>{t}</option>)}</select></label>
           <button onClick={() => { setFiltroPessoa(''); setFiltroLocal(''); setFiltroTipo(''); setPagina(0); }}>Limpar filtros</button>
           <p className={s.ajuda}>Novos autores, personagens e locais entram nos filtros conforme as cenas são publicadas.</p>
-          <div className={s.selo} aria-hidden="true">╬<br />DRUKALE<br /><small>MEMÓRIA DO IMPÉRIO</small></div>
+          <div className={s.selo} aria-hidden="true">╬<br />TERRA NOVA<br /><small>MEMÓRIA DO IMPÉRIO</small></div>
           {userId && <button onClick={async () => { const { error } = await supabase.auth.signOut(); if (error) setAviso(mensagemCena(error)); }}>Sair da conta</button>}
         </aside>
         <section className={s.feed} aria-label="Cenas publicadas" aria-busy={carregando}>
@@ -326,7 +326,7 @@ export default function CenasPage() {
       </div>
       </PrecisaAprovacao>
       <datalist id="cenas-locais">{locais.map(l => <option key={l} value={l} />)}</datalist><datalist id="cenas-pessoas">{pessoas.map(p => <option key={p} value={p} />)}</datalist>
-      <footer className={s.rodape}><span>DRUKALE // ARQUIVO DE CENAS</span><span>MEMÓRIAS ALÉM DO TEMPO</span></footer>
+      <footer className={s.rodape}><span>TERRA NOVA // ARQUIVO DE CENAS</span><span>MEMÓRIAS ALÉM DO TEMPO</span></footer>
     </div>
   </main>;
 }

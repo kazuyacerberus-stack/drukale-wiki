@@ -76,7 +76,7 @@ export default function LinhaDoTempoPage() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/linha-do-tempo</span>
+            <span className="hd-path">terranova://arquivo/linha-do-tempo</span>
             <div className="hd-act">
               <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
                 {muted ? '♪ off' : '♪ on'}
@@ -123,7 +123,7 @@ export default function LinhaDoTempoPage() {
           </>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

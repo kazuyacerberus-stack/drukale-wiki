@@ -36,7 +36,7 @@ export default function EditarTermo() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/glossario/editar/{chave}</span>
+            <span className="hd-path">terranova://admin/glossario/editar/{chave}</span>
             <div className="hd-act">
               <Link className="ico" href="/admin/glossario">← glossário</Link>
               {alvo && <Link className="ico" href={`/glossario/${alvo.slug}`}>ver página</Link>}
@@ -57,7 +57,7 @@ export default function EditarTermo() {
           <GlossarioForm inicial={alvo} />
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

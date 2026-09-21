@@ -76,7 +76,7 @@ export default function CronicasPage() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/cronicas</span>
+            <span className="hd-path">terranova://arquivo/cronicas</span>
             <div className="hd-act">
               <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
                 {muted ? '♪ off' : '♪ on'}
@@ -141,7 +141,7 @@ export default function CronicasPage() {
           </div>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

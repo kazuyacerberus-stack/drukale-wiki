@@ -54,7 +54,7 @@ export default function PainelFaccoes() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/faccoes</span>
+            <span className="hd-path">terranova://admin/faccoes</span>
             <div className="hd-act">
               <Link className="ico" href="/admin">← painel</Link>
               <Link className="ico" href="/admin/faccoes/nova">+ nova facção</Link>
@@ -115,7 +115,7 @@ export default function PainelFaccoes() {
           </div>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

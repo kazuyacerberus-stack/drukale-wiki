@@ -36,7 +36,7 @@ export default function EditarFaccao() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/faccoes/editar/{chave}</span>
+            <span className="hd-path">terranova://admin/faccoes/editar/{chave}</span>
             <div className="hd-act">
               <Link className="ico" href="/admin/faccoes">← facções</Link>
               {alvo && <Link className="ico" href={`/faccoes/${alvo.slug}`}>ver página</Link>}
@@ -57,7 +57,7 @@ export default function EditarFaccao() {
           <FaccaoForm inicial={alvo} />
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

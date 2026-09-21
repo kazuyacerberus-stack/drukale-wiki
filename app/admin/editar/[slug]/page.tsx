@@ -36,7 +36,7 @@ export default function EditarRegistro() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://admin/editar/{chave}</span>
+            <span className="hd-path">terranova://admin/editar/{chave}</span>
             <div className="hd-act">
               <Link className="ico" href="/admin">← painel</Link>
               {alvo && (
@@ -64,7 +64,7 @@ export default function EditarRegistro() {
           <FichaForm inicial={alvo} />
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

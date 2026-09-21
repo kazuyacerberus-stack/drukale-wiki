@@ -120,7 +120,7 @@ export default function PersonagensPage() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/personagens</span>
+            <span className="hd-path">terranova://arquivo/personagens</span>
             <div className="hd-act">
               <button
                 className="ico"
@@ -221,7 +221,7 @@ export default function PersonagensPage() {
           </section>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

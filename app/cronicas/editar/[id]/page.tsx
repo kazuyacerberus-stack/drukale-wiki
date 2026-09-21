@@ -44,7 +44,7 @@ export default function EditarCronicaPublica() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">drukale://arquivo/cronicas/editar/{id}</span>
+            <span className="hd-path">terranova://arquivo/cronicas/editar/{id}</span>
             <div className="hd-act">
               <Link className="ico" href="/perfil">← meus envios</Link>
             </div>
@@ -73,7 +73,7 @@ export default function EditarCronicaPublica() {
           </>
         )}
 
-        <footer className="ft">drukale_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

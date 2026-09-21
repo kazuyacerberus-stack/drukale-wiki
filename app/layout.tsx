@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './matrix.css';
 
 export const metadata: Metadata = {
-  title: 'Império Drukale',
-  description: 'Arquivo central de personagens do Império Drukale',
+  title: 'Terra Nova',
+  description: 'Arquivo central de personagens de Terra Nova',
 };
 
 export default function RootLayout({
