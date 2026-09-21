@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import './matrix.css';
 import Abertura from './components/Abertura';
@@ -68,7 +68,6 @@ export default function Home() {
   const [ehAdmin, setEhAdmin] = useState(false);
   const [meuPerfil, setMeuPerfil] = useState<{ apelido: string; avatar_url: string | null } | null>(null);
   const { beep, muted, setMuted } = useBeep();
-  const heroRef = useRef<HTMLElement>(null);
 
   /**
    * A home é a única página pública — quem não tem conta aprovada
@@ -99,30 +98,6 @@ export default function Home() {
       window.setTimeout(() => { if (vivo) void verificar(Boolean(sessao)); }, 0);
     });
     return () => { vivo = false; sub.subscription.unsubscribe(); };
-  }, []);
-
-  /**
-   * O fundo do herói acompanha o cursor devagar — um paralaxe sutil, não um
-   * arrasto de imagem. Mexe direto no style via ref (sem useState) porque
-   * isto dispararia dezenas de renders por segundo se fosse estado do React.
-   */
-  useEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    const aoMover = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      const mx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-      const my = ((e.clientY - r.top) / r.height - 0.5) * 2;
-      el.style.setProperty('--mx', mx.toFixed(3));
-      el.style.setProperty('--my', my.toFixed(3));
-    };
-    const aoSair = () => { el.style.setProperty('--mx', '0'); el.style.setProperty('--my', '0'); };
-    el.addEventListener('pointermove', aoMover);
-    el.addEventListener('pointerleave', aoSair);
-    return () => {
-      el.removeEventListener('pointermove', aoMover);
-      el.removeEventListener('pointerleave', aoSair);
-    };
   }, []);
 
   useEffect(() => {
@@ -183,7 +158,7 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="imp-hero" ref={heroRef}>
+        <section className="imp-hero">
           <div className="imp-hero-fundo" />
           <div className="imp-hero-veu" />
           <div className="imp-hero-conteudo">

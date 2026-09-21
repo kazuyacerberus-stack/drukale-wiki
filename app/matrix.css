@@ -1436,7 +1436,6 @@ html, body { margin: 0; padding: 0; background: #000; }
 /* ---------- o herói ---------- */
 /* ---------- herói em tela cheia ---------- */
 .imp-hero {
-  --mx: 0; --my: 0;
   position: relative;
   width: 100vw; margin-left: calc(50% - 50vw);
   min-height: min(84vh, 720px);
@@ -1444,20 +1443,16 @@ html, body { margin: 0; padding: 0; background: #000; }
   overflow: hidden;
   border-bottom: 1px solid var(--i-cromo-fraco);
 }
+/* imagem do mostruário: totalmente estática (sem paralaxe nem zoom) */
 .imp-hero-fundo {
-  position: absolute; inset: -4%;
-  background:
-    url('/hero-imperio.webp'),
-    radial-gradient(ellipse at 30% 20%, #241338 0%, #0d0616 45%, #030208 100%);
-  background-size: cover; background-position: center;
-  transform: translate(calc(var(--mx) * -16px), calc(var(--my) * -12px)) scale(1.08);
-  transition: transform .4s cubic-bezier(.2,.7,.3,1);
+  position: absolute; inset: 0;
+  background: #05070d url('/fundo-terra-save.jpg') center / cover no-repeat;
 }
 .imp-hero-veu {
   position: absolute; inset: 0;
   background:
-    linear-gradient(100deg, rgba(4,2,8,.95) 0%, rgba(4,2,8,.82) 32%, rgba(4,2,8,.38) 58%, rgba(4,2,8,.1) 80%),
-    linear-gradient(0deg, rgba(3,2,6,.85) 0%, transparent 24%);
+    linear-gradient(100deg, rgba(4,6,12,.88) 0%, rgba(4,6,12,.62) 30%, rgba(4,6,12,.18) 58%, transparent 80%),
+    linear-gradient(0deg, rgba(3,5,10,.75) 0%, transparent 22%);
 }
 .imp-hero-conteudo { position: relative; z-index: 2; max-width: 560px; padding: 60px 5vw; }
 .imp-hero-selo {
