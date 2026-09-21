@@ -42,3 +42,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# documentos e conteudo das regras: ficam so na maquina, o site le do banco
+/regras do RPG/
