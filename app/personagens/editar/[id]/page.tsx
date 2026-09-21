@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../../matrix.css';
-import MatrixRain from '../../../components/MatrixRain';
 import PrecisaAprovacao from '../../../components/PrecisaAprovacao';
 import FichaForm from '../../../components/FichaForm';
 import { supabase, type Character } from '../../../lib/db';
@@ -36,7 +35,6 @@ export default function EditarPersonagemPublico() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <PrecisaAprovacao>

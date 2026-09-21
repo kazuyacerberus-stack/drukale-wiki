@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase } from '../../lib/db';
@@ -18,7 +17,6 @@ import { mensagemGlossario, type Termo } from '../../lib/glossario';
 export default function TermoPage() {
   return (
     <div className="term">
-      <MatrixRain />
       <main className="wrap narrow">
         <PrecisaAprovacao>
           <TermoPageInterna />

@@ -15,7 +15,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   --g2-rgb: 138,255,192;
   position: relative;
   min-height: 100vh;
-  background: #000;
+  background: transparent;
   color: var(--g2);
   font-family: 'Share Tech Mono', ui-monospace, Consolas, monospace;
   overflow-x: hidden;
@@ -81,20 +81,30 @@ html, body { margin: 0; padding: 0; background: #000; }
   border-color: #00ff66; color: #00ff66; box-shadow: 0 0 14px rgba(0,255,102,.35);
 }
 
-/* ---------- fundo ---------- */
-.rain { position: fixed; inset: 0; width: 100%; height: 100%; opacity: .62; pointer-events: none; z-index: 0; }
-.scan {
-  position: fixed; inset: 0; pointer-events: none; z-index: 2;
-  background: repeating-linear-gradient(180deg, rgba(0,255,102,.045) 0 1px, transparent 1px 3px);
-  animation: sc 8s linear infinite;
+/* ---------- fundo ----------
+   Imagem estática, fixa na tela (não anima nem rola com a página). Fica
+   num elemento próprio em vez de background-attachment: fixed porque o
+   celular ignora essa propriedade. O véu escuro por cima garante que o
+   texto (verde ou âmbar, conforme a página) continue legível. */
+.fundo-site {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: #05070d url('/fundo-terra-save.jpg') center / cover no-repeat;
 }
-@keyframes sc { from { background-position-y: 0 } to { background-position-y: 120px } }
-.vig {
-  position: fixed; inset: 0; pointer-events: none; z-index: 1;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,.55) 100%);
+.fundo-site::after {
+  content: ''; position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 30%, rgba(2,3,8,.55) 100%),
+    linear-gradient(180deg, rgba(3,5,12,.5) 0%, rgba(3,5,12,.68) 100%);
 }
 
-.wrap { position: relative; z-index: 3; max-width: 1180px; margin: 0 auto; padding: 38px 22px 70px; }
+/* a coluna de conteúdo vira um vidro escuro: o fundo aparece nas laterais
+   e o texto lê bem por cima dele */
+.wrap {
+  position: relative; z-index: 3; max-width: 1180px; margin: 0 auto; padding: 38px 22px 70px;
+  background: rgba(4,7,13,.5); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+  border-left: 1px solid rgba(255,255,255,.05); border-right: 1px solid rgba(255,255,255,.05);
+  box-shadow: 0 0 60px rgba(0,0,0,.45);
+}
 .wrap.narrow { max-width: 900px; }
 
 /* ---------- cabeçalho ---------- */
@@ -1094,8 +1104,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   --ferro: #14120e;
   --sangue: #a4342a;
   color: var(--osso);
-  background:
-    radial-gradient(ellipse at 50% 0%, #1d1a14 0%, #0d0b08 60%, #070604 100%);
+  background: transparent;
 }
 
 /* uma sujeira de fundo, para a chapa não parecer plástico novo */
@@ -1389,7 +1398,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   --i-roxo: #7a3ad1;
   --i-sangue: #d1264a;
   color: var(--i-osso);
-  background: radial-gradient(ellipse at 50% -10%, #1a0f2a 0%, #0a0714 55%, #030208 100%);
+  background: transparent;
   /* fonte de livro de RPG — curvada e elegante, no lugar do monoespaçado
      "terminal" que o resto do site usa. Só o h1 continua em Cinzel. */
   font-family: 'Cormorant Garamond', Georgia, serif;
@@ -1602,7 +1611,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   --d-osso: #f0dfb8; --d-cromo: #b89a6a; --d-cromo-fraco: #6d5a30;
   --d-roxo: #d8a85c; --d-sangue: #d1264a;
   color: var(--d-osso);
-  background: radial-gradient(ellipse at 50% -10%, #201808 0%, #0f0b04 55%, #050301 100%);
+  background: transparent;
   font-family: 'Share Tech Mono', Consolas, monospace;
 }
 .drukale::before {

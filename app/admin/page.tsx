@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import Protegido from '../components/Protegido';
 import { cabecalhoAuth, sair } from '../lib/auth';
 import { supabase, lerSecoes, type Character } from '../lib/db';
@@ -177,7 +176,6 @@ export default function Painel() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap">
        <Protegido>

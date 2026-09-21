@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import Avatar from '../components/Avatar';
 import { useBeep } from '../components/useBeep';
@@ -139,7 +138,6 @@ export default function EventosPage() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <PrecisaAprovacao>

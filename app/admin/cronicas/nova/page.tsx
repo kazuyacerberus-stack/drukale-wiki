@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 import '../../../matrix.css';
-import MatrixRain from '../../../components/MatrixRain';
 import Protegido from '../../../components/Protegido';
 import EventoForm from '../../../components/EventoForm';
 
 export default function NovaCronica() {
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <Protegido>

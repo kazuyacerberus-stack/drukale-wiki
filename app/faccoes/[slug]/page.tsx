@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase, type Character } from '../../lib/db';
@@ -20,7 +19,6 @@ type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null 
 export default function FaccaoPage() {
   return (
     <div className="term">
-      <MatrixRain />
       <main className="wrap">
         <PrecisaAprovacao>
           <FaccaoPageInterna />

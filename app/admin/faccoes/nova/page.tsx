@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 import '../../../matrix.css';
-import MatrixRain from '../../../components/MatrixRain';
 import Protegido from '../../../components/Protegido';
 import FaccaoForm from '../../../components/FaccaoForm';
 
 export default function NovaFaccao() {
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <Protegido>

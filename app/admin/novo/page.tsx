@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import Protegido from '../../components/Protegido';
 import FichaForm from '../../components/FichaForm';
 
 export default function NovoRegistro() {
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <Protegido>

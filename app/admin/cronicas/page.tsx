@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import Protegido from '../../components/Protegido';
 import { supabase } from '../../lib/db';
 import { mensagemEvento, type Evento } from '../../lib/eventos';
@@ -66,7 +65,6 @@ export default function PainelCronicas() {
 
   return (
     <div className="term">
-      <MatrixRain />
       <main className="wrap">
        <Protegido>
         <header className="hd">

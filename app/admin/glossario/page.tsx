@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import Protegido from '../../components/Protegido';
 import { supabase } from '../../lib/db';
 import { CATEGORIAS_GLOSSARIO, mensagemGlossario, type Termo } from '../../lib/glossario';
@@ -48,7 +47,6 @@ export default function PainelGlossario() {
 
   return (
     <div className="term">
-      <MatrixRain />
       <main className="wrap">
        <Protegido>
         <header className="hd">

@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import FichaForm from '../../components/FichaForm';
 
 export default function NovoPersonagemPublico() {
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <PrecisaAprovacao>

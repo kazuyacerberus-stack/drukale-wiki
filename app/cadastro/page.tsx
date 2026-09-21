@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import Avatar from '../components/Avatar';
 import { supabase } from '../lib/db';
 import { cadastrar } from '../lib/auth';
@@ -75,7 +74,6 @@ export default function Cadastro() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap login-wrap">
         <div className="hd-bar">

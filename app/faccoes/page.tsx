@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import MatrixRain from '../components/MatrixRain';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
@@ -38,7 +37,6 @@ export default function FaccoesPage() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap">
        <PrecisaAprovacao>

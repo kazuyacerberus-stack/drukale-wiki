@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import { supabase } from '../../lib/db';
 import { entrar } from '../../lib/auth';
 
@@ -37,7 +36,6 @@ export default function Login() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap login-wrap">
         <div className="hd-bar">

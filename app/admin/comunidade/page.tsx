@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import '../../matrix.css';
-import MatrixRain from '../../components/MatrixRain';
 import Protegido from '../../components/Protegido';
 import Avatar from '../../components/Avatar';
 import { supabase } from '../../lib/db';
@@ -83,7 +82,6 @@ export default function ComunidadeAdmin() {
 
   return (
     <div className="term">
-      <MatrixRain />
       <main className="wrap">
         <Protegido>
           <header className="hd">

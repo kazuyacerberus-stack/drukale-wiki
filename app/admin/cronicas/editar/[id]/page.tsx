@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../../../matrix.css';
-import MatrixRain from '../../../../components/MatrixRain';
 import Protegido from '../../../../components/Protegido';
 import EventoForm from '../../../../components/EventoForm';
 import { supabase } from '../../../../lib/db';
@@ -29,7 +28,6 @@ export default function EditarCronica() {
 
   return (
     <div className="term">
-      <MatrixRain />
 
       <main className="wrap narrow">
        <Protegido>

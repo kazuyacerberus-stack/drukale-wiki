@@ -1,4 +1,4 @@
-.terminal{--verde:#46ff8a;--muted:#9ab3a2;min-height:100vh;background:radial-gradient(ellipse at 70% 0,#10361c66,transparent 50%),#030805;color:#dcebe0;font-family:'Share Tech Mono',Consolas,monospace;padding:0 28px 28px;color-scheme:dark}
+.terminal{--verde:#46ff8a;--muted:#9ab3a2;min-height:100vh;background:radial-gradient(ellipse at 70% 0,#10361c55,transparent 50%);color:#dcebe0;font-family:'Share Tech Mono',Consolas,monospace;padding:0 28px 28px;color-scheme:dark}
 .terminal *{box-sizing:border-box}
 .wrap{max-width:900px;margin:auto;display:flex;flex-direction:column;min-height:100vh}
 .terminal button,.terminal input,.terminal textarea{font:inherit}
