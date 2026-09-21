@@ -83,7 +83,7 @@ export default function CronicasPage() {
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
               <Link className="ico" href="/eventos">✦ eventos</Link>
-              <Link className="ico" href="/glossario">glossário</Link>
+              <Link className="ico" href="/reservas">reserva de imagens</Link>
               {userId && <Link className="ico" href="/cronicas/nova">+ enviar crônica</Link>}
               <Link className="ico" href="/admin/cronicas">+ novo</Link>
             </div>

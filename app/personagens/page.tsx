@@ -134,7 +134,7 @@ export default function PersonagensPage() {
               <Link className="ico" href="/linha-do-tempo" title="o que todo mundo está compartilhando">⏱ linha do tempo</Link>
               <Link className="ico" href="/cronicas" title="os grandes marcos do império">📜 crônicas</Link>
               <Link className="ico" href="/eventos" title="as novidades do grupo">✦ eventos</Link>
-              <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
+              <Link className="ico" href="/reservas" title="reserve a imagem do seu personagem">◈ reserva de imagens</Link>
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
               <Link className="ico" href="/mundo" title="o mundo Terra Save em 3D">◍ mundo terra save</Link>
               <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>

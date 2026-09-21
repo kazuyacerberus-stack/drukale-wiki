@@ -33,7 +33,7 @@ const MAIS = [
   { href: '/linha-do-tempo', rotulo: 'Linha do tempo', glifo: '⏱' },
   { href: '/cronicas', rotulo: 'Crônicas', glifo: '📜' },
   { href: '/cenas', rotulo: 'Cenas', glifo: '▤' },
-  { href: '/glossario', rotulo: 'Glossário', glifo: '◈' },
+  { href: '/reservas', rotulo: 'Reserva de imagens', glifo: '◈' },
   { href: '/chat', rotulo: 'Chat', glifo: '✉' },
 ];
 

@@ -45,7 +45,7 @@ export default function MundoPage() {
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
               <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/eventos">eventos</Link>
-              <Link className="ico" href="/glossario">glossário</Link>
+              <Link className="ico" href="/reservas">reserva de imagens</Link>
               <Link className="ico" href="/cenas">▤ cenas</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/">◄ arquivo</Link>

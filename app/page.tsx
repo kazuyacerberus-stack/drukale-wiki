@@ -41,7 +41,7 @@ const MAIS = [
   { href: '/cenas', titulo: 'Cenas' },
   { href: '/linha-do-tempo', titulo: 'Linha do tempo' },
   { href: '/cronicas', titulo: 'Crônicas' },
-  { href: '/glossario', titulo: 'Glossário' },
+  { href: '/reservas', titulo: 'Reserva de imagens' },
   { href: '/chat', titulo: 'Chat' },
 ];
 
