@@ -189,7 +189,7 @@ export default function Painel() {
               <Link className="ico" href="/admin/novo">+ novo registro</Link>
               <Link className="ico" href="/admin/faccoes">facções</Link>
               <Link className="ico" href="/admin/cronicas">crônicas</Link>
-              <Link className="ico" href="/admin/glossario">glossário</Link>
+              <Link className="ico" href="/admin/glossario">glossário antigo</Link>
               <Link className="ico" href="/admin/comunidade">comunidade</Link>
               <button
                 className="ico dim"
