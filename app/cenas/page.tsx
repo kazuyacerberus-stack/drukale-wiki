@@ -239,7 +239,7 @@ export default function CenasPage() {
     <div className={s.wrap}>
       <header className={s.topo}>
         <span className={s.caminho}><i /> terrasave://arquivo/cenas</span>
-        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">Facções</Link><Link href="/linha-do-tempo">Linha do tempo</Link><Link href="/cronicas">Crônicas</Link><Link href="/eventos">Eventos</Link><Link href="/glossario">Glossário</Link><Link href="/mundo">◍ Mundo</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
+        <nav aria-label="Navegação"><Link href="/">◄ Arquivo</Link><Link href="/personagens">personagens</Link><Link href="/faccoes">Facções</Link><Link href="/linha-do-tempo">Linha do tempo</Link><Link href="/cronicas">Crônicas</Link><Link href="/eventos">Eventos</Link><Link href="/glossario">Glossário</Link><Link href="/mundo">◍ Mundo Terra Save</Link><Link href="/chat">chat</Link>{userId && <Link href="/perfil">perfil</Link>}{ehAdmin && <Link href="/admin/comunidade">moderação</Link>}</nav>
       </header>
       <PrecisaAprovacao>
       <section className={s.hero}>

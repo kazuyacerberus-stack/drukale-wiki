@@ -30,7 +30,7 @@ const GUIAS = [
   { href: '/personagens', icone: '◉', titulo: 'Personagens', desc: 'o arquivo de quem habita Drukale' },
   { href: '/eventos', icone: '✦', titulo: 'Eventos', desc: 'as novidades do grupo, em tempo real' },
   { href: '/cenas', icone: '▤', titulo: 'Cenas', desc: 'o que já foi vivido, em texto' },
-  { href: '/mundo', icone: '◍', titulo: 'Mundo', desc: 'o globo em 3D e o mapa político' },
+  { href: '/mundo', icone: '◍', titulo: 'Mundo Terra Save', desc: 'o globo em 3D e o mapa político' },
   { href: '/chat', icone: '✉', titulo: 'Chat', desc: 'converse com a comunidade' },
 ];
 

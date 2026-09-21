@@ -136,7 +136,7 @@ export default function PersonagensPage() {
               <Link className="ico" href="/eventos" title="as novidades do grupo">✦ eventos</Link>
               <Link className="ico" href="/glossario" title="raças, magia, tecnologia e mais">◈ glossário</Link>
               <Link className="ico" href="/cenas" title="o arquivo de cenas dos personagens">▤ cenas</Link>
-              <Link className="ico" href="/mundo" title="o mundo dos Drukale em 3D">◍ mundo</Link>
+              <Link className="ico" href="/mundo" title="o mundo Terra Save em 3D">◍ mundo terra save</Link>
               <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>
               {userId && <Link className="ico" href="/personagens/nova">+ enviar personagem</Link>}
               <Link className="ico" href="/admin">+ novo</Link>

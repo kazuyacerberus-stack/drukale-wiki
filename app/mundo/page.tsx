@@ -52,7 +52,7 @@ export default function MundoPage() {
             </div>
           </div>
 
-          <h1 data-txt="O MUNDO DRUKALE">O MUNDO DRUKALE</h1>
+          <h1 data-txt="MUNDO TERRA SAVE">MUNDO TERRA SAVE</h1>
           <p className="sub">
             &gt; arraste para girar · role para aproximar <span className="cur" />
           </p>
