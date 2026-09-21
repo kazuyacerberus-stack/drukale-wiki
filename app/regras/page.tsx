@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
-import RegraTexto from '../components/RegraTexto';
+import Realce from '../components/Realce';
 import RegraEditor from '../components/RegraEditor';
-import RegraComentarios from '../components/RegraComentarios';
+import RegraPainel from '../components/RegraPainel';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
-import { mensagemRegra, normalizarBusca, type Regra } from '../lib/regras';
+import { indexarRegra, interpretarBusca, mensagemRegra, pontuar, trecho, type Regra } from '../lib/regras';
 
 const ordenar = (lista: Regra[]) => [...lista].sort((a, b) => a.doc_ordem - b.doc_ordem || a.ordem - b.ordem);
 
@@ -48,6 +48,7 @@ export default function RegrasPage() {
   );
 }
 
+
 function RegrasConteudo() {
   const [regras, setRegras] = useState<Regra[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -58,6 +59,7 @@ function RegrasConteudo() {
   const [busca, setBusca] = useState('');
   const [fechados, setFechados] = useState<Set<number>>(new Set());
   const [editando, setEditando] = useState<'nova' | string | null>(null);
+  const campoBusca = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -77,22 +79,54 @@ function RegrasConteudo() {
     })();
   }, []);
 
+  // "/" leva o cursor pro filtro, de qualquer ponto da página
+  useEffect(() => {
+    const aoTecla = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement | null;
+      if (e.key !== '/' || alvo?.closest('input, textarea, select, [contenteditable]')) return;
+      e.preventDefault();
+      campoBusca.current?.focus();
+    };
+    document.addEventListener('keydown', aoTecla);
+    return () => document.removeEventListener('keydown', aoTecla);
+  }, []);
+
   const docs = useMemo(() => {
     const m = new Map<number, string>();
     regras.forEach((r) => { if (!m.has(r.doc_ordem)) m.set(r.doc_ordem, r.doc); });
     return [...m.entries()].map(([doc_ordem, doc]) => ({ doc_ordem, doc }));
   }, [regras]);
 
-  // texto normalizado de cada regra, calculado uma vez, pro filtro não pesar a cada tecla
-  const indice = useMemo(() => new Map(regras.map((r) => [r.id, normalizarBusca(`${r.titulo} ${r.conteudo}`)])), [regras]);
+  // texto de cada regra sem marcação e sem acento, calculado uma vez pro filtro não pesar a cada tecla
+  const indice = useMemo(() => new Map(regras.map((r) => [r.id, indexarRegra(r)])), [regras]);
 
-  const termo = normalizarBusca(busca.trim());
-  const visiveis = termo ? regras.filter((r) => indice.get(r.id)?.includes(termo)) : regras;
+  const consulta = useMemo(() => interpretarBusca(busca), [busca]);
+  const buscando = consulta.agulhas.length > 0;
+
+  /** Com busca: só as regras que têm tudo o que foi digitado, da mais relevante pra menos. */
+  const resultados = useMemo(() => {
+    if (!buscando) return [];
+    return regras
+      .map((r, pos) => {
+        const ix = indice.get(r.id);
+        const p = ix ? pontuar(ix, consulta) : null;
+        return p && ix ? { r, pos, nota: p.nota, trechos: p.trechos, texto: trecho(ix, consulta) } : null;
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => b.nota - a.nota || a.pos - b.pos);
+  }, [regras, indice, consulta, buscando]);
+
   const grupos = docs
-    .map((d) => ({ ...d, itens: visiveis.filter((r) => r.doc_ordem === d.doc_ordem) }))
+    .map((d) => ({ ...d, itens: regras.filter((r) => r.doc_ordem === d.doc_ordem) }))
     .filter((g) => g.itens.length > 0);
 
   const selecionada = regras.find((r) => r.id === selId) ?? null;
+
+  // regra anterior/próxima: na ordem do livro, ou na ordem dos resultados quando há busca
+  const sequencia = buscando ? resultados.map((x) => x.r) : regras;
+  const posSeq = sequencia.findIndex((r) => r.id === selId);
+  const anterior = posSeq > 0 ? sequencia[posSeq - 1] : null;
+  const proxima = posSeq >= 0 && posSeq < sequencia.length - 1 ? sequencia[posSeq + 1] : null;
 
   /** Troca só a regra exibida: a página, a lateral e a rolagem continuam onde estavam. */
   const selecionar = (id: string) => {
@@ -110,20 +144,48 @@ function RegrasConteudo() {
   return (
     <div className="regras-layout">
       <aside className="regras-lateral" aria-label="Filtro das regras">
-        <input
-          className="regras-busca"
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
-          placeholder="filtrar regras..."
-          aria-label="Filtrar regras"
-        />
-        <p className="regras-contagem">{termo ? `${visiveis.length} de ${regras.length} regras` : `${regras.length} regras`}</p>
+        <div className="regras-busca-caixa">
+          <input
+            ref={campoBusca}
+            className="regras-busca"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setBusca(''); }}
+            placeholder='buscar palavra ou "frase exata"  ( / )'
+            aria-label="Buscar nas regras"
+          />
+          {busca && <button type="button" className="regras-busca-limpar" onClick={() => { setBusca(''); campoBusca.current?.focus(); }} aria-label="Limpar a busca">×</button>}
+        </div>
+        <p className="regras-contagem">
+          {buscando ? `${resultados.length} de ${regras.length} regras` : `${regras.length} regras`}
+        </p>
 
-        {grupos.length === 0 ? (
-          <p className="vazio" style={{ padding: '20px 0' }}>{regras.length === 0 ? 'nenhuma regra publicada ainda' : 'nenhuma regra corresponde ao filtro'}</p>
+        {buscando ? (
+          resultados.length === 0 ? (
+            <p className="vazio" style={{ padding: '20px 0' }}>
+              nenhuma regra tem tudo isso.<br />
+              <small>use menos palavras ou entre aspas para achar uma frase exata.</small>
+            </p>
+          ) : (
+            resultados.map(({ r, trechos, texto }) => (
+              <button
+                type="button"
+                key={r.id}
+                className={r.id === selId ? 'regras-resultado on' : 'regras-resultado'}
+                aria-current={r.id === selId ? 'true' : undefined}
+                onClick={() => selecionar(r.id)}
+              >
+                <strong><Realce texto={r.titulo} agulhas={consulta.agulhas} /></strong>
+                <small>{r.doc} · {trechos} {trechos === 1 ? 'trecho' : 'trechos'}</small>
+                <span><Realce texto={texto} agulhas={consulta.agulhas} /></span>
+              </button>
+            ))
+          )
+        ) : grupos.length === 0 ? (
+          <p className="vazio" style={{ padding: '20px 0' }}>nenhuma regra publicada ainda</p>
         ) : (
           grupos.map((g) => {
-            const aberto = termo ? true : !fechados.has(g.doc_ordem);
+            const aberto = !fechados.has(g.doc_ordem);
             return (
               <div className="regras-grupo" key={g.doc_ordem}>
                 <button type="button" className="regras-grupo-titulo" onClick={() => alternarGrupo(g.doc_ordem)} aria-expanded={aberto}>
@@ -174,18 +236,17 @@ function RegrasConteudo() {
             }}
           />
         ) : selecionada ? (
-          <>
-            <div className="regras-topo">
-              <div>
-                <p className="regras-doc">{selecionada.doc}</p>
-                <h2>{selecionada.titulo}</h2>
-              </div>
-              {ehAdmin && <button type="button" className="mini-btn" onClick={() => setEditando(selecionada.id)}>✎ editar</button>}
-            </div>
-            <RegraTexto texto={selecionada.conteudo} />
-            <p className="regras-atualizada">atualizada em {new Date(selecionada.updated_at).toLocaleDateString('pt-BR')}</p>
-            <RegraComentarios key={selecionada.id} regraId={selecionada.id} userId={userId} ehAdmin={ehAdmin} />
-          </>
+          <RegraPainel
+            regra={selecionada}
+            anterior={anterior}
+            proxima={proxima}
+            destaque={consulta.agulhas}
+            termoBuscado={busca.replace(/["“”]/g, '').trim()}
+            ehAdmin={ehAdmin}
+            userId={userId}
+            onEditar={() => setEditando(selecionada.id)}
+            onSelecionar={selecionar}
+          />
         ) : (
           <p className="vazio">
             {ehAdmin

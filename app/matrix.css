@@ -1734,3 +1734,95 @@ html, body { margin: 0; padding: 0; background: #000; }
   .regras-lateral { position: static; max-height: 320px; }
   .regra-texto { font-size: 18.5px; }
 }
+
+/* ---------- Regras: busca por frase, resultados e leitura interativa ---------- */
+.regras-busca-caixa { position: relative; }
+.regras-busca-caixa .regras-busca { padding-right: 34px; }
+.regras-busca-limpar {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; padding: 0;
+  font-size: 18px; line-height: 1; color: rgba(var(--g2-rgb), .6); background: none; border: none; cursor: pointer; border-radius: 50%;
+}
+.regras-busca-limpar:hover { color: #fff; background: rgba(var(--g-rgb), .15); }
+
+.regras-resultado {
+  display: flex; flex-direction: column; gap: 3px; width: 100%; text-align: left; padding: 9px 10px; margin-bottom: 6px; cursor: pointer;
+  font-family: inherit; color: rgba(var(--g2-rgb), .8); background: rgba(var(--g-rgb), .04);
+  border: 1px solid rgba(var(--g-rgb), .14); border-left: 2px solid transparent; border-radius: 2px;
+  transition: background .15s, border-color .15s, transform .12s ease-out;
+}
+.regras-resultado:hover { background: rgba(var(--g-rgb), .09); }
+.regras-resultado:active { transform: scale(.985); }
+.regras-resultado.on { border-left-color: var(--g); background: rgba(var(--g-rgb), .14); }
+.regras-resultado strong { font-size: 13.5px; font-weight: normal; color: #fff; line-height: 1.35; }
+.regras-resultado small { font-size: 10.5px; letter-spacing: .8px; text-transform: uppercase; color: rgba(var(--g2-rgb), .45); }
+.regras-resultado span { font-size: 12.5px; line-height: 1.45; color: rgba(var(--g2-rgb), .68); }
+
+mark.regra-marca { color: #fff; background: rgba(var(--g-rgb), .34); border-radius: 2px; padding: 0 1px; }
+.regra-texto mark.regra-marca { box-shadow: 0 0 0 1px rgba(var(--g-rgb), .25); }
+mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0 2px rgba(var(--g-rgb), .55); }
+
+.regras-ferramentas { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.regras-achados {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -6px 0 18px; padding: 8px 12px;
+  font-size: 13px; color: var(--g2); background: rgba(var(--g-rgb), .08); border: 1px solid rgba(var(--g-rgb), .25); border-radius: 3px;
+}
+.regras-achados span { margin-right: auto; }
+
+.regra-painel.fonte-0 .regra-texto { font-size: 17px; }
+.regra-painel.fonte-2 .regra-texto { font-size: 23px; }
+
+.regra-indice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 22px; padding: 12px 14px; border: 1px solid rgba(var(--g-rgb), .2); border-radius: 3px; background: rgba(0,0,0,.25); }
+.regra-indice span { font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(var(--g2-rgb), .5); margin-right: 4px; }
+.regra-indice button {
+  padding: 5px 12px; font-family: inherit; font-size: 15px; color: var(--g2); cursor: pointer;
+  background: rgba(var(--g-rgb), .08); border: 1px solid rgba(var(--g-rgb), .25); border-radius: 20px;
+  transition: background .15s, transform .12s ease-out;
+}
+.regra-indice button:hover { background: rgba(var(--g-rgb), .2); color: #fff; }
+.regra-indice button:active { transform: scale(.95); }
+.regra-indice .regra-indice-tudo { margin-left: auto; border-style: dashed; background: none; color: rgba(var(--g2-rgb), .7); }
+
+.regra-secao { margin: 0 0 12px; border: 1px solid rgba(var(--g-rgb), .16); border-radius: 3px; background: rgba(0,0,0,.18); scroll-margin-top: 12px; }
+.regra-secao-titulo { margin: 0; }
+.regra-secao-titulo button {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 16px; text-align: left; cursor: pointer;
+  font-family: 'Cinzel', Georgia, serif; font-size: 15.5px; font-weight: 500; letter-spacing: 1.6px; text-transform: uppercase;
+  color: var(--g); background: none; border: none; transition: background .15s;
+}
+.regra-secao-titulo button:hover { background: rgba(var(--g-rgb), .08); }
+.regra-secao-titulo button span { flex: none; width: 14px; font-size: 13px; color: var(--g2); }
+.regra-secao-corpo { padding: 4px 18px 8px; border-top: 1px dashed rgba(var(--g-rgb), .16); }
+.regra-secao-corpo[hidden] { display: none; }
+
+.regra-cartao {
+  display: flex; gap: 14px; margin: 0 0 12px; padding: 13px 16px; border: 1px solid rgba(var(--g-rgb), .16); border-left: 3px solid var(--g);
+  border-radius: 3px; background: rgba(var(--g-rgb), .05); transition: background .2s, border-color .2s;
+}
+.regra-cartao:hover { background: rgba(var(--g-rgb), .1); }
+.regra-cartao-num {
+  flex: none; align-self: flex-start; min-width: 44px; padding: 3px 8px; text-align: center; font-family: 'Share Tech Mono', monospace;
+  font-size: 14px; letter-spacing: 1px; color: #16110a; background: var(--g); border-radius: 3px;
+}
+.regra-cartao > div { min-width: 0; }
+.regra-cartao-titulo { display: block; margin-bottom: 3px; font-size: 1.05em; color: #fff; }
+.regra-cartao p { margin: 0 0 6px; }
+.regra-cartao p:last-child { margin-bottom: 0; }
+
+.regras-vaivem { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 30px 0 0; }
+.regras-vaivem button {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 16px; text-align: left; cursor: pointer; font-family: inherit;
+  color: var(--g2); background: rgba(var(--g-rgb), .05); border: 1px solid rgba(var(--g-rgb), .22); border-radius: 3px;
+  transition: background .15s, border-color .15s, transform .12s ease-out;
+}
+.regras-vaivem button:hover { background: rgba(var(--g-rgb), .12); border-color: var(--g); }
+.regras-vaivem button:active { transform: scale(.98); }
+.regras-vaivem button.dir { text-align: right; align-items: flex-end; }
+.regras-vaivem small { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--g); }
+.regras-vaivem span { font-size: 14px; line-height: 1.35; }
+
+@media (max-width: 860px) {
+  .regras-topo { flex-direction: column; }
+  .regras-ferramentas { justify-content: flex-start; }
+  .regras-vaivem { grid-template-columns: 1fr; }
+  .regra-cartao { flex-direction: column; gap: 8px; }
+}
