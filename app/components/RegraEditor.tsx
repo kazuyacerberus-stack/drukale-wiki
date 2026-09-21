@@ -13,17 +13,18 @@ const NOVO_GRUPO = '__novo__';
  * entram no texto como uma linha de markdown, no ponto onde o cursor está.
  */
 export default function RegraEditor({
-  regra, docs, onSalvo, onApagado, onCancelar,
+  regra, docs, grupoInicial, onSalvo, onApagado, onCancelar,
 }: {
   regra: Regra | null;
   docs: { doc_ordem: number; doc: string }[];
+  grupoInicial?: number;
   onSalvo: (r: Regra) => void;
   onApagado: (id: string) => void;
   onCancelar: () => void;
 }) {
   const [titulo, setTitulo] = useState(regra?.titulo ?? '');
   const [conteudo, setConteudo] = useState(regra?.conteudo ?? '');
-  const [grupo, setGrupo] = useState<string>(String(docs[0]?.doc_ordem ?? NOVO_GRUPO));
+  const [grupo, setGrupo] = useState<string>(String(grupoInicial ?? docs[0]?.doc_ordem ?? NOVO_GRUPO));
   const [grupoNovo, setGrupoNovo] = useState('');
   const [previa, setPrevia] = useState(false);
   const [gifAberto, setGifAberto] = useState(false);

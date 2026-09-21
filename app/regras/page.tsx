@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import Realce from '../components/Realce';
 import RegraEditor from '../components/RegraEditor';
-import RegraPainel from '../components/RegraPainel';
+import DocLeitor from '../components/DocLeitor';
 import { useBeep } from '../components/useBeep';
 import { supabase } from '../lib/db';
 import { indexarRegra, interpretarBusca, mensagemRegra, pontuar, trecho, type Regra } from '../lib/regras';
@@ -55,13 +55,12 @@ function RegrasConteudo() {
   const [erro, setErro] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [ehAdmin, setEhAdmin] = useState(false);
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selDoc, setSelDoc] = useState<number | null>(null);
   const [busca, setBusca] = useState('');
-  const [fechados, setFechados] = useState<Set<number>>(new Set());
   const [editando, setEditando] = useState<'nova' | string | null>(null);
+  const [focoSecao, setFocoSecao] = useState<string | null>(null);
+  const [pendentes, setPendentes] = useState<Map<string, number>>(new Map());
   const campoBusca = useRef<HTMLInputElement>(null);
-  const [pendentes, setPendentes] = useState<Set<string>>(new Set());
-  const [soPendentes, setSoPendentes] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -74,13 +73,17 @@ function RegrasConteudo() {
       setEhAdmin(admin === true);
       if (admin === true) {
         const { data: sem } = await supabase.from('regra_perguntas').select('regra_id').is('resposta', null);
-        setPendentes(new Set(((sem ?? []) as { regra_id: string }[]).map((x) => x.regra_id)));
+        const m = new Map<string, number>();
+        ((sem ?? []) as { regra_id: string }[]).forEach((x) => m.set(x.regra_id, (m.get(x.regra_id) ?? 0) + 1));
+        setPendentes(m);
       }
       if (error) { setErro(mensagemRegra(error)); setCarregando(false); return; }
       const lista = ordenar((data ?? []) as Regra[]);
       setRegras(lista);
-      const doHash = decodeURIComponent(window.location.hash.slice(1));
-      setSelId(lista.find((r) => r.id === doHash)?.id ?? lista[0]?.id ?? null);
+      // #d2 abre o documento 2; um id de seção (links antigos) abre o documento dela
+      const hash = decodeURIComponent(window.location.hash.slice(1));
+      const doHash = /^d\d+$/.test(hash) ? Number(hash.slice(1)) : lista.find((r) => r.id === hash)?.doc_ordem;
+      setSelDoc(lista.find((r) => r.doc_ordem === doHash)?.doc_ordem ?? lista[0]?.doc_ordem ?? null);
       setCarregando(false);
     })();
   }, []);
@@ -103,61 +106,60 @@ function RegrasConteudo() {
     return [...m.entries()].map(([doc_ordem, doc]) => ({ doc_ordem, doc }));
   }, [regras]);
 
-  // texto de cada regra sem marcação e sem acento, calculado uma vez pro filtro não pesar a cada tecla
+  // texto de cada seção sem marcação e sem acento, calculado uma vez pro filtro não pesar a cada tecla
   const indice = useMemo(() => new Map(regras.map((r) => [r.id, indexarRegra(r)])), [regras]);
 
   const consulta = useMemo(() => interpretarBusca(busca), [busca]);
   const buscando = consulta.agulhas.length > 0;
 
-  /** Com busca: só as regras que têm tudo o que foi digitado, da mais relevante pra menos. */
+  /** Com busca: os documentos que têm o que foi digitado, do mais relevante pro menos, com as melhores seções. */
   const resultados = useMemo(() => {
     if (!buscando) return [];
-    return regras
-      .map((r, pos) => {
-        const ix = indice.get(r.id);
-        const p = ix ? pontuar(ix, consulta) : null;
-        return p && ix ? { r, pos, nota: p.nota, trechos: p.trechos, texto: trecho(ix, consulta) } : null;
+    return docs
+      .map((d) => {
+        const achadas = regras
+          .filter((r) => r.doc_ordem === d.doc_ordem)
+          .map((r) => {
+            const ix = indice.get(r.id);
+            const p = ix ? pontuar(ix, consulta) : null;
+            return p && ix ? { r, nota: p.nota, trechos: p.trechos, texto: trecho(ix, consulta) } : null;
+          })
+          .filter((x): x is NonNullable<typeof x> => x !== null)
+          .sort((a, b) => b.nota - a.nota);
+        if (!achadas.length) return null;
+        return { d, achadas, trechos: achadas.reduce((n, a) => n + a.trechos, 0), nota: achadas[0].nota };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
-      .sort((a, b) => b.nota - a.nota || a.pos - b.pos);
-  }, [regras, indice, consulta, buscando]);
+      .sort((a, b) => b.nota - a.nota);
+  }, [regras, docs, indice, consulta, buscando]);
 
-  const base = soPendentes ? regras.filter((r) => pendentes.has(r.id)) : regras;
-  const grupos = docs
-    .map((d) => ({ ...d, itens: base.filter((r) => r.doc_ordem === d.doc_ordem) }))
-    .filter((g) => g.itens.length > 0);
+  const secoesDoc = (ordem: number) => regras.filter((r) => r.doc_ordem === ordem);
+  const docAtual = docs.find((d) => d.doc_ordem === selDoc) ?? null;
 
-  const selecionada = regras.find((r) => r.id === selId) ?? null;
-
-  // regra anterior/próxima: na ordem do livro, ou na ordem dos resultados quando há busca
-  const sequencia = buscando ? resultados.map((x) => x.r) : regras;
-  const posSeq = sequencia.findIndex((r) => r.id === selId);
-  const anterior = posSeq > 0 ? sequencia[posSeq - 1] : null;
-  const proxima = posSeq >= 0 && posSeq < sequencia.length - 1 ? sequencia[posSeq + 1] : null;
-
-  /** Troca só a regra exibida: a página, a lateral e a rolagem continuam onde estavam. */
-  const selecionar = (id: string) => {
-    setSelId(id);
+  /** Troca só o documento exibido: a página, a lateral e a rolagem continuam onde estavam. */
+  const selecionarDoc = (ordem: number, secaoId?: string) => {
+    setSelDoc(ordem);
     setEditando(null);
-    window.history.replaceState(null, '', `#${id}`);
-    if (window.innerWidth <= 860) document.getElementById('regra-painel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setFocoSecao(secaoId ?? null);
+    window.history.replaceState(null, '', `#d${ordem}`);
+    if (!secaoId && window.innerWidth <= 860) document.getElementById('regra-painel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  /** O moderador respondeu (ou chegou pergunta nova): atualiza a marca na lateral. */
-  const atualizarPendentes = (regraId: string, n: number) => setPendentes((prev) => {
-    const novo = new Set(prev);
-    if (n > 0) novo.add(regraId); else novo.delete(regraId);
-    return novo;
-  });
+  const focoFeito = useCallback(() => setFocoSecao(null), []);
 
-  const alternarGrupo = (ordem: number) => setFechados((prev) => { const n = new Set(prev); n.has(ordem) ? n.delete(ordem) : n.add(ordem); return n; });
+  /** O moderador respondeu (ou chegou pergunta nova): atualiza a marca na lateral. */
+  const atualizarPendentes = useCallback((regraId: string, n: number) => setPendentes((prev) => {
+    const novo = new Map(prev);
+    if (n > 0) novo.set(regraId, n); else novo.delete(regraId);
+    return novo;
+  }), []);
 
   if (carregando) return <div className="load"><span /><span /><span /><p>abrindo o livro de regras...</p></div>;
   if (erro) return <p className="erro">FALHA :: {erro}</p>;
 
   return (
     <div className="regras-layout">
-      <aside className="regras-lateral" aria-label="Filtro das regras">
+      <aside className="regras-lateral" aria-label="Documentos de regras">
         <div className="regras-busca-caixa">
           <input
             ref={campoBusca}
@@ -171,66 +173,57 @@ function RegrasConteudo() {
           {busca && <button type="button" className="regras-busca-limpar" onClick={() => { setBusca(''); campoBusca.current?.focus(); }} aria-label="Limpar a busca">×</button>}
         </div>
         <p className="regras-contagem">
-          {buscando ? `${resultados.length} de ${regras.length} regras` : `${regras.length} regras`}
+          {buscando ? `${resultados.length} de ${docs.length} documentos` : `${docs.length} documentos · ${regras.length} seções`}
         </p>
-
-        {ehAdmin && !buscando && (pendentes.size > 0 || soPendentes) && (
-          <button type="button" className={soPendentes ? 'regras-pendentes on' : 'regras-pendentes'} onClick={() => setSoPendentes((v) => !v)}>
-            ❓ {pendentes.size} {pendentes.size === 1 ? 'regra com pergunta' : 'regras com perguntas'} sem resposta{soPendentes ? ' · mostrar todas' : ''}
-          </button>
-        )}
 
         {buscando ? (
           resultados.length === 0 ? (
             <p className="vazio" style={{ padding: '20px 0' }}>
-              nenhuma regra tem tudo isso.<br />
+              nada tem tudo isso.<br />
               <small>use menos palavras ou entre aspas para achar uma frase exata.</small>
             </p>
           ) : (
-            resultados.map(({ r, trechos, texto }) => (
-              <button
-                type="button"
-                key={r.id}
-                className={r.id === selId ? 'regras-resultado on' : 'regras-resultado'}
-                aria-current={r.id === selId ? 'true' : undefined}
-                onClick={() => selecionar(r.id)}
-              >
-                <strong><Realce texto={r.titulo} agulhas={consulta.agulhas} /></strong>
-                <small>{r.doc} · {trechos} {trechos === 1 ? 'trecho' : 'trechos'}</small>
-                <span><Realce texto={texto} agulhas={consulta.agulhas} /></span>
-              </button>
-            ))
-          )
-        ) : grupos.length === 0 ? (
-          <p className="vazio" style={{ padding: '20px 0' }}>nenhuma regra publicada ainda</p>
-        ) : (
-          grupos.map((g) => {
-            const aberto = !fechados.has(g.doc_ordem);
-            return (
-              <div className="regras-grupo" key={g.doc_ordem}>
-                <button type="button" className="regras-grupo-titulo" onClick={() => alternarGrupo(g.doc_ordem)} aria-expanded={aberto}>
-                  <span>{aberto ? '▾' : '▸'}</span> {g.doc}
+            resultados.map(({ d, achadas, trechos }) => (
+              <div key={d.doc_ordem} className={d.doc_ordem === selDoc ? 'regras-resultado on' : 'regras-resultado'}>
+                <button type="button" className="regras-resultado-titulo" onClick={() => selecionarDoc(d.doc_ordem)} aria-current={d.doc_ordem === selDoc ? 'true' : undefined}>
+                  <strong>{d.doc}</strong>
+                  <small>{achadas.length} {achadas.length === 1 ? 'seção' : 'seções'} · {trechos} {trechos === 1 ? 'trecho' : 'trechos'}</small>
                 </button>
-                {aberto && g.itens.map((r) => (
-                  <button
-                    type="button"
-                    key={r.id}
-                    className={r.id === selId ? 'regras-item on' : 'regras-item'}
-                    aria-current={r.id === selId ? 'true' : undefined}
-                    onClick={() => selecionar(r.id)}
-                  >
-                    {r.titulo}
-                    {ehAdmin && pendentes.has(r.id) && <b className="regras-item-pendente" title="tem pergunta sem resposta">?</b>}
+                {achadas.slice(0, 3).map((a) => (
+                  <button type="button" key={a.r.id} className="regras-resultado-trecho" onClick={() => selecionarDoc(d.doc_ordem, a.r.id)}>
+                    <b><Realce texto={a.r.titulo} agulhas={consulta.agulhas} /></b>
+                    <span><Realce texto={a.texto} agulhas={consulta.agulhas} /></span>
                   </button>
                 ))}
+                {achadas.length > 3 && <small className="regras-resultado-mais">+ {achadas.length - 3} {achadas.length - 3 === 1 ? 'seção' : 'seções'} neste documento</small>}
               </div>
+            ))
+          )
+        ) : docs.length === 0 ? (
+          <p className="vazio" style={{ padding: '20px 0' }}>nenhuma regra publicada ainda</p>
+        ) : (
+          docs.map((d) => {
+            const secs = secoesDoc(d.doc_ordem);
+            const pend = ehAdmin ? secs.reduce((n, r) => n + (pendentes.get(r.id) ?? 0), 0) : 0;
+            return (
+              <button
+                type="button"
+                key={d.doc_ordem}
+                className={d.doc_ordem === selDoc ? 'regras-doc-item on' : 'regras-doc-item'}
+                aria-current={d.doc_ordem === selDoc ? 'true' : undefined}
+                onClick={() => selecionarDoc(d.doc_ordem)}
+              >
+                <strong>{d.doc}</strong>
+                <small>{secs.length} {secs.length === 1 ? 'seção' : 'seções'}</small>
+                {pend > 0 && <b className="regras-item-pendente" title="perguntas sem resposta">{pend}</b>}
+              </button>
             );
           })
         )}
 
         {ehAdmin && (
           <button type="button" className="mini-btn" style={{ marginTop: 14, width: '100%' }} onClick={() => setEditando('nova')}>
-            + nova regra
+            + nova seção
           </button>
         )}
       </aside>
@@ -240,39 +233,39 @@ function RegrasConteudo() {
           <RegraEditor
             regra={null}
             docs={docs}
+            grupoInicial={selDoc ?? undefined}
             onCancelar={() => setEditando(null)}
             onApagado={() => setEditando(null)}
-            onSalvo={(nova) => { setRegras((prev) => ordenar([...prev, nova])); setSelId(nova.id); setEditando(null); }}
+            onSalvo={(nova) => { setRegras((prev) => ordenar([...prev, nova])); setSelDoc(nova.doc_ordem); setFocoSecao(nova.id); setEditando(null); }}
           />
-        ) : selecionada && editando === selecionada.id ? (
-          <RegraEditor
-            key={selecionada.id}
-            regra={selecionada}
+        ) : docAtual ? (
+          <DocLeitor
+            key={docAtual.doc_ordem}
+            doc={docAtual}
+            secoes={secoesDoc(docAtual.doc_ordem)}
             docs={docs}
-            onCancelar={() => setEditando(null)}
+            consulta={consulta}
+            termoBuscado={busca.replace(/["“”]/g, '').trim()}
+            indice={indice}
+            ehAdmin={ehAdmin}
+            userId={userId}
+            editando={editando && editando !== 'nova' ? editando : null}
+            focoSecao={focoSecao}
+            onEditar={setEditando}
             onSalvo={(r) => { setRegras((prev) => ordenar(prev.map((x) => (x.id === r.id ? r : x)))); setEditando(null); }}
             onApagado={(id) => {
               const restantes = regras.filter((x) => x.id !== id);
-              setRegras(restantes); setSelId(restantes[0]?.id ?? null); setEditando(null);
+              setRegras(restantes);
+              if (!restantes.some((x) => x.doc_ordem === docAtual.doc_ordem)) setSelDoc(restantes[0]?.doc_ordem ?? null);
+              setEditando(null);
             }}
-          />
-        ) : selecionada ? (
-          <RegraPainel
-            regra={selecionada}
-            anterior={anterior}
-            proxima={proxima}
-            destaque={consulta.agulhas}
-            termoBuscado={busca.replace(/["“”]/g, '').trim()}
-            ehAdmin={ehAdmin}
-            userId={userId}
-            onEditar={() => setEditando(selecionada.id)}
-            onSelecionar={selecionar}
             onPendentes={atualizarPendentes}
+            onFocoFeito={focoFeito}
           />
         ) : (
           <p className="vazio">
             {ehAdmin
-              ? 'ainda não há regras — rode o importar-regras.sql ou crie a primeira em "+ nova regra".'
+              ? 'ainda não há regras — rode o importar-regras.sql ou crie a primeira em "+ nova seção".'
               : 'as regras de Terra Save ainda serão publicadas aqui'}
           </p>
         )}
