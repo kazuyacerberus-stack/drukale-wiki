@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './matrix.css';
 
 export const metadata: Metadata = {
-  title: 'Terra Nova',
-  description: 'Arquivo central de personagens de Terra Nova',
+  title: 'Terra Save',
+  description: 'Arquivo central de personagens de Terra Save',
 };
 
 export default function RootLayout({

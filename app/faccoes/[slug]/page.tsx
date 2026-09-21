@@ -170,7 +170,7 @@ function FaccaoPageInterna() {
       <header className="hd">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">terranova://arquivo/faccoes/{chave}</span>
+          <span className="hd-path">terrasave://arquivo/faccoes/{chave}</span>
           <div className="hd-act"><Link className="ico" href="/faccoes">← facções</Link></div>
         </div>
         <h1 data-txt="FACÇÃO NÃO ENCONTRADA">FACÇÃO NÃO ENCONTRADA</h1>
@@ -183,7 +183,7 @@ function FaccaoPageInterna() {
     <>
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">terranova://arquivo/faccoes/{alvo.slug}</span>
+          <span className="hd-path">terrasave://arquivo/faccoes/{alvo.slug}</span>
           <div className="hd-act">
             <Link className="ico" href="/faccoes" onClick={() => beep('close')}>← facções</Link>
             <Link className="ico" href="/admin/faccoes">gerenciar</Link>
@@ -385,7 +385,7 @@ function FaccaoPageInterna() {
           </p>
         </section>
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
     </>
   );
 }

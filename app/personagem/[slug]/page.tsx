@@ -158,7 +158,7 @@ function PersonagemPageInterna() {
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
           <span className="hd-path">
-            terranova://arquivo/personagem/{alvo.slug || alvo.id}
+            terrasave://arquivo/personagem/{alvo.slug || alvo.id}
           </span>
           <div className="hd-act">
             <button
@@ -319,7 +319,7 @@ function PersonagemPageInterna() {
           </nav>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
     </>
   );
 }

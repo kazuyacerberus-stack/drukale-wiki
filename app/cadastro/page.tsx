@@ -80,7 +80,7 @@ export default function Cadastro() {
       <main className="wrap login-wrap">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">terranova://novo-membro</span>
+          <span className="hd-path">terrasave://novo-membro</span>
           <div className="hd-act">
             <Link className="ico" href="/">← arquivo</Link>
             <Link className="ico" href="/admin/login">já tenho conta</Link>
@@ -163,7 +163,7 @@ export default function Cadastro() {
           {aviso && <p className="stat ok">{aviso}</p>}
         </form>
 
-        <footer className="ft">terranova_system v1.0 // canal criptografado</footer>
+        <footer className="ft">terrasave_system v1.0 // canal criptografado</footer>
       </main>
     </div>
   );

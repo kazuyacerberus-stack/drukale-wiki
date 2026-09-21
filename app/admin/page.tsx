@@ -184,7 +184,7 @@ export default function Painel() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://admin/painel</span>
+            <span className="hd-path">terrasave://admin/painel</span>
             <div className="hd-act">
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
@@ -384,7 +384,7 @@ export default function Painel() {
           </div>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

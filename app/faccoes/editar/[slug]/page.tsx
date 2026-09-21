@@ -44,7 +44,7 @@ export default function EditarFaccaoPublica() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://arquivo/faccoes/editar/{slug}</span>
+            <span className="hd-path">terrasave://arquivo/faccoes/editar/{slug}</span>
             <div className="hd-act">
               <Link className="ico" href="/perfil">← meus envios</Link>
             </div>
@@ -73,7 +73,7 @@ export default function EditarFaccaoPublica() {
           </>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

@@ -38,7 +38,7 @@ export default function GlossarioPage() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://arquivo/glossario</span>
+            <span className="hd-path">terrasave://arquivo/glossario</span>
             <div className="hd-act">
               <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
                 {muted ? '♪ off' : '♪ on'}
@@ -86,7 +86,7 @@ export default function GlossarioPage() {
           </div>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

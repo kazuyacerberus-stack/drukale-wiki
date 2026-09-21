@@ -72,7 +72,7 @@ export default function PainelCronicas() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://admin/cronicas</span>
+            <span className="hd-path">terrasave://admin/cronicas</span>
             <div className="hd-act">
               <Link className="ico" href="/admin">← painel</Link>
               <Link className="ico" href="/admin/cronicas/nova">+ nova crônica</Link>
@@ -123,7 +123,7 @@ export default function PainelCronicas() {
           </div>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
        </Protegido>
       </main>
     </div>

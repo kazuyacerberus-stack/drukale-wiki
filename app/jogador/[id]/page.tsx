@@ -91,7 +91,7 @@ function JogadorPageInterna() {
     <>
       <div className="hd-bar">
         <span className="dot" /><span className="dot" /><span className="dot" />
-        <span className="hd-path">terranova://jogador/{alvo}</span>
+        <span className="hd-path">terrasave://jogador/{alvo}</span>
         <div className="hd-act">
           <Link className="ico" href="/">← arquivo</Link>
           <Link className="ico" href="/perfil">meu perfil</Link>
@@ -116,7 +116,7 @@ function JogadorPageInterna() {
         </div>
       </div>
 
-      <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+      <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
     </>
   );
 }

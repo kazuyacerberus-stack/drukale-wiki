@@ -16,7 +16,7 @@ export default function NovaFaccaoPublica() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://arquivo/faccoes/nova</span>
+            <span className="hd-path">terrasave://arquivo/faccoes/nova</span>
             <div className="hd-act">
               <Link className="ico" href="/faccoes">← facções</Link>
               <Link className="ico" href="/perfil">meus envios</Link>
@@ -28,7 +28,7 @@ export default function NovaFaccaoPublica() {
 
         <FaccaoForm />
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
        </PrecisaAprovacao>
       </main>
     </div>

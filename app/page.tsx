@@ -13,7 +13,7 @@ import { supabase } from './lib/db';
  * já cadastrados como facções (ver sql/... desta mesma frente). Usar
  * uma estrutura de "quatro poderes" é a mesma ideia estrutural do Caos
  * de Warhammer 40K, mas sem tomar emprestado nome, deus ou texto de
- * ninguém: tudo aqui foi escrito para Terra Nova.
+ * ninguém: tudo aqui foi escrito para Terra Save.
  */
 const FORCAS_CORRUPTORAS = [
   'Legião da Fúria Vermelha',
@@ -163,7 +163,7 @@ export default function Home() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://imperio</span>
+            <span className="hd-path">terrasave://imperio</span>
             <div className="hd-act">
               <button
                 className="ico"
@@ -188,8 +188,8 @@ export default function Home() {
           <div className="imp-hero-veu" />
           <div className="imp-hero-conteudo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="imp-hero-selo" src="/emblema-drukale.webp" alt="Emblema de Terra Nova" />
-            <h1 className="imp-titulo">TERRA NOVA</h1>
+            <img className="imp-hero-selo" src="/emblema-drukale.webp" alt="Emblema de Terra Save" />
+            <h1 className="imp-titulo">TERRA SAVE</h1>
             <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
             <p className="imp-lead">
               No trono de <strong>Tenebris Civitaten</strong> governa{' '}
@@ -275,7 +275,7 @@ export default function Home() {
           </div>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
       </main>
     </div>
   );

@@ -153,7 +153,7 @@ export default function PerfilPage() {
       <main className="wrap">
         <div className="hd-bar">
           <span className="dot" /><span className="dot" /><span className="dot" />
-          <span className="hd-path">terranova://minha-conta</span>
+          <span className="hd-path">terrasave://minha-conta</span>
           <div className="hd-act">
             <Link className="ico" href="/">← arquivo</Link>
             <Link className="ico" href="/chat">chat</Link>
@@ -364,7 +364,7 @@ export default function PerfilPage() {
           </div>
         )}
 
-        <footer className="ft">terranova_system v1.0 // conexão segura estabelecida</footer>
+        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
       </main>
     </div>
   );

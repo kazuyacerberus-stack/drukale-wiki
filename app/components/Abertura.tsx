@@ -372,7 +372,7 @@ export default function Abertura() {
         {(fase === 'acesso' || fase === 'saindo') && (
           <div className="liberado">
             <strong>ACESSO PERMITIDO</strong>
-            <span>arquivo central de Terra Nova</span>
+            <span>arquivo central de Terra Save</span>
           </div>
         )}
       </div>

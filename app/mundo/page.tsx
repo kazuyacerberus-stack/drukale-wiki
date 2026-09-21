@@ -39,7 +39,7 @@ export default function MundoPage() {
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terranova://cartografia/superficie</span>
+            <span className="hd-path">terrasave://cartografia/superficie</span>
             <div className="hd-act">
               <Link className="ico" href="/faccoes">facções</Link>
               <Link className="ico" href="/linha-do-tempo">linha do tempo</Link>
@@ -61,7 +61,7 @@ export default function MundoPage() {
         <Mundo />
 
         <footer className="ft">
-          <span>TERRA NOVA // CARTOGRAFIA · CARTA DE SUPERFÍCIE</span>
+          <span>TERRA SAVE // CARTOGRAFIA · CARTA DE SUPERFÍCIE</span>
         </footer>
        </PrecisaAprovacao>
       </main>
