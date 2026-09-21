@@ -8,87 +8,63 @@ import Avatar from './components/Avatar';
 import { useBeep } from './components/useBeep';
 import { supabase } from './lib/db';
 
-/**
- * As quatro forças corruptoras do império — nomes 100% originais,
- * já cadastrados como facções (ver sql/... desta mesma frente). Usar
- * uma estrutura de "quatro poderes" é a mesma ideia estrutural do Caos
- * de Warhammer 40K, mas sem tomar emprestado nome, deus ou texto de
- * ninguém: tudo aqui foi escrito para Terra Save.
- */
-const FORCAS_CORRUPTORAS = [
-  'Legião da Fúria Vermelha',
-  'Culto da Podridão Eterna',
-  'Conselho das Mil Máscaras',
-  'Corte do Êxtase Infinito',
+/** Atalhos principais: o mesmo destino aparece no topo e nos cartões de baixo. */
+const CARTOES = [
+  {
+    href: '/regras', titulo: 'Regras', desc: 'Entenda o funcionamento do nosso RPG.',
+    icone: (
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 12c-4-3-10-4-16-3v27c6-1 12 0 16 3m0-27c4-3 10-4 16-3v27c-6-1-12 0-16 3m0-27v27" /></svg>
+    ),
+  },
+  {
+    href: '/mundo', titulo: 'Mapa', desc: 'Explore os territórios, cidades e regiões de Terra Save.',
+    icone: (
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 12l12-4 12 4 12-4v28l-12 4-12-4-12 4V12zm12-4v28m12-24v28" /></svg>
+    ),
+  },
+  {
+    href: '/eventos', titulo: 'História', desc: 'Conheça o passado, o presente e o que está por vir.',
+    icone: (
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 8h22a4 4 0 014 4v0a4 4 0 01-4 4H14m0-8a4 4 0 00-4 4v22a4 4 0 004 4h20a4 4 0 004-4V16M18 24h14M18 31h10" /></svg>
+    ),
+  },
+  {
+    href: '/personagens', titulo: 'Personagens', desc: 'Veja as fichas e encontre seu lugar na jornada.',
+    icone: (
+      <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="17" r="6" /><path d="M12 38c0-7 5-11 12-11s12 4 12 11" /><circle cx="10" cy="20" r="4" /><circle cx="38" cy="20" r="4" /></svg>
+    ),
+  },
 ];
 
-const GUIAS = [
-  { href: '/faccoes', icone: '⌂', titulo: 'Facções', desc: 'as casas e cultos que disputam o poder' },
-  { href: '/linha-do-tempo', icone: '⏱', titulo: 'Linha do tempo', desc: 'o que todo mundo está compartilhando' },
-  { href: '/cronicas', icone: '📜', titulo: 'Crônicas', desc: 'os marcos que forjaram o império' },
-  { href: '/glossario', icone: '◈', titulo: 'Glossário', desc: 'raças, magia, tecnologia e mais' },
-  { href: '/personagens', icone: '◉', titulo: 'Personagens', desc: 'o arquivo de quem habita Drukale' },
-  { href: '/eventos', icone: '✦', titulo: 'Eventos', desc: 'as novidades do grupo, em tempo real' },
-  { href: '/cenas', icone: '▤', titulo: 'Cenas', desc: 'o que já foi vivido, em texto' },
-  { href: '/mundo', icone: '◍', titulo: 'Mundo Terra Save', desc: 'o globo em 3D e o mapa político' },
-  { href: '/chat', icone: '✉', titulo: 'Chat', desc: 'converse com a comunidade' },
+const MAIS = [
+  { href: '/faccoes', titulo: 'Facções' },
+  { href: '/cenas', titulo: 'Cenas' },
+  { href: '/linha-do-tempo', titulo: 'Linha do tempo' },
+  { href: '/cronicas', titulo: 'Crônicas' },
+  { href: '/glossario', titulo: 'Glossário' },
+  { href: '/chat', titulo: 'Chat' },
 ];
-
-type Forca = { slug: string; nome: string; cor: string; resumo: string | null };
-type Numeros = { personagens: number; faccoes: number; termos: number; locais: number; linhaDoTempo: number; novidades: number };
-
-/**
- * Divisória orgânica: um veio de corrupção se ramificando, em vez de uma
- * linha reta ou um zigue-zague geométrico. Os nós pulsam devagar, como se
- * algo ainda estivesse vivo por baixo da pele do desenho.
- */
-function VeioCorrupcao() {
-  return (
-    <svg className="imp-veio" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true">
-      <path
-        className="imp-veio-tronco"
-        d="M0,35 C80,15 140,55 220,32 C300,10 360,50 440,28 C520,8 580,48 660,30 C740,14 800,52 880,34 C930,22 970,40 1000,32"
-      />
-      <path className="imp-veio-ramo" d="M220,32 C210,50 200,60 185,66" />
-      <path className="imp-veio-ramo" d="M440,28 C450,10 465,2 480,4" />
-      <path className="imp-veio-ramo" d="M660,30 C670,50 685,60 705,64" />
-      <path className="imp-veio-ramo" d="M880,34 C870,14 858,6 840,8" />
-      <circle className="imp-veio-no" style={{ animationDelay: '0s' }} cx="220" cy="32" r="3" />
-      <circle className="imp-veio-no" style={{ animationDelay: '.6s' }} cx="440" cy="28" r="3" />
-      <circle className="imp-veio-no" style={{ animationDelay: '1.2s' }} cx="660" cy="30" r="3" />
-      <circle className="imp-veio-no" style={{ animationDelay: '1.8s' }} cx="880" cy="34" r="3" />
-    </svg>
-  );
-}
 
 export default function Home() {
-  const [forcas, setForcas] = useState<Forca[]>([]);
-  const [numeros, setNumeros] = useState<Numeros | null>(null);
-  const [podeVerConteudo, setPodeVerConteudo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
   const [meuPerfil, setMeuPerfil] = useState<{ apelido: string; avatar_url: string | null } | null>(null);
   const { beep, muted, setMuted } = useBeep();
 
   /**
-   * A home é a única página pública — quem não tem conta aprovada
-   * ainda vê o herói, a faixa de navegação (é só ícone e texto, sem
-   * dado nenhum) e o CTA, mas não os números nem a prévia das facções.
-   * Cada link da faixa é quem barra de verdade: leva a uma página
-   * fechada atrás de `PrecisaAprovacao`, que pede login ou mostra o
-   * aviso de conta pendente.
+   * A home é a única página pública: quem não tem conta vê o herói e os
+   * atalhos (só texto e ícone, sem dado nenhum). Quem barra de verdade é
+   * cada página de destino, que fica atrás de `PrecisaAprovacao`.
    */
   useEffect(() => {
     let vivo = true;
     const verificar = async (logado: boolean) => {
-      if (!logado) { if (vivo) { setPodeVerConteudo(false); setEhAdmin(false); setMeuPerfil(null); } return; }
+      if (!logado) { if (vivo) { setEhAdmin(false); setMeuPerfil(null); } return; }
       const { data: auth } = await supabase.auth.getUser();
-      const [admin, aprovada, perfil] = await Promise.all([
+      const [admin, perfil] = await Promise.all([
         supabase.rpc('drk_e_admin'),
-        supabase.rpc('drk_conta_aprovada'),
         auth.user ? supabase.from('profiles').select('apelido,avatar_url').eq('user_id', auth.user.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       if (vivo) {
-        setPodeVerConteudo(admin.data === true || aprovada.data === true);
         setEhAdmin(admin.data === true);
         setMeuPerfil(perfil.data as { apelido: string; avatar_url: string | null } | null);
       }
@@ -100,158 +76,84 @@ export default function Home() {
     return () => { vivo = false; sub.subscription.unsubscribe(); };
   }, []);
 
-  useEffect(() => {
-    if (!podeVerConteudo) return;
-    (async () => {
-      const { data } = await supabase.from('faccoes').select('slug,nome,cor,resumo').in('nome', FORCAS_CORRUPTORAS);
-      const encontradas = (data ?? []) as Forca[];
-      const ordenadas = FORCAS_CORRUPTORAS
-        .map((nome) => encontradas.find((f) => f.nome === nome))
-        .filter((f): f is Forca => Boolean(f));
-      setForcas(ordenadas);
-    })();
-  }, [podeVerConteudo]);
-
-  useEffect(() => {
-    if (!podeVerConteudo) return;
-    (async () => {
-      const contar = (tabela: string) => supabase.from(tabela).select('id', { count: 'exact', head: true });
-      const [personagens, faccoes, termos, locais, linhaDoTempo, novidades] = await Promise.all([
-        contar('characters'), contar('faccoes'), contar('glossario'), contar('locais'), contar('eventos'), contar('novidades'),
-      ]);
-      setNumeros({
-        personagens: personagens.count ?? 0,
-        faccoes: faccoes.count ?? 0,
-        termos: termos.count ?? 0,
-        locais: locais.count ?? 0,
-        linhaDoTempo: linhaDoTempo.count ?? 0,
-        novidades: novidades.count ?? 0,
-      });
-    })();
-  }, [podeVerConteudo]);
-
   return (
-    <div className="term imperio">
+    <div className="term tn">
       <Abertura />
 
-      <main className="wrap">
-        <header className="hd">
-          <div className="hd-bar">
-            <span className="dot" /><span className="dot" /><span className="dot" />
-            <span className="hd-path">terrasave://imperio</span>
-            <div className="hd-act">
-              <button
-                className="ico"
-                onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
-                title={muted ? 'ativar som' : 'silenciar'}
-              >
-                {muted ? '♪ off' : '♪ on'}
-              </button>
-              {ehAdmin && <Link className="ico" href="/admin">★ game master</Link>}
-              {meuPerfil && (
-                <Link className="ico" href="/perfil" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                  <Avatar url={meuPerfil.avatar_url} nome={meuPerfil.apelido} tamanho={18} />
-                  perfil
-                </Link>
-              )}
+      <header className="tn-topo">
+        <Link href="/" className="tn-marca">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-compasso.png" alt="" />
+          <span>TERRA SAVE</span>
+        </Link>
+
+        <nav className="tn-nav" aria-label="Navegação principal">
+          <Link href="/" className="on" aria-current="page">Início</Link>
+          <Link href="/regras" onClick={() => beep('click')}>Regras</Link>
+          <Link href="/mundo" onClick={() => beep('click')}>Mapa</Link>
+          <Link href="/eventos" onClick={() => beep('click')}>História</Link>
+          <Link href="/personagens" onClick={() => beep('click')}>Personagens</Link>
+          <details className="tn-mais">
+            <summary>Mais</summary>
+            <div>
+              {MAIS.map((m) => <Link key={m.href} href={m.href}>{m.titulo}</Link>)}
             </div>
-          </div>
-        </header>
+          </details>
+        </nav>
 
-        <section className="imp-hero">
-          <div className="imp-hero-fundo" />
-          <div className="imp-hero-veu" />
-          <div className="imp-hero-conteudo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="imp-hero-selo" src="/logo-terra-save.png" alt="Logo de Terra Save" />
-            <h1 className="imp-titulo">TERRA SAVE</h1>
-            <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
-            <p className="imp-lead">
-              No trono de <strong>Tenebris Civitaten</strong> governa{' '}
-              <strong>Elsharion Drukale</strong>, o Hierarca da Anarquia — nascido
-              da corrupção e forjado na violência, sua vontade é a única lei que a
-              Casa Drukale reconhece.
-            </p>
-            <Link href="/mundo" className="imp-cta" onClick={() => beep('click')}>
-              ENTRAR NO IMPÉRIO →
+        <div className="tn-conta">
+          <button
+            type="button"
+            className="tn-som"
+            onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
+            title={muted ? 'ativar som' : 'silenciar'}
+          >
+            {muted ? '♪ off' : '♪ on'}
+          </button>
+          {ehAdmin && <Link href="/admin">★ Game master</Link>}
+          {meuPerfil ? (
+            <Link href="/perfil" className="tn-perfil">
+              <Avatar url={meuPerfil.avatar_url} nome={meuPerfil.apelido} tamanho={22} />
+              Perfil
             </Link>
-          </div>
-        </section>
+          ) : (
+            <Link href="/admin/login">Entrar</Link>
+          )}
+        </div>
+      </header>
 
-        <nav className="imp-faixa" aria-label="Navegação principal">
-          {GUIAS.map((g) => (
-            <Link
-              key={g.href}
-              href={g.href}
-              className="imp-faixa-item"
-              onMouseEnter={() => beep('hover')}
-              onClick={() => beep('click')}
-            >
-              <span className="imp-faixa-icone">{g.icone}</span>
-              <strong>{g.titulo}</strong>
-              <span>{g.desc}</span>
-              <span className="imp-faixa-seta">→</span>
+      <section className="tn-hero">
+        <div className="tn-hero-col">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="tn-logo" src="/logo-terra-save.png" alt="" />
+          <h1 className="tn-sr">Terra Save</h1>
+          <p className="tn-lema">
+            <i>✦</i> ENTRE O PASSADO E O FUTURO,<br />A MESMA TERRA. <i>✦</i>
+          </p>
+          <p className="tn-texto">
+            Em um mundo onde a magia e a tecnologia convivem, facções disputam o
+            poder, antigas profecias se despertam e o destino da Terra está nas
+            mãos de quem ousa sonhar.
+          </p>
+          <Link href="/mundo" className="tn-cta" onClick={() => beep('click')}>
+            ENTRAR NO MUNDO <span>→</span>
+          </Link>
+        </div>
+      </section>
+
+      <footer className="tn-rodape">
+        <nav className="tn-cartoes" aria-label="Atalhos">
+          {CARTOES.map((c) => (
+            <Link key={c.href} href={c.href} className="tn-cartao" onMouseEnter={() => beep('hover')} onClick={() => beep('click')}>
+              {c.icone}
+              <strong>{c.titulo}</strong>
+              <span>{c.desc}</span>
+              <em>→</em>
             </Link>
           ))}
         </nav>
-
-        <VeioCorrupcao />
-
-        <section className="imp-secao">
-          <h2>o que é o império</h2>
-          <p>
-            Drukale não nasceu de uma conquista — nasceu de uma ruptura. Onde a
-            realidade se rasga, uma energia sem forma escorre para dentro do
-            mundo material e se agarra às paixões de quem a toca: fúria vira
-            guerra sem fim, ambição vira intriga sem fundo, desejo vira excesso
-            sem limite, e a própria morte vira um culto. O império é o que resta
-            de pé quando essa força encontra um povo disposto a servi-la.
-          </p>
-          <p>
-            Elsharion Drukale não impôs ordem a esse caos — ele o organizou.
-            Sob seu trono, cada facção que canaliza uma faceta dessa corrupção
-            tem seu lugar, contanto que sirva à Casa Drukale antes de servir a
-            si mesma. É um equilíbrio instável, mantido tanto pelo medo quanto
-            pela lealdade — e é esse equilíbrio que este arquivo documenta.
-          </p>
-        </section>
-
-        {forcas.length > 0 && (
-          <section className="imp-secao">
-            <h2>as quatro forças</h2>
-            <div className="imp-forcas">
-              {forcas.map((f) => (
-                <Link
-                  key={f.slug}
-                  href={`/faccoes/${f.slug}`}
-                  className="imp-forca"
-                  style={{ '--forca-cor': f.cor } as React.CSSProperties}
-                  onMouseEnter={() => beep('hover')}
-                  onClick={() => beep('click')}
-                >
-                  <strong>{f.nome}</strong>
-                  {f.resumo && <span>{f.resumo}</span>}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <VeioCorrupcao />
-
-        {numeros && (
-          <div className="imp-numeros">
-            <div className="imp-numero"><strong>{numeros.personagens}</strong><span>personagens</span></div>
-            <div className="imp-numero"><strong>{numeros.faccoes}</strong><span>facções</span></div>
-            <div className="imp-numero"><strong>{numeros.linhaDoTempo}</strong><span>crônicas</span></div>
-            <div className="imp-numero"><strong>{numeros.novidades}</strong><span>eventos</span></div>
-            <div className="imp-numero"><strong>{numeros.termos}</strong><span>termos</span></div>
-            <div className="imp-numero"><strong>{numeros.locais}</strong><span>locais</span></div>
-          </div>
-        )}
-
-        <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-      </main>
+        <p className="tn-assinatura"><b>TERRA SAVE</b> <i>✦</i> MAIS QUE UM MUNDO, UMA ESCOLHA.</p>
+      </footer>
     </div>
   );
 }

@@ -1384,212 +1384,186 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 
 /* ============================================================
-   TERMINAL IMPERIAL — só a página inicial
-   ------------------------------------------------------------
-   Um painel de máquina xenos: obsidiana, cromo e um brilho roxo
-   doentio, caveiras e espinhos nas bordas. Vale só sob .imperio; o
-   resto da wiki continua verde e Matrix como sempre foi.
+   PÁGINA INICIAL — Terra Save
+   Ouro velho sobre a paisagem, tipografia de livro de RPG. Só vale
+   sob .tn; o resto do site mantém os próprios temas.
    ============================================================ */
-
-.term.imperio {
-  --i-osso: #e9e4da;
-  --i-cromo: #9aa6b3;
-  --i-cromo-fraco: #4a5058;
-  --i-roxo: #7a3ad1;
-  --i-sangue: #d1264a;
-  color: var(--i-osso);
+.term.tn {
+  --ouro: #d8bd88;
+  --ouro-forte: #c9a86a;
+  --ouro-fraco: rgba(201,168,106,.35);
+  --osso: #f4ecdb;
+  color: var(--osso);
   background: transparent;
-  /* fonte de livro de RPG — curvada e elegante, no lugar do monoespaçado
-     "terminal" que o resto do site usa. Só o h1 continua em Cinzel. */
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-weight: 500;
+  display: flex; flex-direction: column;
 }
 
-.imperio::before {
-  content: '';
-  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+/* ---------- topo ---------- */
+.tn-topo {
+  position: relative; z-index: 5;
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  padding: 16px 4vw;
+  background: linear-gradient(180deg, rgba(3,5,10,.92), rgba(3,5,10,.7));
+  border-bottom: 1px solid var(--ouro-fraco);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.tn-marca { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--osso); }
+.tn-marca img { width: 46px; height: 46px; object-fit: contain; }
+.tn-marca span { font-family: 'Cinzel', Georgia, serif; font-size: 23px; letter-spacing: .34em; font-weight: 500; }
+
+.tn-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.tn-nav a, .tn-mais summary {
+  position: relative; padding: 9px 16px; font-size: 19px; color: rgba(244,236,219,.82);
+  text-decoration: none; cursor: pointer; list-style: none; background: none; border: none;
+  font-family: inherit; font-weight: 500;
+  transition: color .2s, transform .12s ease-out;
+}
+.tn-mais summary::-webkit-details-marker { display: none; }
+.tn-mais summary::after { content: ' ▾'; font-size: 12px; color: var(--ouro); }
+.tn-nav a:hover, .tn-mais summary:hover { color: #fff; }
+.tn-nav a:active, .tn-mais summary:active { transform: scale(.96); }
+.tn-nav a.on { color: #fff; }
+.tn-nav a::after {
+  content: ''; position: absolute; left: 16px; right: 16px; bottom: 2px; height: 1px;
+  background: var(--ouro); transform: scaleX(0); transform-origin: center; transition: transform .25s ease-out;
+}
+.tn-nav a:hover::after, .tn-nav a.on::after { transform: scaleX(1); }
+
+.tn-mais { position: relative; }
+.tn-mais > div {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; min-width: 190px;
+  display: flex; flex-direction: column; padding: 8px 0;
+  background: rgba(4,6,12,.96); border: 1px solid var(--ouro-fraco);
+  box-shadow: 0 12px 30px rgba(0,0,0,.6);
+}
+.tn-mais > div a { padding: 9px 20px; font-size: 18px; }
+.tn-mais > div a::after { display: none; }
+.tn-mais > div a:hover { background: rgba(201,168,106,.12); }
+
+.tn-conta { display: flex; align-items: center; gap: 4px; }
+.tn-conta a, .tn-som {
+  display: flex; align-items: center; gap: 8px; padding: 7px 14px; font-size: 16px; letter-spacing: .04em;
+  color: var(--ouro); text-decoration: none; cursor: pointer; font-family: inherit; font-weight: 600;
+  background: transparent; border: 1px solid var(--ouro-fraco); border-radius: 2px;
+  transition: border-color .2s, color .2s, background .2s, transform .12s ease-out;
+}
+.tn-conta a:hover, .tn-som:hover { border-color: var(--ouro); color: #fff; background: rgba(201,168,106,.1); }
+.tn-conta a:active, .tn-som:active { transform: scale(.95); }
+.tn-som { border-color: transparent; }
+
+/* ---------- herói ---------- */
+.tn-hero {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 34px 5vw 26px;
+}
+.tn-hero-col { width: min(700px, 100%); }
+.tn-logo { display: block; height: min(40vh, 340px); width: auto; max-width: 82%; margin: 0 auto 8px; filter: drop-shadow(0 4px 22px rgba(0,0,0,.6)); }
+.tn-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tn-lema {
+  margin: 18px 0 20px; text-align: center; font-size: 20px; line-height: 1.7; letter-spacing: .3em;
+  color: var(--osso); text-shadow: 0 2px 10px rgba(0,0,0,.8);
+}
+.tn-lema i { font-style: normal; color: var(--ouro-forte); font-size: 13px; letter-spacing: 0; margin: 0 8px; }
+.tn-texto {
+  margin: 0 0 30px; font-size: 24px; line-height: 1.55; color: rgba(244,236,219,.95);
+  text-shadow: 0 2px 12px rgba(0,0,0,.85); max-width: 660px;
+}
+
+/* botão com moldura dupla de ouro e cantoneiras */
+.tn-cta {
+  position: relative; display: inline-flex; align-items: center; gap: 22px;
+  padding: 19px 44px; font-family: 'Cinzel', Georgia, serif; font-size: 17px; letter-spacing: .24em;
+  color: var(--osso); text-decoration: none; background: rgba(4,6,12,.72);
+  border: 1px solid var(--ouro-forte);
+  transition: background .25s, color .25s, letter-spacing .25s, transform .12s ease-out;
+}
+.tn-cta::before {
+  content: ''; position: absolute; inset: 5px; pointer-events: none;
+  border: 1px solid var(--ouro-fraco);
+}
+/* cantoneiras mais grossas nos quatro cantos da moldura */
+.tn-cta::after {
+  content: ''; position: absolute; inset: -1px; pointer-events: none;
   background:
-    repeating-linear-gradient(65deg, rgba(0,0,0,0) 0 9px, rgba(0,0,0,.2) 9px 10px),
-    radial-gradient(circle at 14% 10%, rgba(122,58,209,.10), transparent 46%),
-    radial-gradient(circle at 86% 82%, rgba(209,38,74,.08), transparent 50%);
+    linear-gradient(var(--ouro), var(--ouro)) top left / 14px 2px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) top left / 2px 14px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) top right / 14px 2px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) top right / 2px 14px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) bottom left / 14px 2px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) bottom left / 2px 14px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) bottom right / 14px 2px no-repeat,
+    linear-gradient(var(--ouro), var(--ouro)) bottom right / 2px 14px no-repeat;
 }
+.tn-cta span { color: var(--ouro); font-size: 20px; transition: transform .25s; }
+.tn-cta:hover { background: rgba(201,168,106,.2); color: #fff; }
+.tn-cta:hover span { transform: translateX(6px); }
+.tn-cta:active { transform: scale(.97); }
 
-/* ---------- cabeçalho ---------- */
-.imperio .hd { border-bottom: 0; }
-.imperio .hd-bar {
-  border: 1px solid var(--i-cromo-fraco);
-  border-left: 5px solid var(--i-roxo);
-  background: linear-gradient(180deg, rgba(122,58,209,.12), rgba(0,0,0,.4));
-  padding: 9px 14px;
+/* ---------- rodapé com os atalhos ---------- */
+.tn-rodape { position: relative; z-index: 2; padding: 0 4vw 18px; }
+.tn-cartoes {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: rgba(4,6,12,.72); border-top: 1px solid var(--ouro-fraco); border-bottom: 1px solid var(--ouro-fraco);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
-.imperio .hd-path { color: var(--i-cromo); }
-.imperio .dot { background: var(--i-roxo); box-shadow: 0 0 8px rgba(122,58,209,.6); }
-.imperio .ico {
-  border-color: var(--i-cromo-fraco); color: var(--i-osso);
-  background: rgba(0,0,0,.35);
+.tn-cartao {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 26px 22px 22px; text-decoration: none; color: var(--osso);
+  transition: background .25s, transform .12s ease-out;
 }
-.imperio .ico:hover {
-  border-color: var(--i-sangue); color: #ff8fa3;
-  box-shadow: 0 0 14px rgba(209,38,74,.35);
+.tn-cartao + .tn-cartao::before {
+  content: '✦'; position: absolute; left: -5px; top: 50%; transform: translateY(-50%);
+  font-size: 9px; color: var(--ouro-forte); line-height: 1;
 }
+.tn-cartao + .tn-cartao::after {
+  content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 1px; background: var(--ouro-fraco);
+}
+.tn-cartao svg { width: 40px; height: 40px; fill: none; stroke: var(--ouro); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 12px; }
+.tn-cartao strong { font-family: 'Cinzel', Georgia, serif; font-size: 16px; letter-spacing: .16em; font-weight: 500; margin-bottom: 8px; }
+.tn-cartao span { font-size: 18px; line-height: 1.4; color: rgba(244,236,219,.78); max-width: 240px; }
+.tn-cartao em { font-style: normal; margin-top: 12px; color: var(--ouro); font-size: 20px; transition: transform .25s; }
+.tn-cartao:hover { background: rgba(201,168,106,.08); }
+.tn-cartao:hover em { transform: translateX(6px); }
+.tn-cartao:active { transform: scale(.98); }
 
-/* ---------- o herói ---------- */
-/* ---------- herói em tela cheia ---------- */
-.imp-hero {
-  position: relative;
-  width: 100vw; margin-left: calc(50% - 50vw);
-  min-height: min(84vh, 720px);
-  display: flex; align-items: center;
-  overflow: hidden;
-  border-bottom: 1px solid var(--i-cromo-fraco);
+.tn-assinatura {
+  display: flex; align-items: center; justify-content: center; gap: 14px; margin: 14px 0 0;
+  font-size: 15px; letter-spacing: .26em; color: rgba(244,236,219,.85);
 }
-/* imagem do mostruário: totalmente estática (sem paralaxe nem zoom) */
-.imp-hero-fundo {
-  position: absolute; inset: 0;
-  background: #05070d url('/fundo-terra-save.jpg') center / cover no-repeat;
+.tn-assinatura b { font-weight: 500; }
+.tn-assinatura i { font-style: normal; color: var(--ouro-forte); font-size: 11px; letter-spacing: 0; }
+.tn-assinatura::before, .tn-assinatura::after {
+  content: ''; height: 1px; width: min(150px, 14vw); background: linear-gradient(90deg, transparent, var(--ouro-fraco));
 }
-.imp-hero-veu {
-  position: absolute; inset: 0;
-  background:
-    linear-gradient(100deg, rgba(4,6,12,.88) 0%, rgba(4,6,12,.62) 30%, rgba(4,6,12,.18) 58%, transparent 80%),
-    linear-gradient(0deg, rgba(3,5,10,.75) 0%, transparent 22%);
-}
-.imp-hero-conteudo { position: relative; max-width: 560px; padding: 60px 5vw; }
-.imp-hero-selo {
-  display: block; width: 150px; height: 150px; margin: 0 0 14px -14px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 14px rgba(232,200,140,.25));
-}
-@media (max-width: 640px) {
-  .imp-hero-selo { width: 120px; height: 120px; }
-}
+.tn-assinatura::after { transform: scaleX(-1); }
 
-.imp-hero-conteudo .imp-titulo { text-align: left; margin: 0; display: block; }
-.imp-hero-conteudo .imp-sub { text-align: left; }
-.imp-hero-conteudo .imp-lead { text-align: left; margin: 20px 0 30px; max-width: 480px; }
-
-.imp-cta {
-  display: inline-flex; align-items: center; gap: 10px;
-  padding: 14px 26px; border: 1px solid var(--i-osso); border-radius: 2px;
-  color: var(--i-osso); text-decoration: none; letter-spacing: 2px; font-size: 14px; font-weight: 700;
-  text-transform: uppercase; transition: .2s;
+@media (max-width: 1240px) {
+  .tn-topo { gap: 14px; }
+  .tn-marca span { font-size: 19px; letter-spacing: .22em; }
+  .tn-nav a, .tn-mais summary { padding: 8px 9px; font-size: 17px; }
+  .tn-nav a::after { left: 9px; right: 9px; }
+  .tn-conta a, .tn-som { padding: 6px 10px; font-size: 15px; }
 }
-.imp-cta:hover { background: var(--i-osso); color: #0a0714; box-shadow: 0 0 26px rgba(122,58,209,.6); }
-
-/* ---------- faixa de navegação, logo abaixo do herói ---------- */
-/* cada item é um "portal": arco elíptico no topo (via border-radius com
-   valor percentual + valor fixo por eixo), fechando em canto quase reto
-   embaixo — a mesma técnica de arco usada em portais/túmulos, só com CSS. */
-.imp-faixa {
-  width: 100vw; margin-left: calc(50% - 50vw);
-  display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 20px;
-  background: linear-gradient(180deg, #05030a, #0a0613);
-  padding: 34px clamp(16px, 4vw, 40px) 38px;
-  border-bottom: 1px solid var(--i-cromo-fraco);
-  margin-bottom: 40px;
+@media (max-width: 860px) {
+  .tn-topo { gap: 12px; }
+  .tn-nav { margin-left: 0; width: 100%; order: 3; }
+  .tn-nav a, .tn-mais summary { padding: 7px 10px; font-size: 17px; }
+  .tn-conta { margin-left: auto; }
+  .tn-cartoes { grid-template-columns: repeat(2, 1fr); }
+  .tn-cartao:nth-child(3)::before { display: none; }
+  .tn-cartao:nth-child(n+3) { border-top: 1px solid var(--ouro-fraco); }
+  .tn-texto { font-size: 21px; }
 }
-.imp-faixa-item {
-  flex: 1 1 176px; min-width: 176px; max-width: 224px;
-  display: flex; flex-direction: column; gap: 8px; align-items: center; text-align: center;
-  padding: 40px 20px 26px; text-decoration: none;
-  background: radial-gradient(120% 90% at 50% 0%, rgba(122,58,209,.14), rgba(255,255,255,.015) 65%);
-  border: 1px solid var(--i-cromo-fraco);
-  border-radius: 50% 50% 14px 14px / 56px 56px 14px 14px;
-  transition: .25s;
-}
-.imp-faixa-item:hover {
-  background: radial-gradient(120% 90% at 50% 0%, rgba(209,38,74,.16), rgba(255,255,255,.02) 65%);
-  border-color: var(--i-sangue);
-  transform: translateY(-4px);
-  box-shadow: 0 14px 30px rgba(0,0,0,.5), 0 0 22px rgba(209,38,74,.25);
-}
-.imp-faixa-icone { font-size: 24px; color: var(--i-cromo); }
-.imp-faixa-item:hover .imp-faixa-icone { color: var(--i-sangue); }
-.imp-faixa-item strong { font-size: 14.5px; font-weight: 700; letter-spacing: 1px; color: var(--i-osso); text-transform: uppercase; }
-.imp-faixa-item span:not(.imp-faixa-seta) { font-size: 13.5px; line-height: 1.5; color: rgba(233,228,218,.6); }
-.imp-faixa-seta { font-size: 12px; color: var(--i-sangue); opacity: 0; transform: translateY(2px); transition: .2s; margin-top: 2px; }
-.imp-faixa-item:hover .imp-faixa-seta { opacity: 1; transform: translateY(0); }
-
-@media (max-width: 760px) {
-  .imp-faixa { gap: 14px; padding: 26px 16px 30px; }
-  .imp-faixa-item { flex: 1 1 45%; max-width: none; padding: 32px 14px 20px; }
-}
-
-.imp-titulo {
-  position: relative; margin: 0 auto; display: inline-block;
-  font-family: Cinzel, 'Times New Roman', serif; font-weight: 700;
-  font-size: clamp(30px, 6vw, 58px); letter-spacing: 7px;
-  color: var(--i-osso);
-  text-shadow: 0 0 22px rgba(122,58,209,.55), 0 2px 0 #000;
-}
-.imp-titulo::before, .imp-titulo::after { display: none; }
-.imp-sub {
-  margin: 12px 0 0; font-size: 15px; font-weight: 600; letter-spacing: 2px;
-  color: var(--i-cromo); text-transform: uppercase;
-}
-.imp-lead {
-  max-width: 640px; margin: 22px auto 0; font-size: 18px; line-height: 1.65;
-  color: rgba(233,228,218,.85);
-}
-.imp-lead strong { color: var(--i-osso); text-shadow: 0 0 10px rgba(122,58,209,.5); }
-
-/* ---------- divisória orgânica: veio de corrupção ---------- */
-.imp-veio { display: block; width: 100%; height: 46px; margin: 40px 0 34px; overflow: visible; }
-.imp-veio-tronco {
-  fill: none; stroke: var(--i-roxo); stroke-width: 1.6; stroke-linecap: round; opacity: .6;
-  filter: drop-shadow(0 0 5px rgba(122,58,209,.6));
-}
-.imp-veio-ramo { fill: none; stroke: var(--i-sangue); stroke-width: 1; stroke-linecap: round; opacity: .4; }
-.imp-veio-no {
-  fill: var(--i-sangue); opacity: .8; transform-box: fill-box; transform-origin: center;
-  filter: drop-shadow(0 0 5px rgba(209,38,74,.8));
-  animation: imp-pulsar 2.6s ease-in-out infinite;
-}
-@keyframes imp-pulsar { 0%, 100% { opacity: .45; transform: scale(1); } 50% { opacity: 1; transform: scale(1.5); } }
-
-/* ---------- seções de texto ---------- */
-.imp-secao { margin: 0 0 40px; animation: fadein .5s ease both; }
-.imp-secao h2 {
-  margin: 0 0 14px; font-size: 13.5px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase;
-  color: var(--i-cromo);
-}
-.imp-secao h2::before { content: '◆ '; color: var(--i-sangue); }
-.imp-secao p { margin: 0 0 14px; font-size: 17px; line-height: 1.7; color: rgba(233,228,218,.8); max-width: 720px; }
-
-/* ---------- as quatro forças corruptoras ---------- */
-.imp-forcas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.imp-forca {
-  display: block; padding: 18px 18px 16px; border-radius: 2px; text-decoration: none;
-  border: 1px solid var(--i-cromo-fraco); border-top: 3px solid var(--forca-cor, var(--i-roxo));
-  background: rgba(255,255,255,.02); transition: .2s;
-}
-.imp-forca:hover {
-  border-color: var(--forca-cor, var(--i-roxo)); transform: translateY(-4px);
-  box-shadow: 0 10px 26px rgba(0,0,0,.5), 0 0 20px color-mix(in srgb, var(--forca-cor, var(--i-roxo)) 35%, transparent);
-}
-.imp-forca strong {
-  display: block; margin-bottom: 8px; font-size: 17px; font-weight: 700; letter-spacing: .5px;
-  color: var(--forca-cor, var(--i-osso));
-}
-.imp-forca span { font-size: 14.5px; line-height: 1.6; color: rgba(233,228,218,.65); }
-
-/* ---------- números ao vivo ---------- */
-.imp-numeros {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 34px;
-  padding: 26px 20px; margin: 46px 0 6px;
-  border-top: 1px solid var(--i-cromo-fraco); border-bottom: 1px solid var(--i-cromo-fraco);
-}
-.imp-numero { text-align: center; }
-.imp-numero strong {
-  display: block; font-size: 26px; font-family: Cinzel, serif; color: var(--i-osso);
-  text-shadow: 0 0 14px rgba(122,58,209,.5);
-}
-.imp-numero span { font-size: 12px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--i-cromo); }
-
-@media (max-width: 640px) {
-  .imp-hero { min-height: min(76vh, 560px); }
-  .imp-hero-conteudo { padding: 40px 7vw; max-width: none; }
-  .imp-faixa-item { flex: 1 1 100%; }
+@media (max-width: 520px) {
+  .tn-marca span { font-size: 18px; letter-spacing: .24em; }
+  .tn-lema { font-size: 16px; letter-spacing: .18em; }
+  .tn-cta { padding: 16px 28px; font-size: 15px; letter-spacing: .18em; }
+  .tn-cartoes { grid-template-columns: 1fr; }
+  .tn-cartao + .tn-cartao::before, .tn-cartao + .tn-cartao::after { display: none; }
+  .tn-cartao + .tn-cartao { border-top: 1px solid var(--ouro-fraco); }
+  .tn-assinatura { font-size: 12px; letter-spacing: .14em; gap: 8px; }
 }
 
 /* ============================================================
