@@ -1454,12 +1454,14 @@ html, body { margin: 0; padding: 0; background: #000; }
     linear-gradient(100deg, rgba(4,6,12,.88) 0%, rgba(4,6,12,.62) 30%, rgba(4,6,12,.18) 58%, transparent 80%),
     linear-gradient(0deg, rgba(3,5,10,.75) 0%, transparent 22%);
 }
-.imp-hero-conteudo { position: relative; z-index: 2; max-width: 560px; padding: 60px 5vw; }
+.imp-hero-conteudo { position: relative; max-width: 560px; padding: 60px 5vw; }
 .imp-hero-selo {
-  display: block; width: 58px; height: 58px; border-radius: 50%; margin-bottom: 22px;
-  object-fit: cover; object-position: 50% 42%;
-  border: 1.5px solid var(--i-cromo-fraco);
-  box-shadow: 0 0 22px rgba(122,58,209,.5);
+  display: block; width: 150px; height: 150px; margin: 0 0 14px -14px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(232,200,140,.25));
+}
+@media (max-width: 640px) {
+  .imp-hero-selo { width: 120px; height: 120px; }
 }
 
 .imp-hero-conteudo .imp-titulo { text-align: left; margin: 0; display: block; }

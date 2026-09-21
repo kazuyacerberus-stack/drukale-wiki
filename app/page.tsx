@@ -163,7 +163,7 @@ export default function Home() {
           <div className="imp-hero-veu" />
           <div className="imp-hero-conteudo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="imp-hero-selo" src="/emblema-drukale.webp" alt="Emblema de Terra Save" />
+            <img className="imp-hero-selo" src="/logo-terra-save.png" alt="Logo de Terra Save" />
             <h1 className="imp-titulo">TERRA SAVE</h1>
             <p className="imp-sub">forjado na corrupção · governado pela anarquia</p>
             <p className="imp-lead">
