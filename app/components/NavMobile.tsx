@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { supabase } from '../lib/db';
+import IconeComponent from './Icone';
 
 /**
  * Navegação do celular: uma barra fixa no rodapé com o que mais se usa e um
@@ -31,10 +32,10 @@ const MAIS = [
   { href: '/faccoes', rotulo: 'Facções', glifo: '⌂' },
   { href: '/eventos', rotulo: 'Eventos', glifo: '✦' },
   { href: '/linha-do-tempo', rotulo: 'Linha do tempo', glifo: '⏱' },
-  { href: '/cronicas', rotulo: 'Crônicas', glifo: '📜' },
+  { href: '/cronicas', rotulo: 'Crônicas', glifo: <IconeComponent nome="pergaminho" tamanho={20} /> },
   { href: '/cenas', rotulo: 'Cenas', glifo: '▤' },
-  { href: '/reservas', rotulo: 'Reserva de imagens', glifo: '◈' },
-  { href: '/chat', rotulo: 'Chat', glifo: '✉' },
+  { href: '/reservas', rotulo: 'Reserva de imagens', glifo: <IconeComponent nome="imagem" tamanho={20} /> },
+  { href: '/chat', rotulo: 'Chat', glifo: <IconeComponent nome="envelope" tamanho={20} /> },
 ];
 
 const casa = (pathname: string, rotas: string[]) => rotas.some((r) => pathname === r || pathname.startsWith(`${r}/`));

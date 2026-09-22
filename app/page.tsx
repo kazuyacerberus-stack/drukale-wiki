@@ -6,6 +6,7 @@ import './matrix.css';
 import Abertura from './components/Abertura';
 import Avatar from './components/Avatar';
 import { useBeep } from './components/useBeep';
+import BotaoSom from './components/BotaoSom';
 import { supabase } from './lib/db';
 
 /** Atalhos principais: o mesmo destino aparece no topo e nos cartões de baixo. */
@@ -102,14 +103,7 @@ export default function Home() {
         </nav>
 
         <div className="tn-conta">
-          <button
-            type="button"
-            className="tn-som"
-            onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
-            title={muted ? 'ativar som' : 'silenciar'}
-          >
-            {muted ? '♪ off' : '♪ on'}
-          </button>
+          <BotaoSom muted={muted} setMuted={setMuted} beep={beep} className="tn-som" />
           {ehAdmin && <Link href="/admin">★ Game master</Link>}
           {meuPerfil ? (
             <Link href="/perfil" className="tn-perfil">

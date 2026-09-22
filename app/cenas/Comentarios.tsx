@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/db';
+import Icone from '../components/Icone';
 import Avatar from '../components/Avatar';
 import GifPicker from '../components/GifPicker';
 import {
@@ -120,7 +121,7 @@ function Compositor({
       )}
       <div className={s.comentarioAcoes}>
         <label className={s.comentarioAnexoBtn}>
-          📎
+          <Icone nome="anexo" />
           <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
             onChange={(e) => { escolherArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
         </label>

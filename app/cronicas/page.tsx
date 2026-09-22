@@ -5,6 +5,7 @@ import Link from 'next/link';
 import '../matrix.css';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { mensagemEvento, urlAnexoEvento, type Evento } from '../lib/eventos';
 
@@ -76,9 +77,7 @@ export default function CronicasPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/cronicas</span>
             <div className="hd-act">
-              <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>

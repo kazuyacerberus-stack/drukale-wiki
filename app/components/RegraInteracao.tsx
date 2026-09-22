@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Icone from './Icone';
 import RegraComentarios from './RegraComentarios';
 import RegraPerguntas from './RegraPerguntas';
 
@@ -27,13 +28,13 @@ export default function RegraInteracao({
     <div className="regra-comentarios">
       <div className="regra-interacao-botoes">
         <button type="button" className="regra-comentarios-botao" onClick={() => alternar('perguntas')} aria-expanded={painel === 'perguntas'}>
-          <span aria-hidden="true">❓</span>
+          <Icone nome="pergunta" />
           {perguntas ? `perguntas (${perguntas})` : 'fazer uma pergunta'}
           {ehAdmin && pendentes > 0 && <b className="regra-pendente-etiqueta">{pendentes} sem resposta</b>}
           <em aria-hidden="true">{painel === 'perguntas' ? '▴' : '▾'}</em>
         </button>
         <button type="button" className="regra-comentarios-botao" onClick={() => alternar('ideias')} aria-expanded={painel === 'ideias'}>
-          <span aria-hidden="true">💬</span>
+          <Icone nome="comentario" />
           {ideias ? `ideias e melhorias (${ideias})` : 'sugerir uma melhoria'}
           <em aria-hidden="true">{painel === 'ideias' ? '▴' : '▾'}</em>
         </button>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/db';
 import { pontuar, type Busca, type IndiceRegra, type Regra } from '../lib/regras';
+import Icone from './Icone';
 import Realce from './Realce';
 import RegraEditor from './RegraEditor';
 import RegraInteracao from './RegraInteracao';
@@ -132,7 +133,7 @@ export default function DocLeitor({
           <div className="regras-ferramentas">
             <button type="button" className="mini-btn" onClick={() => mudarFonte(-1)} disabled={fonte === 0} title="diminuir o texto" aria-label="Diminuir o texto">A−</button>
             <button type="button" className="mini-btn" onClick={() => mudarFonte(1)} disabled={fonte === 2} title="aumentar o texto" aria-label="Aumentar o texto">A+</button>
-            <button type="button" className="mini-btn" onClick={copiarLink} title="copiar o link deste documento">{copiado ? '✓ copiado' : '🔗 link'}</button>
+            <button type="button" className="mini-btn" onClick={copiarLink} title="copiar o link deste documento">{copiado ? '✓ copiado' : <><Icone nome="link" /> link</>}</button>
             {!filtrando && secoes.length > 4 && (
               <select
                 className="regras-ir-para"
@@ -172,7 +173,7 @@ export default function DocLeitor({
                 <>
                   <div className="regra-sec-topo">
                     <h3><Realce texto={s.titulo} agulhas={consulta.agulhas} /></h3>
-                    {ehAdmin && <button type="button" className="mini-btn" onClick={() => onEditar(s.id)}>✎ editar</button>}
+                    {ehAdmin && <button type="button" className="mini-btn" onClick={() => onEditar(s.id)}><Icone nome="lapis" /> editar</button>}
                   </div>
                   <RegraTexto texto={s.conteudo} destaque={consulta.agulhas} soTrechos={filtrando} />
                   <RegraInteracao

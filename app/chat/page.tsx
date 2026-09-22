@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
+import Icone from '../components/Icone';
 import '../matrix.css';
 import { supabase } from '../lib/db';
 import { sair } from '../lib/auth';
@@ -339,9 +340,9 @@ export default function ChatPage() {
                   </div>
                   {ehAdmin && !propria && (
                     <div className={s.acoesAdmin}>
-                      <button type="button" onClick={() => silenciarRapido(m.user_id)}>🔇 silenciar 1h</button>
+                      <button type="button" onClick={() => silenciarRapido(m.user_id)}><Icone nome="som-off" /> silenciar 1h</button>
                       <button type="button" onClick={() => alternarExpulsao(m.user_id, !perfil.banido)}>
-                        {perfil.banido ? '✓ reintegrar' : '⛔ expulsar'}
+                        {perfil.banido ? '✓ reintegrar' : <><Icone nome="bloqueado" /> expulsar</>}
                       </button>
                     </div>
                   )}
@@ -368,7 +369,7 @@ export default function ChatPage() {
           )}
           <form className={s.composer} onSubmit={enviar}>
             <label className={s.btnIcone} title="Anexar imagem ou vídeo">
-              📎
+              <Icone nome="anexo" />
               <input
                 ref={arquivoRef}
                 type="file"

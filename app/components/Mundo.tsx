@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { supabase } from '../lib/db';
+import Icone from './Icone';
 import { gerarMundo } from './mundo/textura';
 import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
 import { gerarMapaPolitico } from './mundo/politico';
@@ -712,7 +713,7 @@ export default function Mundo() {
           disabled={gerandoPolitico}
           title="pinta o território de cada facção sobre o globo"
         >
-          {gerandoPolitico ? 'calculando território...' : modoPolitico ? '🌐 mapa por tipo' : '◑ mapa político'}
+          {gerandoPolitico ? 'calculando território...' : modoPolitico ? <><Icone nome="globo" /> mapa por tipo</> : '◑ mapa político'}
         </button>
         <button
           type="button"

@@ -9,6 +9,7 @@ import {
 } from '../lib/perfilPosts';
 import { buscarMinhasAmizades, type Amizade } from '../lib/amizades';
 import GifPicker from './GifPicker';
+import Icone from './Icone';
 import MusicaEmbed from './MusicaEmbed';
 
 type PerfilLeve = { apelido: string; avatar_url: string | null };
@@ -124,7 +125,7 @@ export default function PostComposer({
         )}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '10px 0' }}>
           <label className="mini-btn" style={{ cursor: 'pointer' }}>
-            📎 anexar
+            <Icone nome="anexo" /> anexar
             <input type="file" style={{ display: 'none' }} accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
               onChange={(e) => { escolherArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
           </label>

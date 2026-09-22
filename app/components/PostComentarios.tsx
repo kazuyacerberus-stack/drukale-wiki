@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '../lib/db';
 import Avatar from './Avatar';
 import GifPicker from './GifPicker';
+import Icone from './Icone';
 import MusicaEmbed from './MusicaEmbed';
 import {
   urlAnexoComentario, validarAnexoComentario, subirAnexoComentario, apagarAnexoComentario,
@@ -162,7 +163,7 @@ function Compositor({
       )}
       <div className="post-comentario-acoes">
         <label className="post-comentario-anexo-btn">
-          📎
+          <Icone nome="anexo" />
           <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
             onChange={(e) => { escolherArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
         </label>

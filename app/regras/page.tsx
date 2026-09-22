@@ -8,6 +8,7 @@ import Realce from '../components/Realce';
 import RegraEditor from '../components/RegraEditor';
 import DocLeitor from '../components/DocLeitor';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { indexarRegra, interpretarBusca, mensagemRegra, pontuar, trecho, type Regra } from '../lib/regras';
 
@@ -25,9 +26,7 @@ export default function RegrasPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/regras</span>
             <div className="hd-act">
-              <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← início</Link>
               <Link className="ico" href="/mundo">mapa</Link>
               <Link className="ico" href="/personagens">personagens</Link>

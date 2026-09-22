@@ -6,6 +6,7 @@ import { supabase } from '../lib/db';
 import { urlAnexoComentario, apagarAnexoComentario, type AnexoComentario, type Reacao } from '../lib/comentarios';
 import { mensagemPerfilPost, ROTULO_VISIBILIDADE, ICONE_VISIBILIDADE, type PerfilPost } from '../lib/perfilPosts';
 import Avatar from './Avatar';
+import Icone from './Icone';
 import ReacaoBar from './ReacaoBar';
 import MusicaEmbed from './MusicaEmbed';
 import PostComentarios from './PostComentarios';
@@ -82,7 +83,7 @@ export default function PostCard({
       <div className="post-rodape">
         <ReacaoBar reacoes={reacoes} minhaReacao={minhaReacao} onReagir={reagir} />
         <button type="button" className="post-comentario-toggle" onClick={() => setComentariosAbertos((v) => !v)}>
-          💬 {totalComentarios > 0 ? totalComentarios : ''} comentar
+          <Icone nome="comentario" /> {totalComentarios > 0 ? totalComentarios : ''} comentar
         </button>
         {podeApagar && <button type="button" className="mini-btn dim" onClick={apagar}>apagar</button>}
       </div>

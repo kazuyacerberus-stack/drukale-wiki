@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Icone from '../components/Icone';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import '../matrix.css';
 import { supabase } from '../lib/db';
@@ -293,8 +294,8 @@ export default function CenasPage() {
               <Link href={`/jogador/${c.user_id}`}>{perfis.get(c.user_id)!.apelido}</Link>
               {ehAdmin && emails.get(c.user_id) && <span style={{ color: '#6f8a79' }}>({emails.get(c.user_id)})</span>}
               {ehAdmin && c.user_id !== userId && <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-                <button type="button" onClick={() => silenciarRapido(c.user_id)}>🔇 1h</button>
-                <button type="button" onClick={() => alternarExpulsao(c.user_id, !perfis.get(c.user_id)?.banido)}>{perfis.get(c.user_id)?.banido ? '✓ reintegrar' : '⛔ expulsar'}</button>
+                <button type="button" onClick={() => silenciarRapido(c.user_id)}><Icone nome="som-off" /> 1h</button>
+                <button type="button" onClick={() => alternarExpulsao(c.user_id, !perfis.get(c.user_id)?.banido)}>{perfis.get(c.user_id)?.banido ? '✓ reintegrar' : <><Icone nome="bloqueado" /> expulsar</>}</button>
               </span>}
             </div>}
             <h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p><div className={s.texto}>{c.texto}</div>
@@ -313,7 +314,7 @@ export default function CenasPage() {
                 </button>
               ))}
               <button type="button" className={s.comentarioToggle} onClick={() => alternarComentarios(c.id)}>
-                💬 {c.total_comentarios > 0 ? c.total_comentarios : ''} {c.total_comentarios === 1 ? 'comentário' : 'comentários'}
+                <Icone nome="comentario" /> {c.total_comentarios > 0 ? c.total_comentarios : ''} {c.total_comentarios === 1 ? 'comentário' : 'comentários'}
               </button>
             </div>
             {comentariosAbertos.has(c.id) && <Comentarios cenaId={c.id} userId={userId} ehAdmin={ehAdmin} />}

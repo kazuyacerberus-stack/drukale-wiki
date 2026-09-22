@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/db';
+import Icone from './Icone';
 import {
   UNIVERSO_AUTORAL, chaveDaReserva, hashDaImagem, mensagemReserva, removerImagemReserva, validarImagemReserva, type Reserva,
 } from '../lib/reservas';
@@ -173,7 +174,7 @@ export default function ReservaForm({
         <label>imagem do personagem</label>
         <div className="reserva-arquivo">
           <label className="mini-btn" style={{ cursor: 'pointer' }}>
-            {arquivo ? 'trocar imagem' : '🖼 escolher imagem'}
+            {arquivo ? 'trocar imagem' : <><Icone nome="imagem" /> escolher imagem</>}
             <input type="file" style={{ display: 'none' }} accept="image/jpeg,image/png,image/webp,image/gif"
               onChange={(e) => { escolherArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }} />
           </label>

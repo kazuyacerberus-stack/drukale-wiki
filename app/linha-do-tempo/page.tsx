@@ -7,6 +7,7 @@ import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import PostComposer from '../components/PostComposer';
 import PostCard from '../components/PostCard';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { buscarFeedPublico, mensagemPerfilPost, type PerfilPost } from '../lib/perfilPosts';
 
@@ -78,9 +79,7 @@ export default function LinhaDoTempoPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/linha-do-tempo</span>
             <div className="hd-act">
-              <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/eventos">✦ eventos</Link>

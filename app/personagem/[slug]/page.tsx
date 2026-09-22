@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
+import BotaoSom from '../../components/BotaoSom';
 import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
 import { normalizarNome } from '../../lib/faccoes';
 
@@ -159,12 +160,7 @@ function PersonagemPageInterna() {
             terrasave://arquivo/personagem/{alvo.slug || alvo.id}
           </span>
           <div className="hd-act">
-            <button
-              className="ico"
-              onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
-            >
-              {muted ? '♪ off' : '♪ on'}
-            </button>
+            <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
             <Link className="ico" href="/" onClick={() => beep('close')}>
               ← arquivo
             </Link>

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { supabase } from '../lib/db';
 import { mensagemRegra, subirMidiaRegra, validarMidiaRegra, type Regra } from '../lib/regras';
 import GifPicker from './GifPicker';
+import Icone from './Icone';
 import RegraTexto from './RegraTexto';
 
 const NOVO_GRUPO = '__novo__';
@@ -130,7 +131,7 @@ export default function RegraEditor({
         <label>texto da regra</label>
         <div className="regra-barra">
           <label className="mini-btn" style={{ cursor: enviando ? 'wait' : 'pointer' }}>
-            {enviando ? '// enviando...' : '🖼 imagem ou vídeo'}
+            {enviando ? '// enviando...' : <><Icone nome="imagem" /> imagem ou vídeo</>}
             <input type="file" style={{ display: 'none' }} disabled={enviando} accept={'image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm'}
               onChange={(e) => { void enviarMidia(e.target.files?.[0] ?? null); e.target.value = ''; }} />
           </label>

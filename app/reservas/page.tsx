@@ -7,6 +7,7 @@ import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import ReservaForm from '../components/ReservaForm';
 import Avatar from '../components/Avatar';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { normalizarBusca } from '../lib/regras';
 import { mensagemReserva, removerImagemReserva, urlImagemReserva, type Reserva } from '../lib/reservas';
@@ -25,9 +26,7 @@ export default function ReservasPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/reserva-de-imagens</span>
             <div className="hd-act">
-              <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← início</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>

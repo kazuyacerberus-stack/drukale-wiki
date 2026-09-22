@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/db';
 import { buscarPostsPerfil, buscarAtividadePerfil, mensagemPerfilPost, type PerfilPost, type AtividadeCena } from '../lib/perfilPosts';
 import Avatar from './Avatar';
+import Icone from './Icone';
 import PostComposer from './PostComposer';
 import PostCard from './PostCard';
 
@@ -74,7 +75,7 @@ export default function PerfilTimeline({ alvo, ehProprioPerfil, ehAdmin }: { alv
           ) : (
             <article className="novidade" key={`a-${item.atividade.cena_id}-${item.atividade.papel}`}>
               <div className="novidade-topo">
-                <span>{item.atividade.papel === 'autor' ? '✍️ escreveu' : '💬 comentou em'}</span>
+                <span>{item.atividade.papel === 'autor' ? <><Icone nome="lapis" /> escreveu</> : <><Icone nome="comentario" /> comentou em</>}</span>
                 <time dateTime={item.atividade.created_at}>{new Date(item.atividade.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
               </div>
               <Link href="/cenas" className="novidade-texto" style={{ display: 'block' }}>{item.atividade.titulo}</Link>

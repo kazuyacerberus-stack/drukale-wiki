@@ -5,6 +5,7 @@ import Link from 'next/link';
 import '../matrix.css';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase, type Character } from '../lib/db';
 
 export default function PersonagensPage() {
@@ -122,13 +123,7 @@ export default function PersonagensPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/personagens</span>
             <div className="hd-act">
-              <button
-                className="ico"
-                onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
-                title={muted ? 'ativar som' : 'silenciar'}
-              >
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/" title="a página inicial do império">← arquivo</Link>
               <Link className="ico" href="/faccoes" title="casas e organizações do império">⌂ facções</Link>
               <Link className="ico" href="/linha-do-tempo" title="o que todo mundo está compartilhando">⏱ linha do tempo</Link>

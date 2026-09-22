@@ -5,7 +5,9 @@ import Link from 'next/link';
 import '../matrix.css';
 import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import Avatar from '../components/Avatar';
+import Icone from '../components/Icone';
 import { useBeep } from '../components/useBeep';
+import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import {
   LIMITES_NOVIDADE, validarAnexoNovidade, subirAnexoNovidade, apagarAnexoNovidade, urlAnexoNovidade,
@@ -146,9 +148,7 @@ export default function EventosPage() {
             <span className="dot" /><span className="dot" /><span className="dot" />
             <span className="hd-path">terrasave://arquivo/eventos</span>
             <div className="hd-act">
-              <button className="ico" onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }} title={muted ? 'ativar som' : 'silenciar'}>
-                {muted ? '♪ off' : '♪ on'}
-              </button>
+              <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← arquivo</Link>
               <Link className="ico" href="/personagens">personagens</Link>
               <Link className="ico" href="/faccoes">facções</Link>
@@ -235,7 +235,7 @@ export default function EventosPage() {
                     <strong>{perfil?.apelido ?? 'membro'}</strong>
                     <time dateTime={n.created_at}>{new Date(n.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
                   </div>
-                  {n.quando && <p className="novidade-chamado">📢 {n.quando}</p>}
+                  {n.quando && <p className="novidade-chamado"><Icone nome="megafone" /> {n.quando}</p>}
                   <h2>{n.titulo}</h2>
                   <p className="novidade-texto">{n.texto}</p>
                   {n.anexo && (
