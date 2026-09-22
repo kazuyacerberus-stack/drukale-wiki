@@ -234,7 +234,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   letter-spacing: 1.5px; text-transform: uppercase; border-radius: 2px;
 }
 .selo-pendente { color: #ffcf6b; border: 1px solid rgba(255,207,107,.4); background: rgba(255,207,107,.08); }
-.selo-aprovado { color: var(--g); border: 1px solid rgba(0,255,102,.4); background: rgba(0,255,102,.08); }
+.selo-aprovado { color: #8fe3a4; border: 1px solid rgba(143,227,164,.4); background: rgba(143,227,164,.08); }
 .selo-reprovado { color: #ff8b8b; border: 1px solid rgba(255,95,95,.4); background: rgba(255,95,95,.08); }
 .acoes-aprovacao { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0; }
 .acoes-aprovacao textarea {
