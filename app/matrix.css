@@ -1983,39 +1983,35 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 .reserva-corpo .mini-btn { align-self: flex-start; margin-top: 6px; }
 
 /* ============================================================
-   AJUDANTE — o druida-mascote flutuante do celular
+   AJUDANTE — o druida-mascote flutuante (qualquer tamanho de tela)
    ============================================================ */
-.ajudante { display: none; }
-
-@media (max-width: 860px) {
-  .ajudante {
-    display: block; position: fixed; z-index: 82; padding: 0; margin: 0;
-    background: none; border: none; cursor: grab; touch-action: none;
-    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
-    filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
-  }
-  .ajudante:active { cursor: grabbing; }
-  .ajudante svg { display: block; width: 100%; height: 100%; overflow: visible; }
-
-  .ajudante-sombra {
-    fill: rgba(0,0,0,.4); transform-box: view-box; transform-origin: 50% 90%;
-    transition: opacity .22s, transform .22s;
-  }
-  .ajudante-corpo { transform-box: view-box; transform-origin: 50% 84%; }
-
-  /* parado: respiração devagar */
-  .fase-parado .ajudante-corpo { animation: ajudante-bob 3.2s ease-in-out infinite; }
-
-  /* arrastando: pego e se debatendo */
-  .fase-arrastando .ajudante-corpo { animation: ajudante-arrasto .16s linear infinite; }
-  .fase-arrastando .ajudante-sombra { opacity: .22; transform: scale(.68); }
-
-  /* caiu, se levanta bravo e sacode a poeira */
-  .fase-caindo .ajudante-corpo { animation: ajudante-queda .26s cubic-bezier(.5,0,.9,.4) forwards; }
-  .fase-caindo .ajudante-sombra { animation: ajudante-sombra-impacto .26s ease-out forwards; }
-  .fase-levantando .ajudante-corpo { animation: ajudante-levanta .44s cubic-bezier(.3,1.6,.5,1) forwards; }
-  .fase-sacudindo .ajudante-corpo { animation: ajudante-sacode .65s ease-out forwards; }
+.ajudante {
+  display: block; position: fixed; z-index: 82; padding: 0; margin: 0;
+  background: none; border: none; cursor: grab; touch-action: none;
+  -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
 }
+.ajudante:active { cursor: grabbing; }
+.ajudante svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.ajudante-sombra {
+  fill: rgba(0,0,0,.4); transform-box: view-box; transform-origin: 50% 90%;
+  transition: opacity .22s, transform .22s;
+}
+.ajudante-corpo { transform-box: view-box; transform-origin: 50% 84%; }
+
+/* parado: respiração devagar */
+.fase-parado .ajudante-corpo { animation: ajudante-bob 3.2s ease-in-out infinite; }
+
+/* arrastando: pego e se debatendo */
+.fase-arrastando .ajudante-corpo { animation: ajudante-arrasto .16s linear infinite; }
+.fase-arrastando .ajudante-sombra { opacity: .22; transform: scale(.68); }
+
+/* caiu, se levanta bravo e sacode a poeira */
+.fase-caindo .ajudante-corpo { animation: ajudante-queda .26s cubic-bezier(.5,0,.9,.4) forwards; }
+.fase-caindo .ajudante-sombra { animation: ajudante-sombra-impacto .26s ease-out forwards; }
+.fase-levantando .ajudante-corpo { animation: ajudante-levanta .44s cubic-bezier(.3,1.6,.5,1) forwards; }
+.fase-sacudindo .ajudante-corpo { animation: ajudante-sacode .65s ease-out forwards; }
 
 @keyframes ajudante-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes ajudante-arrasto {

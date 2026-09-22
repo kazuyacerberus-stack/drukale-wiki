@@ -13,10 +13,11 @@ const LIMIAR_ARRASTO = 8;
 type Fase = 'parado' | 'arrastando' | 'caindo' | 'levantando' | 'sacudindo';
 
 /**
- * O druida-mascote: fica flutuando sobre a página no celular, pode ser
- * arrastado pra fora do caminho (com uma animaçãozinha de "pego pela
- * gola, se debatendo" e depois "caiu, levanta bravo, sacode a poeira") e,
- * se só for tocado sem arrastar, abre o site oficial na mesma aba.
+ * O druida-mascote: fica flutuando sobre a página (computador ou celular),
+ * pode ser arrastado pra fora do caminho (com uma animaçãozinha de "pego
+ * pela gola, se debatendo" e depois "caiu, levanta bravo, sacode a
+ * poeira") e, se só for tocado sem arrastar, abre o site oficial na
+ * mesma aba.
  */
 export default function Ajudante() {
   const pathname = usePathname() ?? '/';
@@ -26,6 +27,14 @@ export default function Ajudante() {
   const arrasto = useRef<{ offX: number; offY: number; moveu: boolean; iniX: number; iniY: number } | null>(null);
   const timers = useRef<number[]>([]);
   const posRef = useRef<{ x: number; y: number } | null>(null);
+
+  // definido antes dos efeitos: o componente pode retornar cedo (pos ainda
+  // nulo) antes de chegar numa const declarada mais abaixo, e um efeito com
+  // deps [] guarda o closure da primeira renderização pra sempre
+  const clamp = (x: number, y: number) => ({
+    x: Math.min(Math.max(x, 6), window.innerWidth - TAMANHO - 6),
+    y: Math.min(Math.max(y, 6), window.innerHeight - TAMANHO - 6),
+  });
 
   // posição salva (ou o canto inferior direito, acima da barra do celular, na primeira vez)
   useEffect(() => {
@@ -61,11 +70,6 @@ export default function Ajudante() {
   }, []);
 
   if (SEM_AJUDANTE.includes(pathname) || !pos) return null;
-
-  const clamp = (x: number, y: number) => ({
-    x: Math.min(Math.max(x, 6), window.innerWidth - TAMANHO - 6),
-    y: Math.min(Math.max(y, 6), window.innerHeight - TAMANHO - 6),
-  });
 
   // arrasto tratado no window (não só no botão): um arrasto rápido pode
   // tirar o ponteiro da área do druida antes do próximo evento, e a
