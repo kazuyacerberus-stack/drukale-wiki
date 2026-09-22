@@ -1472,14 +1472,14 @@ a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-v
 
 /* ---------- herói ---------- */
 .tn-hero {
-  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex: 1; display: flex; align-items: center; justify-content: flex-start;
   padding: 34px 5vw 26px;
 }
-.tn-hero-col { width: min(700px, 100%); }
-.tn-logo { display: block; height: min(40vh, 340px); width: auto; max-width: 82%; margin: 0 auto 8px; filter: drop-shadow(0 4px 22px rgba(0,0,0,.6)); }
+.tn-hero-col { width: min(700px, 100%); text-align: left; }
+.tn-logo { display: block; height: min(40vh, 340px); width: auto; max-width: 82%; margin: 0 0 8px; filter: drop-shadow(0 4px 22px rgba(0,0,0,.6)); }
 .tn-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tn-lema {
-  margin: 18px 0 20px; text-align: center; font-size: 20px; line-height: 1.7; letter-spacing: .3em;
+  margin: 18px 0 20px; text-align: left; font-size: 20px; line-height: 1.7; letter-spacing: .3em;
   color: var(--osso); text-shadow: 0 2px 10px rgba(0,0,0,.8);
 }
 .tn-lema i { font-style: normal; color: var(--ouro-forte); font-size: 13px; letter-spacing: 0; margin: 0 8px; }
@@ -1981,3 +1981,70 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 .reserva-dono { display: flex; align-items: center; gap: 6px; color: var(--g2); text-decoration: none; }
 .reserva-dono:hover { color: #fff; }
 .reserva-corpo .mini-btn { align-self: flex-start; margin-top: 6px; }
+
+/* ============================================================
+   AJUDANTE — o druida-mascote flutuante do celular
+   ============================================================ */
+.ajudante { display: none; }
+
+@media (max-width: 860px) {
+  .ajudante {
+    display: block; position: fixed; z-index: 82; padding: 0; margin: 0;
+    background: none; border: none; cursor: grab; touch-action: none;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
+  }
+  .ajudante:active { cursor: grabbing; }
+  .ajudante svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+  .ajudante-sombra {
+    fill: rgba(0,0,0,.4); transform-box: view-box; transform-origin: 50% 90%;
+    transition: opacity .22s, transform .22s;
+  }
+  .ajudante-corpo { transform-box: view-box; transform-origin: 50% 84%; }
+
+  /* parado: respiração devagar */
+  .fase-parado .ajudante-corpo { animation: ajudante-bob 3.2s ease-in-out infinite; }
+
+  /* arrastando: pego e se debatendo */
+  .fase-arrastando .ajudante-corpo { animation: ajudante-arrasto .16s linear infinite; }
+  .fase-arrastando .ajudante-sombra { opacity: .22; transform: scale(.68); }
+
+  /* caiu, se levanta bravo e sacode a poeira */
+  .fase-caindo .ajudante-corpo { animation: ajudante-queda .26s cubic-bezier(.5,0,.9,.4) forwards; }
+  .fase-caindo .ajudante-sombra { animation: ajudante-sombra-impacto .26s ease-out forwards; }
+  .fase-levantando .ajudante-corpo { animation: ajudante-levanta .44s cubic-bezier(.3,1.6,.5,1) forwards; }
+  .fase-sacudindo .ajudante-corpo { animation: ajudante-sacode .65s ease-out forwards; }
+}
+
+@keyframes ajudante-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes ajudante-arrasto {
+  0%, 100% { transform: rotate(-16deg) scale(1, .93); }
+  50% { transform: rotate(16deg) scale(1, .93); }
+}
+@keyframes ajudante-queda {
+  from { transform: rotate(0deg) scaleY(1); }
+  to { transform: rotate(80deg) scaleY(.6) translateY(5px); }
+}
+@keyframes ajudante-levanta {
+  0% { transform: rotate(80deg) scaleY(.6) translateY(5px); }
+  55% { transform: rotate(-12deg) scaleY(1.08) translateY(-3px); }
+  100% { transform: rotate(0deg) scaleY(1) translateY(0); }
+}
+@keyframes ajudante-sacode {
+  0%, 100% { transform: rotate(0deg); }
+  12% { transform: rotate(-10deg); }
+  26% { transform: rotate(9deg); }
+  40% { transform: rotate(-7deg); }
+  55% { transform: rotate(5deg); }
+  70% { transform: rotate(-3deg); }
+  85% { transform: rotate(1.5deg); }
+}
+@keyframes ajudante-sombra-impacto {
+  0% { transform: scale(.68); opacity: .22; }
+  55% { transform: scale(1.4); opacity: .5; }
+  100% { transform: scale(1); opacity: .4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ajudante-corpo, .ajudante-sombra { animation: none !important; transition: none !important; }
+}
