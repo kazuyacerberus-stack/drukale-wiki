@@ -13,6 +13,9 @@ html, body { margin: 0; padding: 0; background: #000; }
   --g2: #8affc0;
   --g-rgb: 0,255,102;
   --g2-rgb: 138,255,192;
+  /* raio único pra toda "moldura" — cartão, mídia, painel — em vez de um
+     valor levemente diferente (4/5/6px) escolhido a cada componente novo */
+  --r-card: 4px;
   position: relative;
   min-height: 100vh;
   background: transparent;
@@ -129,6 +132,18 @@ html, body { margin: 0; padding: 0; background: #000; }
 .ico:hover { border-color: var(--g); color: var(--g); box-shadow: 0 0 14px rgba(0,255,102,.3); }
 .ico:active { transform: scale(.96); box-shadow: inset 0 2px 5px rgba(0,0,0,.5); }
 
+/* ---------- foco de teclado ----------
+   Um anel só, pra todo botão/link/aba do site, em vez do azul padrão do
+   navegador (que destoa de qualquer tema daqui). currentColor pega a cor
+   que o próprio elemento já usa, então funciona igual em todo tema sem
+   precisar repetir por página. Campos de formulário já têm foco próprio
+   (borda/sombra ao focar) e ficam de fora pra não duplicar o efeito. */
+a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 1px;
+}
+
 /* teclas de metal/latão nos botões de navegação — todas as páginas menos a
    home (.imperio, que fica no verde puro) e menos /mundo (.gotico já tem
    seu próprio latão, não precisa de outro por cima). Visual industrial
@@ -138,7 +153,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   padding: 6px 13px 7px;
   background: linear-gradient(180deg, #2b2620, #141210 60%, #0c0a08);
   border-color: #6d5a30;
-  border-radius: 4px;
+  border-radius: var(--r-card);
   color: #d8a85c;
   box-shadow: inset 0 1px 0 rgba(255,220,160,.12), inset 0 -2px 4px rgba(0,0,0,.6), 0 1px 2px rgba(0,0,0,.5);
 }
@@ -259,7 +274,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 
 .node {
   position: relative; display: flex; flex-direction: column; align-items: center;
-  cursor: pointer; padding: 14px 6px 10px; border-radius: 6px;
+  cursor: pointer; padding: 14px 6px 10px; border-radius: var(--r-card);
   color: inherit; text-decoration: none;
   opacity: 0; animation: pop .55s cubic-bezier(.34,1.3,.64,1) forwards;
   transition: transform .42s cubic-bezier(.34,1.56,.64,1);
@@ -568,7 +583,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .done img, .done video { width: 92px; height: 92px; object-fit: cover; box-shadow: 0 0 22px rgba(var(--g-rgb),.32); border: 1px solid rgba(var(--g-rgb),.5); }
 .done img.rd, .done video.rd { border-radius: 50%; }
-.done img.sq, .done video.sq { border-radius: 5px; }
+.done img.sq, .done video.sq { border-radius: var(--r-card); }
 .done-txt { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; }
 .done-txt strong { color: var(--g); letter-spacing: 1.5px; }
 .done-txt span { color: rgba(var(--g2-rgb),.45); }
@@ -867,7 +882,7 @@ html, body { margin: 0; padding: 0; background: #000; }
   height: min(72vh, 620px);
   min-height: 380px;
   border: 1px solid rgba(0,255,102,.16);
-  border-radius: 4px;
+  border-radius: var(--r-card);
   background: radial-gradient(circle at 50% 46%, #0b0718 0%, #030108 62%, #000 100%);
   overflow: hidden;
   cursor: grab;
@@ -1629,7 +1644,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 .drukale-principal { min-width: 0; }
 
 .perfil-cartao {
-  border: 1px solid var(--d-cromo-fraco); border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--d-cromo-fraco); border-radius: var(--r-card); overflow: hidden;
   background: linear-gradient(160deg, rgba(20,10,30,.7), rgba(3,2,8,.85));
 }
 .perfil-capa {
@@ -1642,7 +1657,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 }
 .perfil-avatar-sobre { position: relative; z-index: 1; display: flex; justify-content: center; margin-top: -46px; }
 .perfil-avatar-sobre .drk-avatar { border: 3px solid var(--d-osso); box-shadow: 0 4px 18px rgba(0,0,0,.6); }
-.perfil-estandarte { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 18px 0; padding: 6px 12px; border: 1px solid; border-radius: 4px; background: rgba(0,0,0,.35); font-size: 12px; letter-spacing: .5px; text-decoration: none; text-transform: uppercase; }
+.perfil-estandarte { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 10px 18px 0; padding: 6px 12px; border: 1px solid; border-radius: var(--r-card); background: rgba(0,0,0,.35); font-size: 12px; letter-spacing: .5px; text-decoration: none; text-transform: uppercase; }
 .perfil-estandarte img { width: 20px; height: 20px; object-fit: contain; border-radius: 3px; }
 .perfil-estandarte-ini { display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid; border-radius: 3px; font-size: 11px; font-weight: 700; }
 .perfil-cartao-corpo { padding: 14px 18px 20px; text-align: center; }
@@ -1651,7 +1666,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 .perfil-bio.vazia { color: rgba(233,228,218,.4); font-style: italic; }
 .perfil-cartao-acoes { display: flex; flex-direction: column; gap: 8px; }
 .perfil-mini-resumo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 14px 0; }
-.perfil-mini-resumo div { text-align: center; padding: 8px 4px; border: 1px solid var(--d-cromo-fraco); border-radius: 4px; }
+.perfil-mini-resumo div { text-align: center; padding: 8px 4px; border: 1px solid var(--d-cromo-fraco); border-radius: var(--r-card); }
 .perfil-mini-resumo strong { display: block; font-size: 18px; color: var(--d-osso); }
 .perfil-mini-resumo span { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--d-cromo); }
 
@@ -1699,7 +1714,7 @@ html, body { margin: 0; padding: 0; background: #000; }
 .regra-tabela th { background: rgba(var(--g-rgb), .12); color: #fff; font-weight: 700; }
 .regra-tabela tbody tr:nth-child(even) td { background: rgba(var(--g-rgb), .04); }
 .regra-midia { margin: 8px 0 18px; max-width: 620px; }
-.regra-midia img, .regra-midia video { display: block; width: 100%; height: auto; max-height: 440px; object-fit: contain; border: 1px solid rgba(var(--g-rgb), .25); border-radius: 4px; background: rgba(0,0,0,.4); }
+.regra-midia img, .regra-midia video { display: block; width: 100%; height: auto; max-height: 440px; object-fit: contain; border: 1px solid rgba(var(--g-rgb), .25); border-radius: var(--r-card); background: rgba(0,0,0,.4); }
 .regra-midia figcaption { margin-top: 6px; font-size: 14px; color: rgba(var(--g2-rgb), .5); }
 
 .regra-editor textarea { min-height: 320px; font-size: 14px; line-height: 1.55; }
@@ -1754,7 +1769,7 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 
 /* ---------- Regras: cada regra inteira num único bloco ---------- */
 .regra-bloco {
-  padding: 24px 28px 20px; border: 1px solid rgba(var(--g-rgb), .25); border-radius: 4px;
+  padding: 24px 28px 20px; border: 1px solid rgba(var(--g-rgb), .25); border-radius: var(--r-card);
   background: linear-gradient(170deg, rgba(0,0,0,.42), rgba(0,0,0,.28));
   box-shadow: 0 0 0 1px rgba(0,0,0,.4), inset 0 1px 0 rgba(var(--g-rgb), .08);
 }
@@ -1943,11 +1958,11 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 .reserva-status.livre { color: #8fe3a4; border-color: rgba(143,227,164,.4); background: rgba(143,227,164,.07); }
 .reserva-status.ocupada { color: #ff9c9c; border-color: rgba(255,120,120,.45); background: rgba(255,90,90,.08); }
 .reserva-arquivo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.reserva-previa { display: block; margin-top: 12px; max-width: 260px; max-height: 320px; object-fit: contain; border: 1px solid rgba(var(--g-rgb), .3); border-radius: 4px; background: rgba(0,0,0,.4); }
+.reserva-previa { display: block; margin-top: 12px; max-width: 260px; max-height: 320px; object-fit: contain; border: 1px solid rgba(var(--g-rgb), .3); border-radius: var(--r-card); background: rgba(0,0,0,.4); }
 
 .reservas-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
 .reserva-cartao {
-  display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(var(--g-rgb), .22); border-radius: 4px;
+  display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(var(--g-rgb), .22); border-radius: var(--r-card);
   background: linear-gradient(170deg, rgba(0,0,0,.42), rgba(0,0,0,.28)); transition: border-color .2s, transform .2s;
 }
 .reserva-cartao:hover { border-color: var(--g); transform: translateY(-2px); }
