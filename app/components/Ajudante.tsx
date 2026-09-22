@@ -38,15 +38,27 @@ export default function Ajudante() {
 
   // posição salva (ou o canto inferior direito, acima da barra do celular, na primeira vez)
   useEffect(() => {
-    let salva: { x: number; y: number } | null = null;
-    try {
-      const bruto = window.localStorage.getItem(CHAVE_POS);
-      if (bruto) salva = JSON.parse(bruto);
-    } catch { /* sem armazenamento: usa o padrão */ }
-    const padrao = { x: window.innerWidth - TAMANHO - 14, y: window.innerHeight - TAMANHO - 96 };
-    const inicial = salva && Number.isFinite(salva.x) && Number.isFinite(salva.y) ? salva : padrao;
-    posRef.current = inicial;
-    setPos(inicial);
+    const calcular = () => {
+      // a janela às vezes ainda não tem tamanho no instante em que este
+      // efeito roda (0x0) — calcular a posição com isso daria um canto
+      // inválido e o druida nasceria praticamente colado no cabeçalho
+      if (window.innerWidth <= 0 || window.innerHeight <= 0) return null;
+      let salva: { x: number; y: number } | null = null;
+      try {
+        const bruto = window.localStorage.getItem(CHAVE_POS);
+        if (bruto) salva = JSON.parse(bruto);
+      } catch { /* sem armazenamento: usa o padrão */ }
+      const padrao = { x: window.innerWidth - TAMANHO - 14, y: window.innerHeight - TAMANHO - 96 };
+      return salva && Number.isFinite(salva.x) && Number.isFinite(salva.y) ? salva : padrao;
+    };
+
+    const aplicar = (p: { x: number; y: number }) => { posRef.current = p; setPos(p); };
+
+    const inicial = calcular();
+    if (inicial) { aplicar(inicial); return; }
+    // janela sem tamanho ainda: tenta de novo assim que o navegador terminar o layout
+    const id = requestAnimationFrame(() => aplicar(calcular() ?? { x: 14, y: 14 }));
+    return () => cancelAnimationFrame(id);
   }, []);
 
   // a janela pode mudar de tamanho (girar o celular) — não deixa o druida ficar preso fora da tela
