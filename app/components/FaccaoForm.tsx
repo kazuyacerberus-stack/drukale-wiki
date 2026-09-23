@@ -91,14 +91,14 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
         simbolo: imagem,
       };
 
-      // quem não é admin só grava como pendente e em nome de si mesmo —
-      // a política do banco garante isso de qualquer jeito, mas decidir
-      // aqui também evita uma ida a mais só para descobrir que foi recusado
+      // quem cria vira o dono/líder — inclusive um admin criando direto,
+      // que só pula a fila de análise mas continua sendo o dono. Ao
+      // editar não mexe no dono: só quem cria fica registrado.
       const { data: auth } = await supabase.auth.getUser();
       const { data: admin } = await supabase.rpc('drk_e_admin');
       const pendente = admin !== true;
+      if (!editando) linha.user_id = auth.user?.id ?? null;
       if (pendente) {
-        linha.user_id = auth.user?.id ?? null;
         linha.status_aprovacao = 'pendente';
         linha.motivo_reprovacao = null;
       }
