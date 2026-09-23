@@ -15,7 +15,7 @@ type ContaAdmin = {
   status_conta: 'pendente' | 'aprovado' | 'reprovado'; motivo_reprovacao: string | null;
   created_at: string;
 };
-type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; banidos: number };
+type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; territorios_pendentes: number; banidos: number };
 
 export default function Painel() {
   const router = useRouter();
@@ -211,12 +211,16 @@ export default function Painel() {
             <div className="imp-numero"><strong>{resumo.contas_aprovadas}</strong><span>contas aprovadas</span></div>
             <div className="imp-numero"><strong>{resumo.fichas_pendentes}</strong><span>fichas pendentes</span></div>
             <div className="imp-numero"><strong>{resumo.eventos_pendentes}</strong><span>eventos pendentes</span></div>
+            <div className="imp-numero"><strong>{resumo.territorios_pendentes}</strong><span>territórios pendentes</span></div>
             <div className="imp-numero"><strong>{resumo.banidos}</strong><span>banidos/silenciados</span></div>
           </div>
         )}
 
         <p className="dica" style={{ margin: '0 0 30px' }}>
           Moderação de chat e contas banidas/silenciadas: <Link href="/admin/comunidade" style={{ color: 'var(--g)' }}>abrir comunidade →</Link>
+          {resumo && resumo.territorios_pendentes > 0 && (
+            <> · Territórios propostos aguardando aprovação: <Link href="/mundo" style={{ color: 'var(--g)' }}>abrir o mapa →</Link></>
+          )}
         </p>
 
         {contas.length > 0 && (

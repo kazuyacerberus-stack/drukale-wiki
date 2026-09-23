@@ -20,7 +20,7 @@ type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null 
 type ContaAdmin = {
   user_id: string; email: string; apelido: string; status_conta: 'pendente' | 'aprovado' | 'reprovado';
 };
-type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; banidos: number };
+type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; territorios_pendentes: number; banidos: number };
 
 export default function PerfilPage() {
   const router = useRouter();

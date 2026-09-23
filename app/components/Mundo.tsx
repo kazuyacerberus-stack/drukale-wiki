@@ -8,7 +8,8 @@ import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from
 import { gerarMapaPolitico } from './mundo/politico';
 import {
   TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
-  LIMITES_LOCAL, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
+  LIMITES_LOCAL, MINIMO_LINKS_DOMINIO, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
+  linksDominioValidos, mensagemLocal,
   type Local, type TipoLocal,
 } from '../lib/mundo';
 import { normalizarNome } from '../lib/faccoes';
@@ -97,10 +98,16 @@ export default function Mundo() {
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
   const [erro, setErro] = useState('');
   const [logado, setLogado] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [ehAdmin, setEhAdmin] = useState(false);
   const [selecionado, setSelecionado] = useState<Local | null>(null);
   const [cravando, setCravando] = useState(false);
   const [rascunho, setRascunho] = useState<Local | null>(null);
+  const [linksRascunho, setLinksRascunho] = useState<string[]>(['', '', '', '']);
   const [salvando, setSalvando] = useState(false);
+  const [avaliando, setAvaliando] = useState(false);
+  const [motivoReprovacao, setMotivoReprovacao] = useState('');
+  const [mostrarMotivo, setMostrarMotivo] = useState(false);
   const [girando, setGirando] = useState(true);
   // a imagem do ambiente, enquanto o formulário está aberto
   const [foto, setFoto] = useState<File | null>(null);
@@ -108,10 +115,16 @@ export default function Mundo() {
   const [erroFoto, setErroFoto] = useState('');
   const [tirarFoto, setTirarFoto] = useState(false);
 
-  /* ---------- quem está logado pode editar ---------- */
+  /* ---------- quem está logado pode propor; o admin aprova ---------- */
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setLogado(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setLogado(!!s));
+    const verificar = (s: { user: { id: string } } | null) => {
+      setLogado(!!s);
+      setUserId(s?.user.id ?? null);
+      if (!s) { setEhAdmin(false); return; }
+      supabase.rpc('drk_e_admin').then(({ data }) => setEhAdmin(data === true));
+    };
+    supabase.auth.getSession().then(({ data }) => verificar(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => verificar(s));
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -136,9 +149,9 @@ export default function Mundo() {
     return m;
   }, [faccoes]);
 
-  /** só os locais com uma facção cadastrada de verdade — é isto que vira território */
+  /** só os locais aprovados com uma facção cadastrada de verdade — é isto que vira território (uma proposta pendente ainda não conta) */
   const pontosPoliticos = useMemo(
-    () => locais.filter((l) => l.faccao && faccoesCores.has(normalizarNome(l.faccao))),
+    () => locais.filter((l) => l.statusAprovacao === 'aprovado' && l.faccao && faccoesCores.has(normalizarNome(l.faccao))),
     [locais, faccoesCores],
   );
 
@@ -460,7 +473,12 @@ export default function Mundo() {
     limparFoto();
     setRascunho({
       id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null, faccao: null,
+      userId: ehAdmin ? null : userId,
+      statusAprovacao: ehAdmin ? 'aprovado' : 'pendente',
+      motivoReprovacao: null,
+      linksDominio: null,
     });
+    setLinksRascunho(['', '', '', '']);
     pausado.current = true;
   }
 
@@ -514,6 +532,10 @@ export default function Mundo() {
     if (!rascunho) return;
     const nome = rascunho.nome.trim();
     if (!nome) { setErro('O local precisa de um nome.'); return; }
+    if (!ehAdmin && !linksDominioValidos(linksRascunho)) {
+      setErro(`Preencha pelo menos ${MINIMO_LINKS_DOMINIO} links de cena provando o domínio sobre o território.`);
+      return;
+    }
 
     setSalvando(true);
     setErro('');
@@ -530,7 +552,7 @@ export default function Mundo() {
       return;
     }
 
-    const linha = {
+    const linha: Record<string, unknown> = {
       nome: nome.slice(0, LIMITES_LOCAL.nome),
       tipo: rascunho.tipo,
       resumo: (rascunho.resumo ?? '').trim().slice(0, LIMITES_LOCAL.resumo) || null,
@@ -541,6 +563,17 @@ export default function Mundo() {
       faccao: rascunho.faccao || null,
     };
 
+    // quem não é admin está propondo um território: fica pendente, em
+    // nome de si mesmo, com os links exigidos — a política do banco
+    // garante isso de qualquer jeito, mas decidir aqui também evita uma
+    // ida a mais só para descobrir que foi recusado
+    if (!ehAdmin) {
+      linha.user_id = userId;
+      linha.status_aprovacao = 'pendente';
+      linha.motivo_reprovacao = null;
+      linha.links_dominio = linksRascunho.map((l) => l.trim()).filter((l) => l.length > 0);
+    }
+
     const { error } = rascunho.id
       ? await supabase.from('locais').update(linha).eq('id', rascunho.id)
       : await supabase.from('locais').insert([linha]);
@@ -550,7 +583,7 @@ export default function Mundo() {
       // a gravação falhou depois do envio: a imagem ficaria órfã no
       // balde para sempre, então ela volta atrás junto
       if (subiuAgora) await apagarFoto(subiuAgora);
-      setErro(error.message);
+      setErro(mensagemLocal(error));
       return;
     }
     // deu certo: agora sim a imagem velha pode ir embora
@@ -560,6 +593,27 @@ export default function Mundo() {
     setCravando(false);
     limparFoto();
     pausado.current = false;
+    await carregar();
+  }
+
+  async function aprovarTerritorio(l: Local) {
+    setAvaliando(true); setErro('');
+    const { error } = await supabase.rpc('drk_aprovar_territorio', { alvo_id: l.id });
+    setAvaliando(false);
+    if (error) { setErro(mensagemLocal(error)); return; }
+    setSelecionado(null);
+    await carregar();
+  }
+
+  async function reprovarTerritorio(l: Local) {
+    if (!motivoReprovacao.trim()) { setErro('Escreva o motivo da reprovação.'); return; }
+    setAvaliando(true); setErro('');
+    const { error } = await supabase.rpc('drk_reprovar_territorio', { alvo_id: l.id, motivo: motivoReprovacao.trim() });
+    setAvaliando(false);
+    if (error) { setErro(mensagemLocal(error)); return; }
+    setMostrarMotivo(false);
+    setMotivoReprovacao('');
+    setSelecionado(null);
     await carregar();
   }
 
@@ -578,6 +632,8 @@ export default function Mundo() {
     setSelecionado(null);
     setRascunho(null);
     setErro('');
+    setMostrarMotivo(false);
+    setMotivoReprovacao('');
     limparFoto();
     pausado.current = false;
   };
@@ -586,6 +642,8 @@ export default function Mundo() {
   const editar = (l: Local) => {
     limparFoto();
     setRascunho({ ...l });
+    const links = l.linksDominio ?? [];
+    setLinksRascunho(links.length >= MINIMO_LINKS_DOMINIO ? links : [...links, ...Array(MINIMO_LINKS_DOMINIO - links.length).fill('')]);
   };
 
   /* ============================================================
@@ -624,7 +682,7 @@ export default function Mundo() {
               if (el) marcosRef.current.set(l.id, el);
               else marcosRef.current.delete(l.id);
             }}
-            className={`marco${selecionado?.id === l.id ? ' on' : ''}`}
+            className={`marco${selecionado?.id === l.id ? ' on' : ''}${l.statusAprovacao !== 'aprovado' ? ' pendente' : ''}`}
             style={{
               opacity: 0,
               '--cor': (modoPolitico && l.faccao && faccoesCores.get(normalizarNome(l.faccao))) || tipoDe(l.tipo).cor,
@@ -691,7 +749,11 @@ export default function Mundo() {
       {/* ---------- barra de controle ---------- */}
       <div className="mundo-barra">
         <span className="mundo-conta">
-          {locais.length} {locais.length === 1 ? 'local' : 'locais'}
+          {(() => {
+            const aprovados = locais.filter((l) => l.statusAprovacao === 'aprovado').length;
+            const meusPendentes = !ehAdmin ? locais.filter((l) => l.statusAprovacao !== 'aprovado' && l.userId === userId).length : 0;
+            return `${aprovados} ${aprovados === 1 ? 'local' : 'locais'}${meusPendentes > 0 ? ` · ${meusPendentes} seu${meusPendentes === 1 ? '' : 's'} em análise` : ''}`;
+          })()}
         </span>
         {/* a falha aparece aqui mesmo quando nenhum painel está aberto:
             uma tela preta sem explicação não ajuda ninguém */}
@@ -729,7 +791,7 @@ export default function Mundo() {
             className={`mini-btn${cravando ? ' perigo' : ''}`}
             onClick={() => { setCravando(!cravando); fechar(); }}
           >
-            {cravando ? 'cancelar' : '+ novo local'}
+            {cravando ? 'cancelar' : ehAdmin ? '+ novo local' : '+ propor território'}
           </button>
         )}
       </div>
@@ -819,16 +881,59 @@ export default function Mundo() {
                 {tipoDe(selecionado.tipo).serpente && ' · nas águas'}
               </p>
 
+              {selecionado.statusAprovacao !== 'aprovado' && (
+                <p style={{ margin: '6px 0 0' }}>
+                  <span className={`selo-${selecionado.statusAprovacao}`}>
+                    {selecionado.statusAprovacao === 'pendente' ? 'aguardando aprovação' : 'reprovado'}
+                  </span>
+                </p>
+              )}
+              {selecionado.statusAprovacao === 'reprovado' && selecionado.motivoReprovacao && (
+                <p className="dica" style={{ margin: '6px 0 0' }}>motivo: {selecionado.motivoReprovacao}</p>
+              )}
+
               <span className="painel-fio" aria-hidden="true" />
 
               {selecionado.resumo
                 ? <p className="painel-txt">{selecionado.resumo}</p>
                 : <p className="painel-vazio">sem descrição ainda.</p>}
 
-              {logado && (
+              {selecionado.linksDominio && selecionado.linksDominio.length > 0 && (
+                <div className="field" style={{ marginTop: 10 }}>
+                  <label>links de domínio sobre o território</label>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {selecionado.linksDominio.map((l, i) => (
+                      <li key={i}><a href={l} target="_blank" rel="noopener noreferrer">{l}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {ehAdmin && selecionado.statusAprovacao === 'pendente' && (
+                <div className="painel-acoes" style={{ marginTop: 14 }}>
+                  <button type="button" className="mini-btn" disabled={avaliando}
+                    onClick={() => aprovarTerritorio(selecionado)}>✓ aprovar</button>
+                  <button type="button" className="mini-btn dim" disabled={avaliando}
+                    onClick={() => setMostrarMotivo((v) => !v)}>✕ reprovar</button>
+                  {mostrarMotivo && (
+                    <div style={{ width: '100%' }}>
+                      <textarea
+                        rows={3} value={motivoReprovacao} onChange={(e) => setMotivoReprovacao(e.target.value)}
+                        placeholder="explique o motivo — quem propôs vai ver isto para corrigir e reenviar"
+                      />
+                      <button type="button" className="mini-btn dim" disabled={avaliando}
+                        onClick={() => reprovarTerritorio(selecionado)} style={{ marginTop: 8 }}>
+                        confirmar reprovação
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(ehAdmin || (logado && selecionado.userId === userId && selecionado.statusAprovacao !== 'aprovado')) && (
                 <div className="painel-acoes">
                   <button type="button" className="mini-btn"
-                    onClick={() => editar(selecionado)}>editar</button>
+                    onClick={() => editar(selecionado)}>{selecionado.statusAprovacao === 'reprovado' ? 'editar e reenviar' : 'editar'}</button>
                   <button type="button" className="mini-btn dim"
                     onClick={() => remover(selecionado)}>remover</button>
                 </div>
@@ -838,7 +943,7 @@ export default function Mundo() {
 
           {rascunho && (
             <>
-              <span className="painel-tipo">{rascunho.id ? 'editando' : 'novo local'}</span>
+              <span className="painel-tipo">{rascunho.id ? (ehAdmin ? 'editando' : 'editar e reenviar') : (ehAdmin ? 'novo local' : 'propor território')}</span>
               <p className="painel-coord">{coordenadaLegivel(rascunho.lat, rascunho.lon)}</p>
 
               <div className="field">
@@ -891,6 +996,36 @@ export default function Mundo() {
                 />
               </div>
 
+              {!ehAdmin && (
+                <div className="field">
+                  <label>links das cenas de domínio (mínimo {MINIMO_LINKS_DOMINIO})</label>
+                  <p className="dica" style={{ marginTop: 0 }}>
+                    cole os links das cenas onde você dominou, construiu, desenvolveu e firmou domínio sobre este território — o game master confere isto antes de aprovar
+                  </p>
+                  {linksRascunho.map((l, i) => (
+                    <input
+                      key={i}
+                      value={l}
+                      maxLength={LIMITES_LOCAL.link}
+                      style={{ marginBottom: 6 }}
+                      placeholder={`link ${i + 1}`}
+                      onChange={(e) => setLinksRascunho((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
+                    />
+                  ))}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="button" className="mini-btn" onClick={() => setLinksRascunho((prev) => [...prev, ''])}>
+                      + adicionar link
+                    </button>
+                    {linksRascunho.length > MINIMO_LINKS_DOMINIO && (
+                      <button type="button" className="mini-btn dim"
+                        onClick={() => setLinksRascunho((prev) => prev.slice(0, -1))}>
+                        remover último
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="field">
                 <label>imagem do ambiente</label>
                 {(fotoPreview || (rascunho.imagem && !tirarFoto)) && (
@@ -919,7 +1054,7 @@ export default function Mundo() {
               <div className="painel-acoes">
                 <button type="button" className="mini-btn perigo"
                   disabled={salvando} onClick={salvar}>
-                  {salvando ? 'gravando...' : 'gravar'}
+                  {salvando ? 'gravando...' : ehAdmin ? 'gravar' : 'enviar para análise'}
                 </button>
                 <button type="button" className="mini-btn" onClick={fechar}>cancelar</button>
               </div>

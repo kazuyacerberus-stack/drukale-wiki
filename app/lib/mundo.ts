@@ -37,6 +37,8 @@ export const TIPOS: {
 export const tipoDe = (id: string) =>
   TIPOS.find((t) => t.id === id) ?? TIPOS[1];
 
+export type StatusAprovacao = 'pendente' | 'aprovado' | 'reprovado';
+
 export type Local = {
   id: string;
   nome: string;
@@ -47,9 +49,27 @@ export type Local = {
   altitude: number; // 0 no chão; acima disso, em órbita
   imagem: string | null;   // endereço da foto do ambiente, no Storage
   faccao: string | null;   // nome da facção dona deste local, para o mapa político
+  userId: string | null;           // quem propôs este território
+  statusAprovacao: StatusAprovacao;
+  motivoReprovacao: string | null;
+  linksDominio: string[] | null;   // cenas provando domínio sobre o território — exigido do jogador, não do admin
 };
 
-export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300 };
+export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300, link: 500 };
+export const MINIMO_LINKS_DOMINIO = 4;
+
+/** O banco exige pelo menos 4 links não-vazios pra quem propõe um território — confere aqui antes de gastar a ida ao servidor. */
+export function linksDominioValidos(links: string[]): boolean {
+  const validos = links.map((l) => l.trim()).filter((l) => l.length > 0 && l.length <= LIMITES_LOCAL.link);
+  return validos.length >= MINIMO_LINKS_DOMINIO;
+}
+
+export function mensagemLocal(erro: unknown): string {
+  const e = erro as { message?: string; code?: string };
+  if (e?.code === '42501') return 'Sua sessão não tem permissão para isto — confira se preencheu os 4 links de cena.';
+  if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Tente novamente.';
+  return e?.message || 'Não foi possível concluir. Tente novamente.';
+}
 
 /* ---------- a imagem do ambiente ---------- */
 
@@ -139,6 +159,13 @@ export function lerLocais(valor: unknown): Local[] {
       altitude: Number.isFinite(Number(o.altitude)) ? Number(o.altitude) : 0,
       imagem: typeof o.imagem === 'string' && o.imagem.trim() ? o.imagem : null,
       faccao: typeof o.faccao === 'string' && o.faccao.trim() ? o.faccao : null,
+      userId: typeof o.user_id === 'string' ? o.user_id : null,
+      statusAprovacao: (['pendente', 'aprovado', 'reprovado'].includes(o.status_aprovacao as string)
+        ? o.status_aprovacao : 'aprovado') as StatusAprovacao,
+      motivoReprovacao: typeof o.motivo_reprovacao === 'string' ? o.motivo_reprovacao : null,
+      linksDominio: Array.isArray(o.links_dominio)
+        ? (o.links_dominio as unknown[]).filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+        : null,
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }

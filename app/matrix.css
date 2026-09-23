@@ -930,6 +930,10 @@ a:focus-visible, button:focus-visible, summary:focus-visible, [tabindex]:focus-v
 }
 .marco:hover .marco-ponto, .marco.on .marco-ponto { transform: scale(1.75); }
 .marco:hover .marco-nome, .marco.on .marco-nome { color: #fff; background: rgba(0,0,0,.72); }
+/* território proposto, só visível pra quem propôs e pro game master */
+.marco.pendente .marco-ponto { outline: 1px dashed rgba(255,207,107,.9); outline-offset: 3px; animation: marco-pulso 1.6s ease-in-out infinite; }
+.marco.pendente .marco-nome { border-left-color: #ffcf6b; }
+@keyframes marco-pulso { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 
 /* ---------- avisos sobre o palco ---------- */
 .mundo-aviso {

@@ -8,7 +8,7 @@ import { salvarPerfil, validarAvatar, validarCapa, mensagemPerfil, LIMITE_BIO, t
 import type { EstadoAmizade } from '../lib/amizades';
 import type { Faccao } from '../lib/faccoes';
 
-type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; banidos: number };
+type Resumo = { contas_pendentes: number; contas_aprovadas: number; fichas_pendentes: number; eventos_pendentes: number; territorios_pendentes: number; banidos: number };
 
 type Props = {
   perfil: Perfil;
@@ -176,7 +176,7 @@ export default function PerfilCard({ perfil, ehProprioPerfil, ehAdmin, resumo, o
               <>
                 <div className="perfil-mini-resumo">
                   <div><strong>{resumo.contas_pendentes}</strong><span>contas</span></div>
-                  <div><strong>{resumo.fichas_pendentes + resumo.eventos_pendentes}</strong><span>pendências</span></div>
+                  <div><strong>{resumo.fichas_pendentes + resumo.eventos_pendentes + resumo.territorios_pendentes}</strong><span>pendências</span></div>
                 </div>
                 <Link href="/admin" className="mini-btn" style={{ display: 'block', textAlign: 'center' }}>★ painel completo</Link>
               </>

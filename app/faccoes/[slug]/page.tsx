@@ -86,7 +86,7 @@ function FaccaoPageInterna() {
       );
       setTerritorio(
         lerLocais(locs)
-          .filter((l) => l.faccao && normalizarNome(l.faccao) === alvoNorm)
+          .filter((l) => l.statusAprovacao === 'aprovado' && l.faccao && normalizarNome(l.faccao) === alvoNorm)
           .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
       );
 
