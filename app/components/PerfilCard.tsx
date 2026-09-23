@@ -88,21 +88,23 @@ export default function PerfilCard({ perfil, ehProprioPerfil, ehAdmin, resumo, o
   };
 
   return (
-    <div className="perfil-cartao">
+    <div className={`perfil-cartao${faccao ? ' tem-faccao' : ''}`} style={faccao ? ({ '--faccao-cor': faccao.cor } as React.CSSProperties) : undefined}>
       <div className="perfil-capa" style={previewCapa || perfil.capa_url ? { backgroundImage: `url(${previewCapa || perfil.capa_url})` } : undefined} />
       <div className="perfil-avatar-sobre">
         <Avatar url={previewAvatar || perfil.avatar_url} nome={perfil.apelido} tamanho={84} />
+        {faccao && (
+          <Link href={`/faccoes/${faccao.slug}`} className="perfil-bandeira" title={`Membro de ${faccao.nome}`}>
+            {faccao.simbolo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={faccao.simbolo} alt="" />
+            ) : (
+              <span className="perfil-bandeira-ini">{(faccao.nome.trim()[0] ?? '?').toUpperCase()}</span>
+            )}
+          </Link>
+        )}
       </div>
       {faccao && (
-        <Link href={`/faccoes/${faccao.slug}`} className="perfil-estandarte" style={{ borderColor: faccao.cor, color: faccao.cor }}>
-          {faccao.simbolo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={faccao.simbolo} alt="" />
-          ) : (
-            <span className="perfil-estandarte-ini" style={{ borderColor: faccao.cor }}>{(faccao.nome.trim()[0] ?? '?').toUpperCase()}</span>
-          )}
-          <span>{faccao.nome}</span>
-        </Link>
+        <p className="perfil-faccao-nome"><Link href={`/faccoes/${faccao.slug}`}>{faccao.nome}</Link></p>
       )}
       <div className="perfil-cartao-corpo">
         {editando ? (
