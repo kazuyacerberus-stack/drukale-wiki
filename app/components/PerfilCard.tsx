@@ -43,8 +43,21 @@ export default function PerfilCard({ perfil, ehProprioPerfil, ehAdmin, resumo, o
         .eq('user_id', perfil.user_id)
         .eq('status', 'aceito')
         .maybeSingle();
-      if (!membro) { setFaccao(null); return; }
-      const { data: f } = await supabase.from('faccoes').select('*').eq('id', membro.faccao_id).maybeSingle();
+      let faccaoId = membro?.faccao_id ?? null;
+      if (!faccaoId) {
+        // quem criou a facção é o líder dela mesmo sem um convite/pedido
+        // aceito em faccao_membros — conta como filiado também
+        const { data: criada } = await supabase
+          .from('faccoes')
+          .select('id')
+          .eq('user_id', perfil.user_id)
+          .eq('status_aprovacao', 'aprovado')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        faccaoId = criada?.[0]?.id ?? null;
+      }
+      if (!faccaoId) { setFaccao(null); return; }
+      const { data: f } = await supabase.from('faccoes').select('*').eq('id', faccaoId).maybeSingle();
       setFaccao((f as Faccao) ?? null);
     })();
   }, [perfil.user_id]);
