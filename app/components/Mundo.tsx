@@ -13,6 +13,11 @@ import {
   type Local, type TipoLocal,
 } from '../lib/mundo';
 import { normalizarNome } from '../lib/faccoes';
+import { completude, type Apresentacao } from '../lib/apresentacao';
+import TerritorioApresentacao from './mundo/TerritorioApresentacao';
+import TerritorioEditor from './mundo/TerritorioEditor';
+import { desenharMiniGlobo } from './mundo/miniGlobo';
+import type { Mapas } from './mundo/textura';
 
 const FOV = 38;
 const PERTO = 1.6;    // aproximação máxima
@@ -79,7 +84,15 @@ export default function Mundo() {
   const politicoAlvo = useRef(0);
 
   const [locais, setLocais] = useState<Local[]>([]);
-  const [faccoes, setFaccoes] = useState<{ nome: string; cor: string }[]>([]);
+  const [faccoes, setFaccoes] = useState<{ nome: string; cor: string; simbolo: string | null }[]>([]);
+  // a aba do território: aberta para ler, sendo montada, ou em prévia do editor
+  const [aba, setAba] = useState<Local | null>(null);
+  const [montando, setMontando] = useState<Local | null>(null);
+  const [previa, setPrevia] = useState<Apresentacao | null>(null);
+  const [globinho, setGlobinho] = useState<string | null>(null);
+  // o mapa gerado fica guardado para o globinho da aba reaproveitar
+  const mapasRef = useRef<Mapas | null>(null);
+  const pixelsCor = useRef<ImageData | null>(null);
   const [modoPolitico, setModoPolitico] = useState(false);
   const [gerandoPolitico, setGerandoPolitico] = useState(false);
   const [mostrarLista, setMostrarLista] = useState(true);
@@ -122,13 +135,13 @@ export default function Mundo() {
   const carregar = async () => {
     const [{ data, error }, { data: fac }] = await Promise.all([
       supabase.from('locais').select('*').order('nome', { ascending: true }),
-      supabase.from('faccoes').select('nome,cor'),
+      supabase.from('faccoes').select('nome,cor,simbolo'),
     ]);
     if (error) { setErro(error.message); return; }
     const lista = lerLocais(data);
     locaisRef.current = lista;
     setLocais(lista);
-    setFaccoes((fac ?? []) as { nome: string; cor: string }[]);
+    setFaccoes((fac ?? []) as { nome: string; cor: string; simbolo: string | null }[]);
   };
   useEffect(() => { carregar(); }, []);
 
@@ -165,6 +178,7 @@ export default function Mundo() {
         const TAM = largo < 700 ? 1024 : 2048;
         tamRef.current = { L: TAM, A: TAM / 2 };
         const mapas = gerarMundo(TAM, TAM / 2, {});
+        mapasRef.current = mapas;
 
         const fundo = fundoRef.current;
         if (fundo) {
@@ -477,6 +491,7 @@ export default function Mundo() {
       statusAprovacao: ehAdmin ? 'aprovado' : 'pendente',
       motivoReprovacao: null,
       linksDominio: null,
+      apresentacao: null,
     });
     setLinksRascunho(['', '', '', '']);
     pausado.current = true;
@@ -511,7 +526,8 @@ export default function Mundo() {
    */
   async function subirFoto(f: File) {
     const ext = (/\.([^.]+)$/.exec(f.name)?.[1] ?? 'jpg').toLowerCase();
-    const nome = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    // cada conta grava na própria pasta: é o que o banco exige (sql/40)
+    const nome = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
     const { error } = await supabase.storage
       .from(BUCKET_LOCAIS).upload(nome, f, { upsert: false });
     if (error) throw new Error(error.message);
@@ -637,6 +653,27 @@ export default function Mundo() {
     limparFoto();
     pausado.current = false;
   };
+
+  /* ============================================================
+     A ABA DO TERRITÓRIO
+     ============================================================ */
+  const podeMontar = (l: Local) => ehAdmin || (logado && !!userId && l.userId === userId);
+
+  /** Desenha o globinho do rodapé a partir do mapa que o globo já gerou. */
+  const prepararGlobinho = (l: Local) => {
+    const m = mapasRef.current;
+    if (!m) { setGlobinho(null); return; }
+    if (!pixelsCor.current) {
+      pixelsCor.current = m.cor.getContext('2d')!.getImageData(0, 0, m.cor.width, m.cor.height);
+    }
+    setGlobinho(desenharMiniGlobo(pixelsCor.current, l.lat, l.lon, 240));
+  };
+
+  const abrirAba = (l: Local) => { prepararGlobinho(l); setAba(l); };
+  const montarAba = (l: Local) => { prepararGlobinho(l); setAba(null); setMontando(l); };
+
+  const simboloDe = (l: Local) =>
+    (l.faccao && faccoes.find((f) => normalizarNome(f.nome) === normalizarNome(l.faccao as string))?.simbolo) || null;
 
   /** Abre o formulário já com o que o local tem hoje. */
   const editar = (l: Local) => {
@@ -930,6 +967,20 @@ export default function Mundo() {
                 </div>
               )}
 
+              {/* a aba do território: todo mundo abre; o dono e o game master montam */}
+              <div className="painel-acoes" style={{ marginTop: 14 }}>
+                {selecionado.apresentacao && (
+                  <button type="button" className="mini-btn perigo" onClick={() => abrirAba(selecionado)}>abrir a aba do território</button>
+                )}
+                {podeMontar(selecionado) && (
+                  <button type="button" className="mini-btn" onClick={() => montarAba(selecionado)}>
+                    {selecionado.apresentacao
+                      ? `editar apresentação (${completude(selecionado.apresentacao).pct}%)`
+                      : 'montar a apresentação'}
+                  </button>
+                )}
+              </div>
+
               {(ehAdmin || (logado && selecionado.userId === userId && selecionado.statusAprovacao !== 'aprovado')) && (
                 <div className="painel-acoes">
                   <button type="button" className="mini-btn"
@@ -1065,6 +1116,48 @@ export default function Mundo() {
         </aside>
       )}
     </div>
+
+    {aba && aba.apresentacao && (
+      <TerritorioApresentacao
+        local={aba}
+        ap={aba.apresentacao}
+        globo={globinho}
+        simboloFaccao={simboloDe(aba)}
+        podeEditar={podeMontar(aba)}
+        onEditar={() => montarAba(aba)}
+        onFechar={() => setAba(null)}
+      />
+    )}
+
+    {montando && userId && (
+      <TerritorioEditor
+        local={montando}
+        userId={userId}
+        onPrevia={setPrevia}
+        onSalvo={async () => {
+          const id = montando.id;
+          setMontando(null);
+          await carregar();
+          const atual = locaisRef.current.find((l) => l.id === id) ?? null;
+          setSelecionado(atual);
+          if (atual?.apresentacao) setAba(atual);
+        }}
+        onFechar={() => setMontando(null)}
+      />
+    )}
+
+    {montando && previa && (
+      <TerritorioApresentacao
+        local={montando}
+        ap={previa}
+        globo={globinho}
+        simboloFaccao={simboloDe(montando)}
+        podeEditar={false}
+        onEditar={() => setPrevia(null)}
+        onFechar={() => setPrevia(null)}
+        rascunho
+      />
+    )}
 
     <div className="legenda">
       {modoPolitico

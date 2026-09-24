@@ -7,6 +7,8 @@
  * onde cada império estava.
  */
 
+import { lerApresentacao, type Apresentacao } from './apresentacao';
+
 export type TipoLocal =
   | 'capital' | 'cidade' | 'base' | 'quartel' | 'ruina' | 'orbital' | 'serpente';
 
@@ -53,6 +55,7 @@ export type Local = {
   statusAprovacao: StatusAprovacao;
   motivoReprovacao: string | null;
   linksDominio: string[] | null;   // cenas provando domínio sobre o território — exigido do jogador, não do admin
+  apresentacao: Apresentacao | null; // a "aba" do território: textos e imagens
 };
 
 export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300, link: 500 };
@@ -166,6 +169,7 @@ export function lerLocais(valor: unknown): Local[] {
       linksDominio: Array.isArray(o.links_dominio)
         ? (o.links_dominio as unknown[]).filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
         : null,
+      apresentacao: lerApresentacao(o.apresentacao),
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }
