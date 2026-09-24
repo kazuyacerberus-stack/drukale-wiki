@@ -2171,37 +2171,176 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 /* ============================================================
    O EDITOR DA ABA
    ============================================================ */
-.ted { position: fixed; inset: 0; z-index: 94; overflow-y: auto; background: rgba(4,6,12,.97); color: var(--g2); }
-.ted-corpo { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
-.ted-sobre { margin: 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: .6; }
-.ted-titulo { margin: 4px 0 8px; font-family: 'Cinzel', serif; font-size: 30px; letter-spacing: .12em; text-transform: uppercase; }
-.ted-bloco { margin: 22px 0 0; padding: 16px 16px 6px; border: 1px solid rgba(var(--g-rgb), .2); border-radius: var(--r-card); }
-.ted-bloco legend { padding: 0 8px; font-size: 11.5px; letter-spacing: 2px; text-transform: uppercase; }
-.ted-conta { float: right; opacity: .5; font-size: 11px; }
-.ted-vaga { display: flex; flex-direction: column; gap: 8px; }
-.ted-vaga-moldura {
-  position: relative; width: 100%; overflow: hidden; border: 1px dashed rgba(var(--g-rgb), .35); border-radius: var(--r-card);
-  background: #0a0e17; display: flex; align-items: center; justify-content: center;
+/* o fundo escurece e desfoca o mapa: nada do site vaza por trás da folha */
+.ted {
+  position: fixed; inset: 0; z-index: 94; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain;
+  padding: 46px 18px 70px;
+  background: radial-gradient(ellipse at 50% 30%, rgba(26,16,6,.92), rgba(6,4,2,.98));
+  backdrop-filter: blur(4px);
 }
-.ted-vaga-moldura img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ted-vaga-moldura span { font-size: 11px; letter-spacing: 1px; opacity: .5; }
-.ted-vaga-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
-.ted-secoes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 12px; }
-.ted-secao { display: flex; flex-direction: column; gap: 8px; }
-.ted-especies { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 12px; align-items: start; }
-.ted-especie { display: flex; flex-direction: column; gap: 8px; }
-.ted-lado { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 14px; }
-.ted-comp { padding: 14px; border: 1px solid rgba(var(--g-rgb), .2); border-radius: var(--r-card); }
-.ted-comp-t { margin: 0 0 8px; font-size: 13px; }
-.ted-barra { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); overflow: hidden; margin-bottom: 10px; }
-.ted-barra span { display: block; height: 100%; background: var(--g); transition: width .3s; }
-.ted-comp ul { list-style: none; margin: 0; padding: 0; font-size: 12.5px; line-height: 1.7; opacity: .75; }
-.ted-comp li.ok { opacity: .45; text-decoration: line-through; }
-.ted-acoes { display: flex; flex-direction: column; gap: 8px; }
+
+/* a folha: papel velho com fibra, manchas nos cantos e borda queimada */
+.perg {
+  --tinta: #3a2612; --tinta-fraca: rgba(58,38,18,.62); --sepia: #7a5226; --lacre: #8e1f1a;
+  position: relative; max-width: 1080px; margin: 0 auto; padding: 64px 70px 70px;
+  color: var(--tinta); font-family: 'Cormorant Garamond', Georgia, serif; font-size: 18px;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .22 0 0 0 0 .08 0 0 0 .16 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"),
+    radial-gradient(ellipse at 50% 35%, rgba(255,250,230,.6) 0%, rgba(255,250,230,0) 58%),
+    radial-gradient(ellipse 60% 40% at 0% 0%, rgba(110,70,25,.38), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(110,70,25,.3), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 0% 100%, rgba(110,70,25,.38), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 100% 100%, rgba(110,70,25,.4), transparent 70%),
+    radial-gradient(circle at 78% 62%, rgba(120,80,30,.12) 0 6%, transparent 9%),
+    linear-gradient(180deg, #ecdcb4 0%, #e3cf9f 55%, #d8c08a 100%);
+  box-shadow:
+    inset 0 0 70px rgba(95,58,20,.55), inset 0 0 14px rgba(70,40,12,.55),
+    0 24px 70px rgba(0,0,0,.7);
+  border-radius: 4px;
+}
+/* os rolos de madeira em cima e embaixo */
+.perg-rolo {
+  position: absolute; left: -22px; right: -22px; height: 30px; border-radius: 15px; z-index: 1;
+  background: linear-gradient(180deg, #5a3a1c 0%, #b88a52 22%, #e8cf9c 45%, #a57845 72%, #4a2e14 100%);
+  box-shadow: 0 6px 14px rgba(0,0,0,.55);
+}
+.perg-rolo::before, .perg-rolo::after {
+  content: ""; position: absolute; top: -5px; width: 26px; height: 40px; border-radius: 8px;
+  background: linear-gradient(90deg, #2e1c0c, #6b4524 50%, #2e1c0c);
+  box-shadow: 0 4px 10px rgba(0,0,0,.5);
+}
+.perg-rolo::before { left: -14px; }
+.perg-rolo::after { right: -14px; }
+.perg-rolo-topo { top: -16px; }
+.perg-rolo-base { bottom: -16px; }
+
+/* cabeçalho */
+.perg-cab { text-align: center; max-width: 680px; margin: 0 auto 34px; }
+.perg-sobre { margin: 0; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: .38em; text-transform: uppercase; color: var(--sepia); }
+.perg-cab h2 { margin: 8px 0 0; font-family: 'Cinzel', serif; font-weight: 700; font-size: clamp(30px, 4.4vw, 50px); letter-spacing: .1em; text-transform: uppercase; color: var(--tinta); text-shadow: 0 1px 0 rgba(255,245,215,.6); }
+.perg-orn { margin: 6px 0 12px; font-size: 24px; color: var(--sepia); }
+.perg-intro { margin: 0; font-style: italic; font-size: 19px; line-height: 1.5; color: var(--tinta-fraca); }
+
+.perg-grade { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 44px; align-items: start; }
+.perg-form { min-width: 0; }
+
+/* capítulos */
+.perg-cap { margin: 0 0 38px; }
+.perg-cap h3 {
+  display: flex; align-items: baseline; gap: 12px; margin: 0 0 18px; padding-bottom: 8px;
+  font-family: 'Cinzel', serif; font-weight: 700; font-size: 17px; letter-spacing: .2em; text-transform: uppercase; color: var(--tinta);
+  border-bottom: 1px solid rgba(90,58,24,.35);
+  background: linear-gradient(90deg, rgba(90,58,24,.35), rgba(90,58,24,0)) bottom / 100% 1px no-repeat;
+}
+.perg-cap h3 span { font-size: 26px; color: var(--lacre); letter-spacing: 0; }
+
+/* campos: tinta sobre o papel, sem caixa branca */
+.perg-campo { display: flex; flex-direction: column; gap: 6px; margin: 0 0 20px; }
+.perg-rotulo { display: flex; justify-content: space-between; align-items: baseline; font-family: 'Cinzel', serif; font-size: 12.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--sepia); }
+.perg-rotulo em, .perg-conta { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--tinta-fraca); }
+.perg-rotulo em.perto { color: var(--lacre); }
+.perg-conta { align-self: flex-end; }
+.perg input, .perg textarea {
+  width: 100%; box-sizing: border-box; margin: 0; padding: 6px 4px;
+  font-family: 'Cormorant Garamond', Georgia, serif; font-size: 19px; line-height: 1.5; color: var(--tinta);
+  background: rgba(255,250,232,.28); border: none; border-bottom: 1px solid rgba(80,50,20,.45); border-radius: 2px;
+  outline: none; transition: background .2s, border-color .2s; resize: vertical;
+}
+/* o texto longo ganha pauta, como caderno de viagem */
+.perg textarea {
+  padding: 2px 6px; line-height: 30px; min-height: 64px;
+  background: rgba(255,250,232,.22) repeating-linear-gradient(180deg, transparent 0 29px, rgba(90,58,24,.22) 29px 30px);
+  background-attachment: local;
+  border: 1px solid rgba(80,50,20,.22);
+}
+.perg input::placeholder, .perg textarea::placeholder { color: rgba(58,38,18,.38); font-style: italic; }
+.perg input:focus, .perg textarea:focus { background-color: rgba(255,250,232,.55); border-color: var(--sepia); }
+.perg-dica { font-style: italic; font-size: 15px; line-height: 1.35; color: var(--tinta-fraca); }
+
+/* gravuras */
+.perg-vaga { display: flex; flex-direction: column; gap: 6px; }
+.perg-vaga-capa { max-width: 640px; }
+.perg-gravura {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 100%; padding: 0; overflow: hidden; cursor: pointer;
+  border: 1px solid rgba(80,50,20,.55); outline: 3px double rgba(80,50,20,.35); outline-offset: 3px;
+  background: rgba(120,85,40,.1) repeating-linear-gradient(45deg, transparent 0 7px, rgba(90,58,24,.08) 7px 8px);
+  border-radius: 2px; color: var(--sepia); font-family: 'Cinzel', serif; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
+  transition: background-color .2s;
+}
+.perg-gravura:hover { background-color: rgba(120,85,40,.2); }
+.perg-gravura:disabled { cursor: wait; opacity: .6; }
+.perg-gravura span { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; text-align: center; }
+.perg-gravura b { font-size: 26px; font-weight: 400; line-height: 1; }
+.perg-gravura img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: sepia(.12) contrast(1.02); }
+.perg-vaga-acoes { display: flex; gap: 16px; min-height: 24px; }
+
+.perg-janelas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.perg-janela { display: flex; flex-direction: column; gap: 8px; }
+.perg-linha { font-family: 'Cinzel', serif !important; font-size: 15px !important; letter-spacing: .06em; }
+
+.perg-especies { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 22px; align-items: start; }
+.perg-especie { display: flex; flex-direction: column; gap: 6px; }
+.perg-novo {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 4 / 3; cursor: pointer;
+  border: 1px dashed rgba(80,50,20,.5); border-radius: 2px; background: transparent; color: var(--sepia);
+  font-family: 'Cinzel', serif; font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase;
+}
+.perg-novo b { font-size: 26px; font-weight: 400; line-height: 1; }
+.perg-novo:hover { background: rgba(120,85,40,.1); }
+
+/* botões de tinta */
+.perg-link {
+  align-self: flex-start; padding: 0; border: none; background: none; cursor: pointer;
+  font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15.5px; color: var(--sepia);
+  text-decoration: underline; text-decoration-color: rgba(122,82,38,.4); text-underline-offset: 3px;
+}
+.perg-link:hover { color: var(--lacre); }
+.perg-botao {
+  padding: 10px 14px; cursor: pointer; border: 1px solid rgba(80,50,20,.55); border-radius: 2px; background: rgba(255,250,232,.3);
+  font-family: 'Cinzel', serif; font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--tinta);
+}
+.perg-botao:hover { background: rgba(255,250,232,.6); }
+
+/* a margem: nota do escriba com o que falta, e o selo */
+.perg-margem { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 18px; }
+.perg-nota {
+  padding: 18px 18px 14px; transform: rotate(-.6deg);
+  background: rgba(255,248,225,.45); border: 1px solid rgba(80,50,20,.25);
+  box-shadow: 2px 3px 0 rgba(80,50,20,.12);
+}
+.perg-nota-t { margin: 0 0 10px; font-style: italic; font-size: 17px; }
+.perg-nota-t strong { font-family: 'Cinzel', serif; font-style: normal; color: var(--lacre); }
+.perg-tinta { height: 3px; margin-bottom: 12px; background: rgba(80,50,20,.15); }
+.perg-tinta span { display: block; height: 100%; background: var(--lacre); transition: width .4s; }
+.perg-nota ul { list-style: none; margin: 0; padding: 0; font-size: 15.5px; line-height: 1.55; }
+.perg-nota li { display: flex; gap: 8px; }
+.perg-nota li i { width: 12px; flex: none; font-style: normal; color: var(--sepia); }
+.perg-nota li.ok { color: var(--tinta-fraca); text-decoration: line-through; text-decoration-color: rgba(142,31,26,.55); }
+.perg-nota li.ok i { color: var(--lacre); }
+.perg-aviso { margin: 0; font-style: italic; color: var(--sepia); }
+.perg-erro { margin: 0; padding: 10px 12px; font-size: 16px; color: #fff4e6; background: rgba(142,31,26,.85); border-radius: 2px; }
+.perg-acoes { display: flex; flex-direction: column; gap: 12px; }
+/* o selo de cera */
+.perg-selo {
+  display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 16px; cursor: pointer;
+  border: none; border-radius: 40px; color: #f7e3c7;
+  background: radial-gradient(circle at 30% 30%, #c0392b, #8e1f1a 55%, #5e1210 100%);
+  box-shadow: inset 0 2px 3px rgba(255,200,180,.35), inset 0 -3px 6px rgba(0,0,0,.35), 0 3px 8px rgba(60,10,5,.45);
+  font-family: 'Cinzel', serif; font-weight: 700; font-size: 13.5px; letter-spacing: .18em; text-transform: uppercase;
+}
+.perg-selo span { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(247,227,199,.5); font-size: 13px; }
+.perg-selo:hover { filter: brightness(1.08); }
+.perg-selo:disabled { cursor: wait; filter: saturate(.6); }
+
 @media (max-width: 900px) {
-  .ted-corpo { grid-template-columns: 1fr; }
-  .ted-lado { position: static; }
-  .ted-secoes { grid-template-columns: 1fr; }
+  .ted { padding: 34px 8px 50px; }
+  .perg { padding: 46px 22px 50px; font-size: 17px; }
+  .perg-rolo { left: -6px; right: -6px; }
+  .perg-grade { grid-template-columns: 1fr; gap: 26px; }
+  .perg-margem { position: static; }
+  .perg-nota { transform: none; }
+  .perg-janelas { grid-template-columns: 1fr; }
+  .perg-janela .perg-vaga { max-width: 320px; }
 }
 
 /* ============================================================

@@ -20,25 +20,28 @@ type Props = {
 
 type Corte = { arquivo: File; formato: Formato; aplicar: (img: ImagemApres) => void };
 
-/** Um campo de texto com o contador do limite. */
+/** Uma linha escrita no pergaminho, com o contador do limite. */
 function Campo({ rotulo, valor, max, linhas, dica, onMudar }: {
   rotulo: string; valor: string; max: number; linhas?: number; dica?: string; onMudar: (v: string) => void;
 }) {
   return (
-    <div className="field">
-      <label>{rotulo} <span className="ted-conta">{valor.length}/{max}</span></label>
+    <label className="perg-campo">
+      <span className="perg-rotulo">
+        {rotulo}
+        <em className={valor.length > max * 0.9 ? 'perto' : ''}>{valor.length}/{max}</em>
+      </span>
       {linhas
         ? <textarea rows={linhas} value={valor} maxLength={max} onChange={(e) => onMudar(e.target.value)} />
         : <input value={valor} maxLength={max} onChange={(e) => onMudar(e.target.value)} />}
-      {dica && <p className="dica">{dica}</p>}
-    </div>
+      {dica && <small className="perg-dica">{dica}</small>}
+    </label>
   );
 }
 
 /**
- * O formulário da aba do território. Cada imagem passa pelo recorte na
- * proporção do seu lugar no painel e sobe na hora — assim a
- * pré-visualização já mostra o resultado real. O que foi enviado e não
+ * O pergaminho onde se escreve a aba do território. Cada imagem passa
+ * pelo recorte na proporção do seu lugar no painel e sobe na hora — assim
+ * a pré-visualização já mostra o resultado real. O que foi enviado e não
  * chegou a ser salvo é apagado ao cancelar; o que foi trocado, ao salvar.
  */
 export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onFechar }: Props) {
@@ -113,18 +116,35 @@ export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onF
 
   const mudar = (parcial: Partial<Apresentacao>) => setAp((a) => ({ ...a, ...parcial }));
 
-  /** Vaga de imagem com a proporção real do painel. */
+  /** Moldura de gravura com a proporção real do painel. */
   const Vaga = ({ imagem, formato, onPor, onTirar }: {
     imagem: ImagemApres; formato: Formato; onPor: () => void; onTirar: () => void;
   }) => (
-    <div className="ted-vaga">
-      <div className="ted-vaga-moldura" style={{ aspectRatio: String(FORMATOS[formato].proporcao) }}>
+    <div className={`perg-vaga perg-vaga-${formato}`}>
+      <button
+        type="button"
+        className="perg-gravura"
+        style={{ aspectRatio: String(FORMATOS[formato].proporcao) }}
+        disabled={enviando}
+        onClick={onPor}
+        title={imagem ? 'trocar a imagem' : 'escolher uma imagem'}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {imagem ? <img src={imagem.url} alt="" /> : <span>{FORMATOS[formato].rotulo}</span>}
-      </div>
-      <div className="ted-vaga-acoes">
-        <button type="button" className="mini-btn" disabled={enviando} onClick={onPor}>{imagem ? 'trocar' : 'escolher imagem'}</button>
-        {imagem && <button type="button" className="mini-btn dim" onClick={onTirar}>tirar</button>}
+        {imagem ? <img src={imagem.url} alt="" /> : (
+          <span>
+            <b>+</b>
+            {FORMATOS[formato].rotulo}
+          </span>
+        )}
+      </button>
+      {/* a linha existe sempre (vazia sem imagem), para as colunas não desalinharem */}
+      <div className="perg-vaga-acoes">
+        {imagem && (
+          <>
+            <button type="button" className="perg-link" disabled={enviando} onClick={onPor}>trocar</button>
+            <button type="button" className="perg-link" onClick={onTirar}>tirar</button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -134,22 +154,27 @@ export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onF
     const trocar = (i: number, e: Partial<Especie>) =>
       mudar({ [qual]: lista.map((x, j) => (j === i ? { ...x, ...e } : x)) } as Partial<Apresentacao>);
     return (
-      <div className="ted-especies">
+      <div className="perg-especies">
         {lista.map((e, i) => (
-          <div className="ted-especie" key={i}>
+          <div className="perg-especie" key={i}>
             <Vaga
               imagem={e.imagem}
               formato="especie"
               onPor={() => escolher('especie', (img) => setAp((a) => ({ ...a, [qual]: a[qual].map((x, j) => (j === i ? { ...x, imagem: img } : x)) })))}
               onTirar={() => trocar(i, { imagem: null })}
             />
-            <input value={e.nome} maxLength={LIMITES_APRES.especieNome} placeholder="nome" onChange={(ev) => trocar(i, { nome: ev.target.value })} />
-            <button type="button" className="mini-btn dim" onClick={() => mudar({ [qual]: lista.filter((_, j) => j !== i) } as Partial<Apresentacao>)}>remover</button>
+            <input className="perg-linha" value={e.nome} maxLength={LIMITES_APRES.especieNome} placeholder="nome" onChange={(ev) => trocar(i, { nome: ev.target.value })} />
+            <button type="button" className="perg-link" onClick={() => mudar({ [qual]: lista.filter((_, j) => j !== i) } as Partial<Apresentacao>)}>riscar do registro</button>
           </div>
         ))}
         {lista.length < LIMITES_APRES.especies && (
-          <button type="button" className="mini-btn" onClick={() => mudar({ [qual]: [...lista, { nome: '', imagem: null }] } as Partial<Apresentacao>)}>
-            + adicionar {qual === 'fauna' ? 'criatura' : 'planta'}
+          <button
+            type="button"
+            className="perg-novo"
+            onClick={() => mudar({ [qual]: [...lista, { nome: '', imagem: null }] } as Partial<Apresentacao>)}
+          >
+            <b>+</b>
+            {qual === 'fauna' ? 'registrar criatura' : 'registrar planta'}
           </button>
         )}
       </div>
@@ -160,89 +185,102 @@ export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onF
     <div className="ted" role="dialog" aria-modal="true" aria-label={`Montar a apresentação de ${local.nome}`}>
       <input ref={seletor} type="file" accept={ARQUIVO_TIPOS.join(',')} hidden onChange={(e) => arquivoEscolhido(e.target.files?.[0] ?? null)} />
 
-      <div className="ted-corpo">
-        <div className="ted-form">
-          <p className="ted-sobre">aba do território</p>
-          <h2 className="ted-titulo">{local.nome}</h2>
-          <p className="dica">
-            Monte a página que abre quando alguém clica no seu território. Cada imagem é recortada no formato do espaço onde vai
-            aparecer — use fotos grandes e escolha o enquadramento. O nome do território vem do cadastro no mapa.
+      <div className="perg">
+        <div className="perg-rolo perg-rolo-topo" aria-hidden="true" />
+
+        <header className="perg-cab">
+          <p className="perg-sobre">registro de território</p>
+          <h2>{local.nome}</h2>
+          <div className="perg-orn" aria-hidden="true">❦</div>
+          <p className="perg-intro">
+            Escreva aqui a página que se abre quando alguém toca o seu território no mapa. Cada gravura é recortada na medida
+            do espaço onde vai aparecer: prefira imagens grandes e escolha bem o enquadramento.
           </p>
+        </header>
 
-          <fieldset className="ted-bloco">
-            <legend>abertura</legend>
-            <Campo rotulo="subtítulo" valor={ap.subtitulo} max={LIMITES_APRES.subtitulo} dica="uma linha curta sob o nome — ex.: o reino sob o gelo" onMudar={(v) => mudar({ subtitulo: v })} />
-            <Campo rotulo="introdução" valor={ap.introducao} max={LIMITES_APRES.introducao} linhas={4} dica="onde fica, o que é, por que importa" onMudar={(v) => mudar({ introducao: v })} />
-            <Campo rotulo="citação (canto superior direito)" valor={ap.citacao} max={LIMITES_APRES.citacao} linhas={2} dica="uma frase em itálico, de alguém do lugar ou sobre ele" onMudar={(v) => mudar({ citacao: v })} />
-            <div className="field">
-              <label>imagem de capa</label>
-              <Vaga imagem={ap.capa} formato="capa" onPor={() => escolher('capa', (img) => setAp((a) => ({ ...a, capa: img })))} onTirar={() => mudar({ capa: null })} />
-              <p className="dica">a paisagem principal, larga — o nome e a introdução ficam por cima do lado esquerdo, então evite o assunto principal ali</p>
+        <div className="perg-grade">
+          <div className="perg-form">
+            <section className="perg-cap">
+              <h3><span>I</span> abertura</h3>
+              <Campo rotulo="subtítulo" valor={ap.subtitulo} max={LIMITES_APRES.subtitulo} dica="uma linha curta sob o nome — ex.: o reino sob o gelo" onMudar={(v) => mudar({ subtitulo: v })} />
+              <Campo rotulo="introdução" valor={ap.introducao} max={LIMITES_APRES.introducao} linhas={4} dica="onde fica, o que é, por que importa" onMudar={(v) => mudar({ introducao: v })} />
+              <Campo rotulo="citação" valor={ap.citacao} max={LIMITES_APRES.citacao} linhas={3} dica="uma frase em itálico, de alguém do lugar ou sobre ele — aparece no alto, à direita" onMudar={(v) => mudar({ citacao: v })} />
+              <div className="perg-campo">
+                <span className="perg-rotulo">gravura de capa</span>
+                <Vaga imagem={ap.capa} formato="capa" onPor={() => escolher('capa', (img) => setAp((a) => ({ ...a, capa: img })))} onTirar={() => mudar({ capa: null })} />
+                <small className="perg-dica">a paisagem principal, larga — o nome e a introdução ficam por cima do lado esquerdo, então deixe o assunto mais para o centro</small>
+              </div>
+            </section>
+
+            <section className="perg-cap">
+              <h3><span>II</span> o destaque</h3>
+              <Campo rotulo="título" valor={ap.destaque.titulo} max={LIMITES_APRES.destaqueTitulo} dica="ex.: a dualidade de halnaker" onMudar={(v) => mudar({ destaque: { ...ap.destaque, titulo: v } })} />
+              <Campo rotulo="texto" valor={ap.destaque.texto} max={LIMITES_APRES.destaqueTexto} linhas={6} dica="fica sobre o canto inferior direito da capa; deixe uma linha em branco para separar parágrafos" onMudar={(v) => mudar({ destaque: { ...ap.destaque, texto: v } })} />
+            </section>
+
+            <section className="perg-cap">
+              <h3><span>III</span> três janelas</h3>
+              <p className="perg-dica">três vistas do território — a superfície, o que se esconde, um lugar marcante…</p>
+              <div className="perg-janelas">
+                {ap.secoes.map((s, i) => (
+                  <div className="perg-janela" key={i}>
+                    <Vaga
+                      imagem={s.imagem}
+                      formato="secao"
+                      onPor={() => escolher('secao', (img) => setAp((a) => ({ ...a, secoes: a.secoes.map((x, j) => (j === i ? { ...x, imagem: img } : x)) })))}
+                      onTirar={() => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, imagem: null } : x)) })}
+                    />
+                    <input className="perg-linha" value={s.titulo} maxLength={LIMITES_APRES.secaoTitulo} placeholder={`título da ${['primeira', 'segunda', 'terceira'][i]}`} onChange={(e) => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, titulo: e.target.value } : x)) })} />
+                    <textarea className="perg-pauta" rows={4} value={s.texto} maxLength={LIMITES_APRES.secaoTexto} placeholder="duas ou três linhas" onChange={(e) => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)) })} />
+                    <em className="perg-conta">{s.texto.length}/{LIMITES_APRES.secaoTexto}</em>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="perg-cap">
+              <h3><span>IV</span> fauna</h3>
+              {listaEspecies('fauna')}
+            </section>
+
+            <section className="perg-cap">
+              <h3><span>V</span> flora</h3>
+              {listaEspecies('flora')}
+            </section>
+
+            <section className="perg-cap">
+              <h3><span>VI</span> o rodapé</h3>
+              <Campo rotulo="localização" valor={ap.localizacao} max={LIMITES_APRES.localizacao} linhas={2} dica="vai ao lado do globinho, que marca sozinho o ponto do território no mundo" onMudar={(v) => mudar({ localizacao: v })} />
+              <Campo rotulo="frase de fechamento" valor={ap.fechamento} max={LIMITES_APRES.fechamento} linhas={3} dica="centralizada, em itálico, fechando a página" onMudar={(v) => mudar({ fechamento: v })} />
+            </section>
+          </div>
+
+          <aside className="perg-margem">
+            <div className="perg-nota">
+              <p className="perg-nota-t">o registro está <strong>{comp.pct}%</strong> completo</p>
+              <div className="perg-tinta"><span style={{ width: `${comp.pct}%` }} /></div>
+              <ul>
+                {comp.itens.map((it) => (
+                  <li key={it.rotulo} className={it.ok ? 'ok' : ''}>
+                    <i aria-hidden="true">{it.ok ? '✓' : '·'}</i>{it.rotulo}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </fieldset>
-
-          <fieldset className="ted-bloco">
-            <legend>destaque</legend>
-            <Campo rotulo="título do destaque" valor={ap.destaque.titulo} max={LIMITES_APRES.destaqueTitulo} dica="ex.: a dualidade de halnaker" onMudar={(v) => mudar({ destaque: { ...ap.destaque, titulo: v } })} />
-            <Campo rotulo="texto do destaque" valor={ap.destaque.texto} max={LIMITES_APRES.destaqueTexto} linhas={6} dica="aparece sobre o canto inferior direito da capa; deixe uma linha em branco para separar parágrafos" onMudar={(v) => mudar({ destaque: { ...ap.destaque, texto: v } })} />
-          </fieldset>
-
-          <fieldset className="ted-bloco">
-            <legend>três janelas</legend>
-            <p className="dica">três recortes do território — a superfície, o que se esconde, um lugar marcante…</p>
-            <div className="ted-secoes">
-              {ap.secoes.map((s, i) => (
-                <div className="ted-secao" key={i}>
-                  <Vaga
-                    imagem={s.imagem}
-                    formato="secao"
-                    onPor={() => escolher('secao', (img) => setAp((a) => ({ ...a, secoes: a.secoes.map((x, j) => (j === i ? { ...x, imagem: img } : x)) })))}
-                    onTirar={() => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, imagem: null } : x)) })}
-                  />
-                  <input value={s.titulo} maxLength={LIMITES_APRES.secaoTitulo} placeholder={`título ${i + 1}`} onChange={(e) => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, titulo: e.target.value } : x)) })} />
-                  <textarea rows={4} value={s.texto} maxLength={LIMITES_APRES.secaoTexto} placeholder="duas ou três linhas" onChange={(e) => mudar({ secoes: ap.secoes.map((x, j) => (j === i ? { ...x, texto: e.target.value } : x)) })} />
-                  <span className="ted-conta">{s.texto.length}/{LIMITES_APRES.secaoTexto}</span>
-                </div>
-              ))}
+            {enviando && <p className="perg-aviso">a gravura está sendo enviada…</p>}
+            {erro && <p className="perg-erro">{erro}</p>}
+            <div className="perg-acoes">
+              <button type="button" className="perg-selo" disabled={salvando || enviando} onClick={salvar}>
+                <span>{salvando ? '…' : '✦'}</span>
+                {salvando ? 'selando' : 'selar e salvar'}
+              </button>
+              <button type="button" className="perg-botao" onClick={() => onPrevia(ap)}>ver como vai ficar</button>
+              <button type="button" className="perg-link" onClick={fechar}>fechar sem salvar</button>
             </div>
-          </fieldset>
-
-          <fieldset className="ted-bloco">
-            <legend>fauna</legend>
-            {listaEspecies('fauna')}
-          </fieldset>
-          <fieldset className="ted-bloco">
-            <legend>flora</legend>
-            {listaEspecies('flora')}
-          </fieldset>
-
-          <fieldset className="ted-bloco">
-            <legend>rodapé</legend>
-            <Campo rotulo="localização" valor={ap.localizacao} max={LIMITES_APRES.localizacao} linhas={2} dica="ao lado do globinho, que marca sozinho o ponto do território no mundo" onMudar={(v) => mudar({ localizacao: v })} />
-            <Campo rotulo="frase de fechamento" valor={ap.fechamento} max={LIMITES_APRES.fechamento} linhas={3} dica="centralizada, em itálico, fechando a página" onMudar={(v) => mudar({ fechamento: v })} />
-          </fieldset>
+          </aside>
         </div>
 
-        <aside className="ted-lado">
-          <div className="ted-comp">
-            <p className="ted-comp-t">painel completo em <strong>{comp.pct}%</strong></p>
-            <div className="ted-barra"><span style={{ width: `${comp.pct}%` }} /></div>
-            <ul>
-              {comp.itens.map((it) => (
-                <li key={it.rotulo} className={it.ok ? 'ok' : ''}>{it.ok ? '✓' : '○'} {it.rotulo}</li>
-              ))}
-            </ul>
-          </div>
-          {enviando && <p className="dica">enviando imagem...</p>}
-          {erro && <p className="erro">FALHA :: {erro}</p>}
-          <div className="ted-acoes">
-            <button type="button" className="mini-btn" onClick={() => onPrevia(ap)}>pré-visualizar</button>
-            <button type="button" className="mini-btn perigo" disabled={salvando || enviando} onClick={salvar}>
-              {salvando ? 'salvando...' : 'salvar apresentação'}
-            </button>
-            <button type="button" className="mini-btn dim" onClick={fechar}>cancelar</button>
-          </div>
-        </aside>
+        <div className="perg-rolo perg-rolo-base" aria-hidden="true" />
       </div>
 
       {corte && (
