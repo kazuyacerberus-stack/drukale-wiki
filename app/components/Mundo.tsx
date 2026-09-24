@@ -43,22 +43,12 @@ function aplicar3T(m: Float32Array, v: number[]): [number, number, number] {
  * centro" e resolve os dois ângulos que fazem isso acontecer.
  */
 function mirarPara(lat: number, lon: number): { giro: number; inclina: number } {
+  // o ponto que fica de frente para a câmera é Rᵀ·(0,0,1) = (−cos(i)·sen(g), sen(i), cos(i)·cos(g)).
+  // Igualando ao vetor do local: sen(i) é a altura dele e (−sen g, cos g)
+  // é a direção dele no plano do equador — uma solução só, sem desvio.
   const v = paraVetor(lat, lon, 1);
-  let giro = Math.atan2(-v[0], v[2]);
-  let uz = -v[0] * Math.sin(giro) + v[2] * Math.cos(giro);
-  const uy = v[1];
-  let inclina = Math.atan2(-uy, -uz);
-  // duas soluções existem (giro girado 180°, cada uma com sua própria
-  // inclinação — não é só "inclina ± 180°", que é a conta errada que
-  // este arquivo tinha antes e mandava a câmera para o ponto errado).
-  // Troca de giro inverte o sinal de uz, e a inclinação certa para essa
-  // outra volta tem que ser recalculada com esse uz invertido, não só
-  // deslocada — por isso o atan2 roda de novo aqui embaixo.
-  if (inclina > Math.PI / 2 || inclina < -Math.PI / 2) {
-    giro += Math.PI;
-    uz = -uz;
-    inclina = Math.atan2(-uy, -uz);
-  }
+  const giro = Math.atan2(-v[0], v[2]);
+  const inclina = Math.atan2(v[1], Math.hypot(v[0], v[2]));
   return { giro, inclina: Math.max(-1.35, Math.min(1.35, inclina)) };
 }
 
@@ -196,6 +186,9 @@ export default function Mundo() {
         // da primeira vez.
         let cidadela: ReturnType<typeof criarCidadela> | null = null;
         let serpente: ReturnType<typeof criarSerpente> | null = null;
+        // leviatãs de fundo: cenário, como as cidades da textura — não
+        // são locais cadastrados e ninguém clica neles
+        let leviata: ReturnType<typeof criarSerpente> | null = null;
 
         let n = 0;
         const quadro = (t: number) => {
@@ -234,7 +227,7 @@ export default function Mundo() {
           politicoAtual.current += (politicoAlvo.current - politicoAtual.current) * 0.08;
 
           const { giro, inclina, dist } = cam.current;
-          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current);
+          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current, t / 1000);
 
           // as cidadelas orbitais são desenhadas por cima do planeta
           const orbitais = locaisRef.current.filter((l) => tipoDe(l.tipo).orbital === true);
@@ -253,6 +246,13 @@ export default function Mundo() {
             for (const l of bichos) {
               s.desenhar(cena.proj, cena.vista, cena.r3, l.lat, l.lon, t / 1400);
             }
+          }
+
+          if (mapas.monstros.length > 0) {
+            const lv = leviata ?? (leviata = criarSerpente(cena.gl, { vao: 0.34, grossura: 0.013, cor: [0.14, 0.22, 0.28] }));
+            mapas.monstros.forEach((m, i) => {
+              lv.desenhar(cena.proj, cena.vista, cena.r3, m.lat, m.lon, t / 1700 + i * 2.1);
+            });
           }
 
           // depois de meio segundo, conferir se saiu alguma coisa na

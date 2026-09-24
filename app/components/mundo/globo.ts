@@ -53,7 +53,12 @@ function para4(m3: Float32Array, tz: number) {
 }
 
 /* ---------- a esfera ---------- */
-function malhaEsfera(fatias: number, aneis: number) {
+/**
+ * @param elevar  opcional: quanto cada ponto (u, v) sobe acima do raio 1.
+ *                É o que faz a cordilheira aparecer de verdade no contorno
+ *                do planeta, e não só pintada por cima.
+ */
+function malhaEsfera(fatias: number, aneis: number, elevar?: (u: number, v: number) => number) {
   const pos: number[] = [], uv: number[] = [], idx: number[] = [];
   for (let i = 0; i <= aneis; i++) {
     const v = i / aneis;
@@ -62,7 +67,9 @@ function malhaEsfera(fatias: number, aneis: number) {
     for (let j = 0; j <= fatias; j++) {
       const u = j / fatias;
       const te = u * Math.PI * 2;
-      pos.push(sf * Math.cos(te), cf, sf * Math.sin(te));
+      // a emenda (u = 1) tem de subir igual ao começo (u = 0)
+      const r = elevar ? 1 + elevar(j === fatias ? 0 : u, v) : 1;
+      pos.push(sf * Math.cos(te) * r, cf * r, sf * Math.sin(te) * r);
       uv.push(u, v);
     }
   }
@@ -88,6 +95,7 @@ varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vT;
 varying vec3 vB;
+varying vec3 vP;
 void main() {
   vUv = uv;
   // triedro da esfera: normal, tangente (leste) e bitangente (sul).
@@ -98,8 +106,64 @@ void main() {
   vN = giro * pos;
   vT = giro * vec3(-sin(th), 0.0, cos(th));
   vB = giro * vec3(cos(ph) * cos(th), -sin(ph), cos(ph) * sin(th));
+  vP = pos;
   gl_Position = mvp * vec4(pos, 1.0);
 }`;
+
+const MAX_REDEMOINHOS = 6;
+
+/**
+ * De onde vem o sol. Mais de lado que de frente: com a luz vindo de
+ * trás de quem olha, a serra fica chapada — é a sombra rasante que
+ * mostra que ela tem altura. De quebra, a beira direita do disco entra
+ * na noite e as luzes das cidades aparecem.
+ */
+const LUZ = [-0.78, 0.36, 0.51];
+
+/**
+ * Textura pequena de ruído que se repete dos dois lados, aplicada
+ * dezenas de vezes sobre o planeta. É ela que dá grão de perto — sem
+ * ela, ao aproximar, o terreno vira borrão, porque a textura do mundo
+ * tem um limite de resolução.
+ */
+function texturaDetalhe(): HTMLCanvasElement {
+  const T = 256;
+  const c = document.createElement('canvas');
+  c.width = T; c.height = T;
+  const ctx = c.getContext('2d')!;
+  const img = ctx.createImageData(T, T);
+  let s = 918273;
+  const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const altura = new Float32Array(T * T);
+  for (const P of [8, 16, 32, 64]) {
+    const grade = Array.from({ length: P * P }, rnd);
+    const amp = 8 / P;
+    const suave = (t: number) => t * t * (3 - 2 * t);
+    for (let y = 0; y < T; y++) {
+      const gy = (y / T) * P, y0 = Math.floor(gy), ty = suave(gy - y0), y1 = (y0 + 1) % P;
+      for (let x = 0; x < T; x++) {
+        const gx = (x / T) * P, x0 = Math.floor(gx), tx = suave(gx - x0), x1 = (x0 + 1) % P;
+        const a = grade[y0 * P + x0], b = grade[y0 * P + x1], cc = grade[y1 * P + x0], d = grade[y1 * P + x1];
+        altura[y * T + x] += (a + (b - a) * tx + (cc - a) * ty + (a - b - cc + d) * tx * ty) * amp;
+      }
+    }
+  }
+  let min = Infinity, max = -Infinity;
+  for (const v of altura) { if (v < min) min = v; if (v > max) max = v; }
+  for (let y = 0; y < T; y++)
+    for (let x = 0; x < T; x++) {
+      const h = (altura[y * T + x] - min) / (max - min);
+      const dx = altura[y * T + ((x + 1) % T)] - altura[y * T + ((x + T - 1) % T)];
+      const dy = altura[((y + 1) % T) * T + x] - altura[((y + T - 1) % T) * T + x];
+      const i = (y * T + x) * 4;
+      img.data[i] = h * 255;
+      img.data[i + 1] = Math.max(0, Math.min(255, 128 - dx * 90));
+      img.data[i + 2] = Math.max(0, Math.min(255, 128 - dy * 90));
+      img.data[i + 3] = 255;
+    }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
 
 const FS = `
 precision highp float;
@@ -107,46 +171,152 @@ varying vec2 vUv;
 varying vec3 vN;
 varying vec3 vT;
 varying vec3 vB;
+varying vec3 vP;
 uniform sampler2D mapa;
 uniform sampler2D mapaN;
 uniform sampler2D mapaE;
 uniform sampler2D mapaP;
+uniform sampler2D mapaM;
+uniform sampler2D mapaC;
+uniform sampler2D mapaD;
+uniform mat3 giro;
 uniform vec3 luz;
 uniform float brilhoLava;
 uniform float uPolitico;
+uniform float tempo;
+uniform vec3 redem[${MAX_REDEMOINHOS}];
+uniform float nRedem;
+
+// detalhe "triplanar": a textura é projetada pelos três eixos do planeta
+// e misturada conforme o lado para onde o ponto olha. Amostrar pelo mapa
+// (u, v) espremia o grão em raios perto dos polos e deixava emenda
+vec3 tri(vec3 p, vec3 w, float esc, vec2 d) {
+  return texture2D(mapaD, p.yz * esc + d).rgb * w.x
+       + texture2D(mapaD, p.xz * esc + d).rgb * w.y
+       + texture2D(mapaD, p.xy * esc + d).rgb * w.z;
+}
 
 void main() {
   vec3 alb = texture2D(mapa, vUv).rgb;
+  vec3 msk = texture2D(mapaM, vUv).rgb;
+  float agua = msk.r;
+  float gelo = msk.g;
+  float lava = msk.b;
+
+  vec3 N = normalize(vN);
+  vec3 T = normalize(vT);
+  vec3 B = normalize(vB);
+  vec3 P = normalize(vP);
 
   // a normal de verdade: a da esfera, torcida pelo relevo do terreno
   vec3 tn = texture2D(mapaN, vUv).rgb * 2.0 - 1.0;
-  vec3 N = normalize(vN);
-  vec3 n = normalize(tn.x * normalize(vT) + tn.y * normalize(vB) + tn.z * N);
+  vec3 n = normalize(tn.x * T + tn.y * B + tn.z * N);
+
+  // grão fino em terra: duas escalas da textura de detalhe, para não
+  // se ver a repetição
+  vec3 wt = pow(abs(P), vec3(4.0));
+  wt /= (wt.x + wt.y + wt.z);
+  vec3 d1 = tri(P, wt, 8.0, vec2(0.0));
+  vec3 d2 = tri(P, wt, 35.0, vec2(0.31));
+  float terra = 1.0 - agua;
+  float grao = (d1.r - 0.5) * 0.65 + (d2.r - 0.5) * 0.35;
+  alb *= 1.0 + grao * 0.26 * terra;
+  vec2 dn = (d1.gb - 0.5) * 0.5 + (d2.gb - 0.5) * 0.3;
+  n = normalize(n + (T * dn.x + B * dn.y) * terra * 0.8);
+
+  // mar: a mesma textura de detalhe, andando em dois sentidos — onda
+  // irregular. Com senoides o reflexo do sol saia listrado, feito grade
+  vec2 o1 = tri(P, wt, 16.0, vec2(tempo * 0.012, tempo * 0.007)).gb - 0.5;
+  vec2 o2 = tri(P, wt, 26.0, vec2(-tempo * 0.009, tempo * 0.011)).gb - 0.5;
+  vec2 onda = (o1 + o2) * 0.3;
+  vec3 nAgua = normalize(N + T * onda.x + B * onda.y);
+  n = normalize(mix(n, nAgua, agua));
+
+  // redemoinhos: espiral de espuma girando em volta de um olho escuro,
+  // com a superficie afundando em funil
+  float espuma = 0.0;
+  float olho = 0.0;
+  for (int i = 0; i < ${MAX_REDEMOINHOS}; i++) {
+    if (float(i) >= nRedem) break;
+    vec3 c = redem[i];
+    if (dot(P, c) > 0.993) {
+      vec3 a1 = abs(c.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+      vec3 t1 = normalize(cross(c, a1));
+      vec3 t2 = cross(c, t1);
+      vec2 q = vec2(dot(P, t1), dot(P, t2)) / 0.11;
+      float r = length(q);
+      if (r < 1.0) {
+        float ang = atan(q.y, q.x);
+        float braco = sin(ang * 4.0 + log(r + 0.03) * 9.0 + tempo * 2.4);
+        float queda = 1.0 - r;
+        // o grão quebra os braços em espuma solta: agua revolta, nao galaxia
+        float agito = tri(P, wt, 18.0, vec2(tempo * 0.02, -tempo * 0.015)).r;
+        float esp = smoothstep(0.5, 0.95, braco + (agito - 0.5) * 1.1) * (0.35 + agito * 0.9);
+        // e um anel de espuma batendo na boca do funil
+        float anel = smoothstep(0.12, 0.2, r) * (1.0 - smoothstep(0.2, 0.32, r)) * (0.5 + agito);
+        espuma = max(espuma, (esp * smoothstep(0.05, 0.3, r) + anel * 0.7) * queda);
+        olho = max(olho, 1.0 - smoothstep(0.0, 0.22, r));
+        vec3 paraCentro = -(q.x * t1 + q.y * t2) / max(r, 0.001);
+        n = normalize(n + giro * paraCentro * queda * queda * 0.9 * agua);
+      }
+    }
+  }
+  alb = mix(alb, alb * 0.25, olho * agua);
+  alb = mix(alb, vec3(0.82, 0.88, 0.92), espuma * 0.8 * agua);
 
   vec3 L = normalize(luz);
   vec3 V = vec3(0.0, 0.0, 1.0);
-  float sol = max(dot(n, L), 0.0);
   // a linha do amanhecer segue a esfera lisa: se seguisse o relevo,
   // o terminador viraria uma serrilha piscando
-  float solLiso = max(dot(N, L), 0.0);
+  float solLiso = dot(N, L);
+  float dia = smoothstep(-0.12, 0.25, solLiso);
+  float crep = smoothstep(-0.12, 0.04, solLiso) * (1.0 - smoothstep(0.04, 0.3, solLiso));
 
-  vec3 cor = alb * (0.11 + 1.3 * sol);
+  // luz "embrulhada": a encosta de costas para o sol ainda recebe o
+  // ceu, em vez de cair num preto chapado
+  float sol = clamp((dot(n, L) + 0.2) / 1.2, 0.0, 1.0) * smoothstep(-0.05, 0.12, solLiso);
+  vec3 cor = alb * (0.06 + 0.16 * dia + 1.2 * sol);
+  cor += alb * vec3(0.55, 0.25, 0.08) * crep * 0.35;
 
-  // reflexo: gelo espelha, basalto quase nao
-  float gelo = clamp((alb.b - alb.r * 0.9) * 6.0, 0.0, 1.0);
-  vec3 H = normalize(L + V);
-  float esp = pow(max(dot(n, H), 0.0), 34.0) * (0.05 + gelo * 0.55);
-  cor += vec3(0.80, 0.88, 1.0) * esp * smoothstep(0.0, 0.1, solLiso);
+  // sombra das nuvens: a nuvem que fica entre o chao e o sol
+  vec2 deriva = vec2(tempo * 0.0035, 0.0);
+  vec2 rumoSol = vec2(dot(L, T), dot(L, B)) * 0.006;
+  float sombra = texture2D(mapaC, vUv + deriva + rumoSol).a;
+  cor *= 1.0 - sombra * 0.5 * dia;
 
-  // o que brilha sozinho: lava sempre, cidades sobretudo na noite
+  // reflexos: agua espelha o sol, gelo brilha largo, rocha quase nada
+  vec3 Hv = normalize(L + V);
+  float nh = max(dot(n, Hv), 0.0);
+  float espA = (pow(nh, 220.0) * 2.2 + pow(nh, 28.0) * 0.18) * agua;
+  float espG = pow(nh, 40.0) * 0.45 * gelo;
+  float espR = pow(nh, 16.0) * 0.04 * max(0.0, 1.0 - agua - gelo);
+  cor += vec3(1.0, 0.94, 0.82) * (espA + espG + espR) * smoothstep(0.0, 0.1, solLiso);
+  // na beirada a agua reflete o ceu
+  float fres = pow(1.0 - max(dot(n, V), 0.0), 5.0);
+  cor = mix(cor, vec3(0.32, 0.45, 0.68) * (0.05 + 0.9 * dia), fres * 0.45 * agua);
+
+  vec4 nv = texture2D(mapaC, vUv + deriva);
+
+  // o que brilha sozinho: lava pulsando, cidades sobretudo na noite
   vec3 em = texture2D(mapaE, vUv).rgb;
-  float noite = 1.0 - smoothstep(0.0, 0.3, solLiso);
-  cor += em * (0.22 + 0.95 * noite) * brilhoLava * 1.05;
+  float noite = 1.0 - smoothstep(-0.05, 0.3, solLiso);
+  float pulso = 0.8 + 0.2 * sin(tempo * 2.3 + vUv.x * 63.0 + vUv.y * 41.0);
+  em *= mix(1.0, pulso, lava);
+  cor += em * (0.25 + 0.95 * noite) * brilhoLava * (1.0 - nv.a * 0.55);
 
-  // atmosfera na borda do disco
-  float borda = 1.0 - abs(dot(N, V));
-  cor += vec3(0.40, 0.14, 0.44) * pow(borda, 9.0) * 0.85;
-  cor += vec3(0.60, 0.26, 0.07) * pow(borda, 14.0) * solLiso * 1.6;
+  // nuvens por cima, acesas pelo sol e avermelhadas no crepusculo
+  float nl = 0.03 + 1.05 * max(solLiso, 0.0) + 0.25 * crep;
+  vec3 corNuv = nv.rgb * nl + vec3(0.6, 0.3, 0.1) * crep * 0.25;
+  cor = mix(cor, corNuv, nv.a * 0.92);
+
+  // neblina da atmosfera engrossando na borda
+  float borda = 1.0 - max(dot(N, V), 0.0);
+  vec3 corAtm = vec3(0.40, 0.52, 0.92);
+  cor = mix(cor, corAtm * (0.1 + 0.9 * dia), pow(borda, 3.0) * 0.5 * dia);
+  cor += vec3(0.8, 0.35, 0.1) * pow(borda, 6.0) * crep * 0.8;
+
+  // exposicao suave: a lava nao estoura em branco chapado
+  cor = 1.0 - exp(-cor * 1.15);
 
   // mapa político: sobreposto por cima de tudo, só quando ligado —
   // com uPolitico em 0 (padrão) isto não muda nada no resultado
@@ -154,6 +324,47 @@ void main() {
   cor = mix(cor, pol.rgb, pol.a * uPolitico);
 
   gl_FragColor = vec4(cor, 1.0);
+}`;
+
+/* ---------- a casca da atmosfera ---------- */
+const ESC_ATM = 1.035;
+
+const VS_ATM = `
+attribute vec3 pos;
+uniform mat4 mvp;
+uniform mat3 giro;
+varying vec3 vN;
+void main() {
+  vN = giro * pos;
+  gl_Position = mvp * vec4(pos, 1.0);
+}`;
+
+/**
+ * Brilho em volta do planeta. A casca e so um pouco maior que o globo:
+ * fora do disco vira o halo fino que se ve em foto de satelite; por
+ * dentro, so pinta a borda. O miolo da casca fica transparente.
+ */
+const FS_ATM = `
+precision highp float;
+varying vec3 vN;
+uniform vec3 luz;
+uniform float dist;
+uniform float esc;
+void main() {
+  vec3 n = normalize(vN);
+  vec3 v = normalize(vec3(0.0, 0.0, dist) - n * esc);
+  float f = dot(n, v);
+  if (f < 0.0) discard;                       // a metade de tras da casca
+  float fL = sqrt(max(0.0, 1.0 - 1.0 / (esc * esc)));   // onde fica a borda do planeta
+  float g = f < fL
+    ? pow(smoothstep(0.0, fL, f), 2.0)
+    : pow(clamp(1.0 - (f - fL) / (1.0 - fL), 0.0, 1.0), 5.0);
+  vec3 L = normalize(luz);
+  float nl = dot(n, L);
+  float aceso = smoothstep(-0.3, 0.35, nl);
+  float crep = smoothstep(-0.35, 0.0, nl) * (1.0 - smoothstep(0.0, 0.35, nl));
+  vec3 c = vec3(0.34, 0.5, 1.0) * g * aceso * 0.95 + vec3(1.0, 0.45, 0.15) * g * crep * 0.7;
+  gl_FragColor = vec4(c, max(max(c.r, c.g), c.b));
 }`;
 
 function compilar(gl: WebGLRenderingContext, tipo: number, fonte: string) {
@@ -194,7 +405,26 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   }
   gl.useProgram(prog);
 
-  const m = malhaEsfera(96, 48);
+  // a malha sobe junto com o terreno: montanha, vulcão e geleira aparecem
+  // no contorno do planeta. Exagerado de propósito — na escala real a
+  // maior serra da Terra não passaria de um fio de cabelo no globo.
+  const EXAGERO = 0.012;
+  const { altura, L: AL, A: AA } = mapas;
+  const elevar = (u: number, v: number) => {
+    const cx = u * AL, cy = v * AA;
+    let soma = 0, n = 0;
+    for (let dy = -4; dy <= 4; dy += 2)
+      for (let dx = -4; dx <= 4; dx += 2) {
+        const y = Math.min(AA - 1, Math.max(0, (cy + dy) | 0));
+        const x = ((((cx + dx) | 0) % AL) + AL) % AL;
+        soma += Math.max(0, altura[y * AL + x]);
+        n++;
+      }
+    // nos polos todas as colunas viram o mesmo ponto: sem este corte o
+    // polo vira um espeto
+    return (soma / n) * EXAGERO * Math.min(1, Math.sin(v * Math.PI) * 4);
+  };
+  const m = malhaEsfera(256, 128, elevar);
   const bufPos = gl.createBuffer()!;
   gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
   gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
@@ -232,17 +462,64 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
     subirTextura(mapas.normal, 1),
     subirTextura(mapas.emissivo, 2),
     subirTextura(semPolitico, 3),
+    subirTextura(mapas.mascara, 4),
+    subirTextura(mapas.nuvens, 5),
+    subirTextura(texturaDetalhe(), 6),
   ];
+  // o detalhe se repete nos dois sentidos (o mapa do mundo só na horizontal)
+  gl.activeTexture(gl.TEXTURE0 + 6);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+  gl.uniform1i(gl.getUniformLocation(prog, 'mapaD'), 6);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapa'), 0);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaN'), 1);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaE'), 2);
   gl.uniform1i(gl.getUniformLocation(prog, 'mapaP'), 3);
+  gl.uniform1i(gl.getUniformLocation(prog, 'mapaM'), 4);
+  gl.uniform1i(gl.getUniformLocation(prog, 'mapaC'), 5);
 
   const uMvp = gl.getUniformLocation(prog, 'mvp');
   const uGiro = gl.getUniformLocation(prog, 'giro');
   const uLuz = gl.getUniformLocation(prog, 'luz');
   const uLava = gl.getUniformLocation(prog, 'brilhoLava');
   const uPol = gl.getUniformLocation(prog, 'uPolitico');
+  const uTempo = gl.getUniformLocation(prog, 'tempo');
+
+  // os redemoinhos são fixos: vão uma vez só para a placa, como vetores
+  // do planeta (a mesma conta de lat/lon que o resto do mapa usa)
+  const vetRedem = new Float32Array(MAX_REDEMOINHOS * 3);
+  const qtRedem = Math.min(MAX_REDEMOINHOS, mapas.redemoinhos.length);
+  mapas.redemoinhos.slice(0, qtRedem).forEach((p, i) => {
+    const fi = ((90 - p.lat) / 180) * Math.PI;
+    const te = ((p.lon + 180) / 360) * Math.PI * 2;
+    vetRedem[i * 3] = Math.sin(fi) * Math.cos(te);
+    vetRedem[i * 3 + 1] = Math.cos(fi);
+    vetRedem[i * 3 + 2] = Math.sin(fi) * Math.sin(te);
+  });
+  gl.uniform3fv(gl.getUniformLocation(prog, 'redem'), vetRedem);
+  gl.uniform1f(gl.getUniformLocation(prog, 'nRedem'), qtRedem);
+
+  /* ---------- a atmosfera: outro programa, outra malha ---------- */
+  const progAtm = gl.createProgram()!;
+  gl.attachShader(progAtm, compilar(gl, gl.VERTEX_SHADER, VS_ATM));
+  gl.attachShader(progAtm, compilar(gl, gl.FRAGMENT_SHADER, FS_ATM));
+  gl.linkProgram(progAtm);
+  if (!gl.getProgramParameter(progAtm, gl.LINK_STATUS)) {
+    throw new Error('atmosfera: ' + gl.getProgramInfoLog(progAtm));
+  }
+  const casca = malhaEsfera(96, 48);
+  const bufAtm = gl.createBuffer()!;
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufAtm);
+  gl.bufferData(gl.ARRAY_BUFFER, casca.pos, gl.STATIC_DRAW);
+  const bufAtmIdx = gl.createBuffer()!;
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufAtmIdx);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, casca.idx, gl.STATIC_DRAW);
+  const aPosAtm = gl.getAttribLocation(progAtm, 'pos');
+  const uMvpAtm = gl.getUniformLocation(progAtm, 'mvp');
+  const uGiroAtm = gl.getUniformLocation(progAtm, 'giro');
+  const uLuzAtm = gl.getUniformLocation(progAtm, 'luz');
+  const uDistAtm = gl.getUniformLocation(progAtm, 'dist');
+  const uEscAtm = gl.getUniformLocation(progAtm, 'esc');
+  gl.useProgram(prog);
 
   gl.enable(gl.DEPTH_TEST);
   // sem descarte de faces de proposito: se a orientacao dos triangulos
@@ -256,7 +533,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
      * @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera
      * @param politico 0 a 1 — o quanto o mapa político aparece por cima do terreno
      */
-    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0) {
+    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0, tempo = 0) {
       const L = canvas.width, A = canvas.height;
       gl.viewport(0, 0, L, A);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -284,7 +561,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufIdx);
 
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < texturas.length; i++) {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, texturas[i]);
       }
@@ -297,11 +574,34 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
 
       gl.uniformMatrix4fv(uMvp, false, multiplicar(proj, multiplicar(vista, modelo)));
       gl.uniformMatrix3fv(uGiro, false, r3);
-      gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
+      gl.uniform3f(uLuz, LUZ[0], LUZ[1], LUZ[2]);
       gl.uniform1f(uLava, brilhoLava);
       gl.uniform1f(uPol, politico);
+      gl.uniform1f(uTempo, tempo);
 
       gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_SHORT, 0);
+
+      // a atmosfera por cima, somando luz — sem escrever profundidade,
+      // para não esconder a cidadela nem a serpente que vêm depois
+      gl.useProgram(progAtm);
+      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      gl.bindBuffer(gl.ARRAY_BUFFER, bufAtm);
+      gl.enableVertexAttribArray(aPosAtm);
+      gl.vertexAttribPointer(aPosAtm, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufAtmIdx);
+      gl.uniformMatrix4fv(uMvpAtm, false,
+        multiplicar(proj, multiplicar(vista, multiplicar(modelo, escalar(ESC_ATM)))));
+      gl.uniformMatrix3fv(uGiroAtm, false, r3);
+      gl.uniform3f(uLuzAtm, LUZ[0], LUZ[1], LUZ[2]);
+      gl.uniform1f(uDistAtm, dist);
+      gl.uniform1f(uEscAtm, ESC_ATM);
+      gl.enable(gl.BLEND);
+      gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE);
+      gl.depthMask(false);
+      gl.drawElements(gl.TRIANGLES, casca.idx.length, gl.UNSIGNED_SHORT, 0);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+
       return { gl, proj, vista, r3 };   // a cidadela desenha por cima
     },
 
@@ -829,7 +1129,7 @@ export function criarCidadela(gl: WebGLRenderingContext) {
       gl.enable(gl.DEPTH_TEST);
 
       gl.uniformMatrix3fv(uRot, false, r3);
-      gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
+      gl.uniform3f(uLuz, LUZ[0], LUZ[1], LUZ[2]);
 
       // gira com o mundo, vai até a posição da órbita, e encolhe
       const base = multiplicar(
@@ -919,7 +1219,9 @@ function malhaSerpente(nos: number, lados: number, vao: number, grossura: number
     // tocos soltos, que não pareciam serpente nenhuma.
     const lat = Math.sin(t * Math.PI * 2.6 + 0.4) * vao * 0.34;
     const fora = 0.5 + 0.5 * Math.cos(t * Math.PI * MERGULHOS);
-    return naEsfera(lat, lon, 1 + fora * SOBE - grossura * 0.25);
+    // entre uma corcova e outra o corpo afunda de verdade: o eixo desce
+    // mais que a grossura do tubo, e o próprio mar esconde o trecho
+    return naEsfera(lat, lon, 1 + fora * SOBE - grossura * 1.1);
   };
 
   for (let i = 0; i <= nos; i++) {
@@ -997,7 +1299,9 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
-export function criarSerpente(gl: WebGLRenderingContext) {
+type OpcoesSerpente = { vao?: number; grossura?: number; cor?: [number, number, number] };
+
+export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente = {}) {
   const prog = gl.createProgram()!;
   gl.attachShader(prog, compilar(gl, gl.VERTEX_SHADER, VS_CID));
   gl.attachShader(prog, compilar(gl, gl.FRAGMENT_SHADER, FS_SERP));
@@ -1006,8 +1310,10 @@ export function criarSerpente(gl: WebGLRenderingContext) {
     throw new Error('serpente: ' + gl.getProgramInfoLog(prog));
   }
 
-  const VAO = 0.82;          // quanto do mundo ela atravessa, em radianos
-  const GROSSURA = 0.034;    // raio do corpo, em raios de planeta
+  const VAO = opcoes.vao ?? 0.82;             // quanto do mundo ela atravessa, em radianos
+  const GROSSURA = opcoes.grossura ?? 0.034;  // raio do corpo, em raios de planeta
+  const COR = opcoes.cor ?? [0.13, 0.4, 0.31];
+  const COR_CABECA: [number, number, number] = [COR[0] * 1.3, COR[1] * 1.2, COR[2] * 1.2];
   const corpo = malhaSerpente(140, 12, VAO, GROSSURA);
   const bola = malhaEsfera(18, 12);
 
@@ -1057,24 +1363,27 @@ export function criarSerpente(gl: WebGLRenderingContext) {
       gl.enable(gl.DEPTH_TEST);
 
       gl.uniformMatrix3fv(uRot, false, r3);
-      gl.uniform3f(uLuz, -0.55, 0.32, 0.77);
+      gl.uniform3f(uLuz, LUZ[0], LUZ[1], LUZ[2]);
 
-      // o corpo nasce em volta do equador, na longitude 0. Duas rotações
-      // o levam até onde a serpente foi cravada — e um balanço pequeno
-      // em longitude faz parecer que ela está nadando.
-      const paraLon = ((lon + 180) * Math.PI) / 180 + Math.sin(onda) * 0.035;
-      const paraLat = (lat * Math.PI) / 180;
-      const base = multiplicar(
-        rot4(r3),
-        multiplicar(rot4(rotacao3(paraLon, 0)), rot4(rotacao3(0, -paraLat))),
-      );
+      // o corpo nasce em volta do equador, centrado no eixo X. Primeiro
+      // ele tomba em torno do eixo Z até a latitude, depois gira em torno
+      // do Y até a longitude — na mesma conta de lat/lon da textura. (A
+      // versão antiga girava a latitude em torno do próprio eixo X, o que
+      // não mexia em nada, e girava a longitude ao contrário: a serpente
+      // nascia sempre no equador, do outro lado do mundo.)
+      const la = (lat * Math.PI) / 180;
+      const lo = ((lon + 180) * Math.PI) / 180 + Math.sin(onda) * 0.035;
+      const cL = Math.cos(la), sL = Math.sin(la), cO = Math.cos(lo), sO = Math.sin(lo);
+      const tombar = new Float32Array([cL, sL, 0, 0, -sL, cL, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+      const girar = new Float32Array([cO, 0, sO, 0, 0, 1, 0, 0, -sO, 0, cO, 0, 0, 0, 0, 1]);
+      const base = multiplicar(rot4(r3), multiplicar(girar, tombar));
 
       const cb = corpo.cabeca;
       const olho: [number, number, number] = [cb[0] * 0.02, cb[1] * 0.02, cb[2] * 0.02];
       const partes: [Peca, Float32Array, number[], number][] = [
-        [pecas.corpo, new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]), [0.13, 0.4, 0.31], 1],
+        [pecas.corpo, new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]), COR, 1],
         // a cabeça: uma bola achatada e puxada para a frente
-        [pecas.bola, emCima(cb, GROSSURA * 2.0, GROSSURA * 1.15, GROSSURA * 1.25), [0.17, 0.48, 0.37], 0],
+        [pecas.bola, emCima(cb, GROSSURA * 2.0, GROSSURA * 1.15, GROSSURA * 1.25), COR_CABECA, 0],
         // dois olhos acesos, para saber de que lado ela está olhando
         [pecas.bola, emCima(cb, GROSSURA * 0.22, GROSSURA * 0.22, GROSSURA * 0.22,
                             [olho[0] + GROSSURA * 0.5, olho[1] + GROSSURA * 0.5, olho[2]]),
