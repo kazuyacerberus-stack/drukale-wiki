@@ -590,9 +590,10 @@ export default function Mundo() {
       linha.links_dominio = linksRascunho.map((l) => l.trim()).filter((l) => l.length > 0);
     }
 
-    const { error } = rascunho.id
-      ? await supabase.from('locais').update(linha).eq('id', rascunho.id)
-      : await supabase.from('locais').insert([linha]);
+    const novo = !rascunho.id;
+    const { data: gravado, error } = rascunho.id
+      ? await supabase.from('locais').update(linha).eq('id', rascunho.id).select('id').maybeSingle()
+      : await supabase.from('locais').insert([linha]).select('id').maybeSingle();
 
     setSalvando(false);
     if (error) {
@@ -610,6 +611,15 @@ export default function Mundo() {
     limparFoto();
     pausado.current = false;
     await carregar();
+
+    // local recém-criado: já emenda na montagem da aba do território,
+    // em vez de deixar a pessoa procurar o botão depois
+    const id = (gravado as { id: string } | null)?.id;
+    const criado = novo && id ? locaisRef.current.find((l) => l.id === id) : null;
+    if (criado) {
+      setSelecionado(criado);
+      montarAba(criado);
+    }
   }
 
   async function aprovarTerritorio(l: Local) {
