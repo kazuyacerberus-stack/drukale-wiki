@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Apresentacao, ImagemApres } from '../../lib/apresentacao';
 import type { Local } from '../../lib/mundo';
 
@@ -50,8 +51,11 @@ export default function TerritorioApresentacao({
   const secoes = ap.secoes.filter((s) => cheio(s.titulo) || cheio(s.texto) || s.imagem);
   const fauna = ap.fauna.filter((e) => e.imagem || cheio(e.nome));
   const flora = ap.flora.filter((e) => e.imagem || cheio(e.nome));
+  const temBestiario = fauna.length > 0 || flora.length > 0;
 
-  return (
+  // vai direto no <body>: dentro da página do mapa, algum contêiner com
+  // transformação prendia a sobreposição, que cortava e rolava errado
+  return createPortal(
     <div className="ter" role="dialog" aria-modal="true" aria-label={`Apresentação de ${local.nome}`}>
       <div className="ter-barra">
         {rascunho && <span className="ter-selo">pré-visualização</span>}
@@ -79,19 +83,23 @@ export default function TerritorioApresentacao({
           )}
         </header>
 
-        {/* ---------- as três janelas + fauna e flora ---------- */}
-        {(secoes.length > 0 || fauna.length > 0 || flora.length > 0) && (
-          <div className="ter-meio">
-            {secoes.map((s, i) => (
-              <section className="ter-secao" key={i}>
-                <Quadro imagem={s.imagem} alt={s.titulo || `Seção ${i + 1}`} />
-                <div className="ter-secao-txt">
-                  {cheio(s.titulo) && <h3>{s.titulo}</h3>}
-                  {cheio(s.texto) && <p>{s.texto}</p>}
-                </div>
-              </section>
-            ))}
-            {(fauna.length > 0 || flora.length > 0) && (
+        {/* ---------- as janelas + fauna e flora ---------- */}
+        {(secoes.length > 0 || temBestiario) && (
+          <div className={`ter-meio${temBestiario ? ' com-bestiario' : ''}`}>
+            {secoes.length > 0 && (
+              <div className={`ter-janelas n${secoes.length}`}>
+                {secoes.map((s, i) => (
+                  <section className="ter-secao" key={i}>
+                    <Quadro imagem={s.imagem} alt={s.titulo || `Seção ${i + 1}`} />
+                    <div className="ter-secao-txt">
+                      {cheio(s.titulo) && <h3>{s.titulo}</h3>}
+                      {cheio(s.texto) && <p>{s.texto}</p>}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            )}
+            {temBestiario && (
               <aside className="ter-bestiario">
                 {fauna.length > 0 && (
                   <>
@@ -141,6 +149,7 @@ export default function TerritorioApresentacao({
           </div>
         </footer>
       </article>
-    </div>
+    </div>,
+    document.body,
   );
 }

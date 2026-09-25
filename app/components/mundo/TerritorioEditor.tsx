@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/db';
 import {
   FORMATOS, LIMITES_APRES, ARQUIVO_MAX_BYTES, ARQUIVO_TIPOS,
@@ -181,7 +182,9 @@ export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onF
     );
   };
 
-  return (
+  // direto no <body>, pelo mesmo motivo da aba: dentro da página do mapa
+  // a sobreposição ficava presa num contêiner e cortava
+  return createPortal(
     <div className="ted" role="dialog" aria-modal="true" aria-label={`Montar a apresentação de ${local.nome}`}>
       <input ref={seletor} type="file" accept={ARQUIVO_TIPOS.join(',')} hidden onChange={(e) => arquivoEscolhido(e.target.files?.[0] ?? null)} />
 
@@ -294,6 +297,7 @@ export default function TerritorioEditor({ local, userId, onPrevia, onSalvo, onF
           onCancelar={() => setCorte(null)}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

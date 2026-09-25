@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type Props = {
   arquivo: File;
@@ -124,11 +125,11 @@ export default function CortadorImagem({ arquivo, proporcao, largura, altura, ro
     return () => window.removeEventListener('keydown', tecla);
   }, [onCancelar]);
 
-  return (
+  return createPortal(
     <div className="cortador" role="dialog" aria-modal="true" aria-label="Recortar imagem">
       <div className="cortador-caixa">
         <p className="cortador-t">enquadre a imagem · <span>{rotulo}</span></p>
-        {erro && <p className="erro">{erro}</p>}
+        {erro && <p className="cortador-erro">{erro}</p>}
         <div
           className="cortador-molde"
           style={{ width: molde.l, height: molde.a }}
@@ -154,7 +155,7 @@ export default function CortadorImagem({ arquivo, proporcao, largura, altura, ro
             aproximar
             <input type="range" min={1} max={4} step={0.01} value={zoom} onChange={(e) => mudarZoom(Number(e.target.value))} />
           </label>
-          <span className="dica">arraste a foto para escolher o enquadramento</span>
+          <span className="cortador-dica">arraste a foto para escolher o enquadramento</span>
         </div>
         {pequena && (
           <p className="cortador-aviso">
@@ -162,12 +163,13 @@ export default function CortadorImagem({ arquivo, proporcao, largura, altura, ro
           </p>
         )}
         <div className="cortador-acoes">
-          <button type="button" className="mini-btn perigo" disabled={!imagem || gerando} onClick={confirmar}>
+          <button type="button" className="cortador-btn principal" disabled={!imagem || gerando} onClick={confirmar}>
             {gerando ? 'recortando...' : 'usar este recorte'}
           </button>
-          <button type="button" className="mini-btn" onClick={onCancelar}>cancelar</button>
+          <button type="button" className="cortador-btn" onClick={onCancelar}>cancelar</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

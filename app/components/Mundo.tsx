@@ -4,12 +4,12 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/db';
 import Icone from './Icone';
 import { gerarMundo } from './mundo/textura';
-import { criarGlobo, criarCidadela, criarSerpente, pintarEspaco, rotacao3 } from './mundo/globo';
+import { criarGlobo, criarCidadela, criarSerpente, criarContornos, pintarEspaco, rotacao3, type Contorno } from './mundo/globo';
 import { gerarMapaPolitico } from './mundo/politico';
 import {
   TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
   LIMITES_LOCAL, MINIMO_LINKS_DOMINIO, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
-  linksDominioValidos, mensagemLocal,
+  linksDominioValidos, mensagemLocal, RAIO_MAX, grausParaKm,
   type Local, type TipoLocal,
 } from '../lib/mundo';
 import { normalizarNome } from '../lib/faccoes';
@@ -93,6 +93,12 @@ export default function Mundo() {
   // o mapa gerado fica guardado para o globinho da aba reaproveitar
   const mapasRef = useRef<Mapas | null>(null);
   const pixelsCor = useRef<ImageData | null>(null);
+  // a região sendo desenhada com o dedo/mouse, e o que o laço de desenho
+  // precisa enxergar do estado do React (ele nasce uma vez só)
+  const desenhandoRaio = useRef<{ lat: number; lon: number; raio: number } | null>(null);
+  const [raioAoVivo, setRaioAoVivo] = useState<number | null>(null);
+  const rascunhoRef = useRef<Local | null>(null);
+  const coresRef = useRef<Map<string, string>>(new Map());
   const [modoPolitico, setModoPolitico] = useState(false);
   const [gerandoPolitico, setGerandoPolitico] = useState(false);
   const [mostrarLista, setMostrarLista] = useState(true);
@@ -151,6 +157,8 @@ export default function Mundo() {
     for (const f of faccoes) m.set(normalizarNome(f.nome), f.cor);
     return m;
   }, [faccoes]);
+  useEffect(() => { coresRef.current = faccoesCores; }, [faccoesCores]);
+  useEffect(() => { rascunhoRef.current = rascunho; }, [rascunho]);
 
   /** só os locais aprovados com uma facção cadastrada de verdade — é isto que vira território (uma proposta pendente ainda não conta) */
   const pontosPoliticos = useMemo(
@@ -203,6 +211,11 @@ export default function Mundo() {
         // leviatãs de fundo: cenário, como as cidades da textura — não
         // são locais cadastrados e ninguém clica neles
         let leviata: ReturnType<typeof criarSerpente> | null = null;
+        let fronteiras: ReturnType<typeof criarContornos> | null = null;
+        const hexRgb = (h: string): [number, number, number] => {
+          const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(h);
+          return m ? [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] : [1, 1, 1];
+        };
 
         let n = 0;
         const quadro = (t: number) => {
@@ -267,6 +280,24 @@ export default function Mundo() {
             mapas.monstros.forEach((m, i) => {
               lv.desenhar(cena.proj, cena.vista, cena.r3, m.lat, m.lon, t / 1700 + i * 2.1);
             });
+          }
+
+          // as fronteiras tracejadas: cor da facção dona (ou do tipo),
+          // âmbar se ainda está em análise, dourado correndo enquanto se desenha
+          const rasc = rascunhoRef.current;
+          const naMao = desenhandoRaio.current;
+          const lista: Contorno[] = [];
+          for (const l of locaisRef.current) {
+            if (l.raio <= 0 || (rasc && rasc.id === l.id)) continue;
+            const corF = l.faccao ? coresRef.current.get(normalizarNome(l.faccao)) : undefined;
+            const base = l.statusAprovacao !== 'aprovado' ? [1, 0.81, 0.42] as [number, number, number] : hexRgb(corF ?? tipoDe(l.tipo).cor);
+            lista.push({ lat: l.lat, lon: l.lon, raio: l.raio, cor: [base[0], base[1], base[2], 0.85] });
+          }
+          if (rasc && rasc.raio > 0) lista.push({ lat: rasc.lat, lon: rasc.lon, raio: rasc.raio, cor: [1, 0.84, 0.45, 0.95], largura: 0.007, anda: true });
+          if (naMao && naMao.raio > 0) lista.push({ lat: naMao.lat, lon: naMao.lon, raio: naMao.raio, cor: [1, 0.84, 0.45, 0.95], largura: 0.007, anda: true });
+          if (lista.length > 0) {
+            const fr = fronteiras ?? (fronteiras = criarContornos(cena.gl));
+            fr.desenhar(cena.proj, cena.vista, cena.r3, cam.current.dist, lista, t / 1000);
           }
 
           // depois de meio segundo, conferir se saiu alguma coisa na
@@ -394,6 +425,18 @@ export default function Mundo() {
   };
 
   const aoDescer = (e: React.PointerEvent) => {
+    // cravando um ponto: apertar no planeta marca o centro, e arrastar
+    // abre a região em volta — o globo fica parado enquanto isso
+    if (cravando && logado && !rascunho && !(e.target as HTMLElement).closest?.('.marco')) {
+      const p = pontoNoGlobo(e.clientX, e.clientY);
+      if (p) {
+        desenhandoRaio.current = { ...p, raio: 0 };
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        if (girando) mudarGiro(false);
+        alvoCam.current = null;
+        return;
+      }
+    }
     arrasto.current = { ativo: true, x: e.clientX, y: e.clientY, andou: 0 };
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     // quem pegou o planeta com a mão quer olhar, não ver passar:
@@ -403,6 +446,15 @@ export default function Mundo() {
   };
 
   const aoMover = (e: React.PointerEvent) => {
+    const dr = desenhandoRaio.current;
+    if (dr) {
+      const q = pontoNoGlobo(e.clientX, e.clientY);
+      if (q) {
+        dr.raio = Math.min(RAIO_MAX, arcoEntre(dr, q));
+        setRaioAoVivo(dr.raio);
+      }
+      return;
+    }
     if (!arrasto.current.ativo) return;
     const dx = e.clientX - arrasto.current.x;
     const dy = e.clientY - arrasto.current.y;
@@ -416,12 +468,14 @@ export default function Mundo() {
     cam.current.inclina = Math.max(-1.35, Math.min(1.35, cam.current.inclina + dy * passo));
   };
 
-  const aoSubir = (e: React.PointerEvent) => {
-    const eraClique = arrasto.current.andou < 6;
+  const aoSubir = () => {
     arrasto.current.ativo = false;
-    // clicou em cima de um marcador: quem responde é o marcador, não o chão
-    if ((e.target as HTMLElement).closest?.('.marco')) return;
-    if (eraClique && cravando && logado) cravarAqui(e);
+    const dr = desenhandoRaio.current;
+    if (!dr) return;
+    desenhandoRaio.current = null;
+    setRaioAoVivo(null);
+    // arrasto curtinho é só um clique: crava o ponto, sem região
+    cravarAqui(dr.lat, dr.lon, dr.raio < 0.4 ? 0 : Math.round(dr.raio * 10) / 10);
   };
 
   const aoRolar = (e: React.WheelEvent) => {
@@ -458,13 +512,13 @@ export default function Mundo() {
    * Lança um raio da câmera pelo pixel clicado e vê onde ele fura a
    * esfera. Se passar de raspão sem tocar, não há o que cravar.
    */
-  function cravarAqui(e: React.PointerEvent) {
+  function pontoNoGlobo(clientX: number, clientY: number): { lat: number; lon: number } | null {
     const palco = palcoRef.current;
-    if (!palco) return;
+    if (!palco) return null;
     const r = palco.getBoundingClientRect();
     const L = r.width, A = r.height;
-    const ndcX = ((e.clientX - r.left) / L) * 2 - 1;
-    const ndcY = 1 - ((e.clientY - r.top) / A) * 2;
+    const ndcX = ((clientX - r.left) / L) * 2 - 1;
+    const ndcY = 1 - ((clientY - r.top) / A) * 2;
 
     const t = Math.tan((FOV * Math.PI) / 360);
     const d = [ndcX * t * (L / A), ndcY * t, -1];
@@ -476,13 +530,22 @@ export default function Mundo() {
     const b = 2 * (d[0] * oc[0] + d[1] * oc[1] + d[2] * oc[2]);
     const c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - 1;
     const disc = b * b - 4 * c;
-    if (disc < 0) return;                      // o raio passou ao largo
+    if (disc < 0) return null;                 // o raio passou ao largo
 
     const s = (-b - Math.sqrt(disc)) / 2;
     const mundo = [d[0] * s, d[1] * s, d[2] * s + cam.current.dist];
     const local = aplicar3T(rotacao3(cam.current.giro, cam.current.inclina), mundo);
-    const { lat, lon } = paraLatLon(local[0], local[1], local[2]);
+    return paraLatLon(local[0], local[1], local[2]);
+  }
 
+  /** Distância entre dois pontos do globo, em graus de arco. */
+  const arcoEntre = (a: { lat: number; lon: number }, b: { lat: number; lon: number }) => {
+    const va = paraVetor(a.lat, a.lon, 1), vb = paraVetor(b.lat, b.lon, 1);
+    const cosA = Math.min(1, Math.max(-1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
+    return (Math.acos(cosA) * 180) / Math.PI;
+  };
+
+  function cravarAqui(lat: number, lon: number, raio: number) {
     setSelecionado(null);
     limparFoto();
     setRascunho({
@@ -492,6 +555,7 @@ export default function Mundo() {
       motivoReprovacao: null,
       linksDominio: null,
       apresentacao: null,
+      raio,
     });
     setLinksRascunho(['', '', '', '']);
     pausado.current = true;
@@ -572,6 +636,7 @@ export default function Mundo() {
       nome: nome.slice(0, LIMITES_LOCAL.nome),
       tipo: rascunho.tipo,
       resumo: (rascunho.resumo ?? '').trim().slice(0, LIMITES_LOCAL.resumo) || null,
+      raio: Math.min(RAIO_MAX, Math.max(0, rascunho.raio)),
       lat: rascunho.lat,
       lon: rascunho.lon,
       altitude: tipoDe(rascunho.tipo).orbital ? (rascunho.altitude || 0.55) : 0,
@@ -763,7 +828,11 @@ export default function Mundo() {
         )}
 
         {fase === 'pronto' && cravando && !emEdicao && (
-          <div className="mundo-dica">clique no planeta para cravar o ponto</div>
+          <div className="mundo-dica">
+            {raioAoVivo !== null
+              ? `região: ≈ ${grausParaKm(raioAoVivo).toLocaleString('pt-BR')} km de raio — solte para marcar`
+              : 'clique para cravar o ponto — ou clique e arraste para marcar o tamanho da região'}
+          </div>
         )}
 
         {fase === 'pronto' && modoPolitico && !gerandoPolitico && pontosPoliticos.length === 0 && (
@@ -926,6 +995,7 @@ export default function Mundo() {
                 {coordenadaLegivel(selecionado.lat, selecionado.lon)}
                 {tipoDe(selecionado.tipo).orbital && ' · em órbita'}
                 {tipoDe(selecionado.tipo).serpente && ' · nas águas'}
+                {selecionado.raio > 0 && ` · região de ≈ ${grausParaKm(selecionado.raio).toLocaleString('pt-BR')} km de raio`}
               </p>
 
               {selecionado.statusAprovacao !== 'aprovado' && (
@@ -1032,6 +1102,23 @@ export default function Mundo() {
                   ))}
                 </div>
                 <p className="dica">{tipoDe(rascunho.tipo).dica}</p>
+              </div>
+
+              <div className="field">
+                <label>tamanho da região</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={RAIO_MAX}
+                  step={0.1}
+                  value={rascunho.raio}
+                  onChange={(e) => setRascunho({ ...rascunho, raio: Number(e.target.value) })}
+                />
+                <p className="dica">
+                  {rascunho.raio > 0
+                    ? `≈ ${grausParaKm(rascunho.raio).toLocaleString('pt-BR')} km de raio — a fronteira tracejada no globo mostra o espaço que ele ocupa`
+                    : 'só o ponto, sem região — arraste para dar tamanho ao território'}
+                </p>
               </div>
 
               <div className="field">

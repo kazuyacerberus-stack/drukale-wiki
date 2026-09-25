@@ -1412,3 +1412,152 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
     },
   };
 }
+
+/* ============================================================
+   AS FRONTEIRAS
+   ------------------------------------------------------------
+   O contorno tracejado da região de cada território, desenhado
+   em cima da superfície. Cada traço é uma fitinha deitada no
+   chão (dois triângulos), e não uma linha: linha em WebGL tem
+   sempre 1 pixel, fina demais para se ver no globo.
+
+   Não usa o teste de profundidade — assim a fronteira passa por
+   cima de montanha e vulcão em vez de sumir dentro deles. O lado
+   de trás do planeta é descartado no próprio shader, pela direção
+   em que cada pedaço está virado.
+   ============================================================ */
+
+export type Contorno = {
+  lat: number; lon: number;
+  raio: number;                        // graus de arco
+  cor: [number, number, number, number];
+  largura?: number;                    // em raios de planeta
+  anda?: boolean;                      // tracejado correndo (o que está sendo desenhado)
+};
+
+const VS_CONT = `
+attribute vec3 pos;
+uniform mat4 mvp;
+uniform mat3 giro;
+varying vec3 vN;
+void main() {
+  vN = giro * normalize(pos);
+  gl_Position = mvp * vec4(pos, 1.0);
+}`;
+
+const FS_CONT = `
+precision mediump float;
+varying vec3 vN;
+uniform vec4 cor;
+uniform float dist;
+void main() {
+  vec3 n = normalize(vN);
+  float f = dot(n, normalize(vec3(0.0, 0.0, dist) - n));
+  if (f < 0.02) discard;
+  gl_FragColor = vec4(cor.rgb, cor.a * smoothstep(0.02, 0.25, f));
+}`;
+
+/** Os vértices dos traços de um círculo de raio `raioGraus` em volta de (lat, lon). */
+function malhaContorno(c: Contorno, fase: number): Float32Array {
+  const fi = ((90 - c.lat) * Math.PI) / 180;
+  const te = ((c.lon + 180) / 360) * Math.PI * 2;
+  const ctr = [Math.sin(fi) * Math.cos(te), Math.cos(fi), Math.sin(fi) * Math.sin(te)];
+  // dois eixos deitados no chão, em volta do centro
+  const ap = Math.abs(ctr[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+  let t1 = [ctr[1] * ap[2] - ctr[2] * ap[1], ctr[2] * ap[0] - ctr[0] * ap[2], ctr[0] * ap[1] - ctr[1] * ap[0]];
+  const n1 = Math.hypot(t1[0], t1[1], t1[2]); t1 = t1.map((v) => v / n1);
+  const t2 = [ctr[1] * t1[2] - ctr[2] * t1[1], ctr[2] * t1[0] - ctr[0] * t1[2], ctr[0] * t1[1] - ctr[1] * t1[0]];
+
+  const rho = (c.raio * Math.PI) / 180;
+  const cr = Math.cos(rho), sr = Math.sin(rho);
+  const R = 1.003;
+  const meia = (c.largura ?? 0.0055) / 2;
+  const ponto = (a: number) => {
+    const ca = Math.cos(a), sa = Math.sin(a);
+    return [
+      ctr[0] * cr + (t1[0] * ca + t2[0] * sa) * sr,
+      ctr[1] * cr + (t1[1] * ca + t2[1] * sa) * sr,
+      ctr[2] * cr + (t1[2] * ca + t2[2] * sa) * sr,
+    ];
+  };
+  // a direção "para fora do círculo", deitada no chão: é a largura da fita
+  const fora = (p: number[]) => {
+    const d = [p[0] - ctr[0] * cr, p[1] - ctr[1] * cr, p[2] - ctr[2] * cr];
+    const n = Math.hypot(d[0], d[1], d[2]) || 1;
+    return d.map((v) => v / n);
+  };
+
+  // traços de tamanho constante no chão, qualquer que seja o raio
+  const tracos = Math.max(18, Math.round((2 * Math.PI * sr) / 0.022));
+  const passo = (Math.PI * 2) / tracos;
+  const cheio = 0.55;                   // quanto de cada passo é traço (o resto é vão)
+  const SUB = 3;
+  const out: number[] = [];
+  for (let k = 0; k < tracos; k++) {
+    const a0 = (k + fase) * passo;
+    const a1 = a0 + passo * cheio;
+    for (let s = 0; s < SUB; s++) {
+      const b0 = a0 + ((a1 - a0) * s) / SUB, b1 = a0 + ((a1 - a0) * (s + 1)) / SUB;
+      const p0 = ponto(b0), p1 = ponto(b1);
+      const w0 = fora(p0), w1 = fora(p1);
+      const q = (p: number[], w: number[], lado: number) => [
+        (p[0] + w[0] * meia * lado) * R, (p[1] + w[1] * meia * lado) * R, (p[2] + w[2] * meia * lado) * R,
+      ];
+      const A = q(p0, w0, -1), B = q(p0, w0, 1), C = q(p1, w1, -1), D = q(p1, w1, 1);
+      out.push(...A, ...B, ...C, ...B, ...D, ...C);
+    }
+  }
+  return new Float32Array(out);
+}
+
+export function criarContornos(gl: WebGLRenderingContext) {
+  const prog = gl.createProgram()!;
+  gl.attachShader(prog, compilar(gl, gl.VERTEX_SHADER, VS_CONT));
+  gl.attachShader(prog, compilar(gl, gl.FRAGMENT_SHADER, FS_CONT));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    throw new Error('fronteiras: ' + gl.getProgramInfoLog(prog));
+  }
+  const buf = gl.createBuffer()!;
+  const aPos = gl.getAttribLocation(prog, 'pos');
+  const uMvp = gl.getUniformLocation(prog, 'mvp');
+  const uGiro = gl.getUniformLocation(prog, 'giro');
+  const uCor = gl.getUniformLocation(prog, 'cor');
+  const uDist = gl.getUniformLocation(prog, 'dist');
+  // a malha de cada fronteira parada é guardada: só a que "anda" é refeita a cada quadro
+  const cache = new Map<string, Float32Array>();
+
+  return {
+    desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array, dist: number, lista: Contorno[], tempo: number) {
+      if (lista.length === 0) return;
+      gl.useProgram(prog);
+      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      gl.disable(gl.DEPTH_TEST);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniformMatrix4fv(uMvp, false, multiplicar(proj, multiplicar(vista, para4(r3, 0))));
+      gl.uniformMatrix3fv(uGiro, false, r3);
+      gl.uniform1f(uDist, dist);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.enableVertexAttribArray(aPos);
+
+      for (const c of lista) {
+        if (c.raio <= 0) continue;
+        let malha: Float32Array;
+        if (c.anda) {
+          malha = malhaContorno(c, (tempo * 0.6) % 1);
+        } else {
+          const chave = `${c.lat.toFixed(4)}|${c.lon.toFixed(4)}|${c.raio.toFixed(3)}|${c.largura ?? 0}`;
+          malha = cache.get(chave) ?? malhaContorno(c, 0);
+          if (!cache.has(chave)) { if (cache.size > 400) cache.clear(); cache.set(chave, malha); }
+        }
+        gl.bufferData(gl.ARRAY_BUFFER, malha, gl.DYNAMIC_DRAW);
+        gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+        gl.uniform4f(uCor, c.cor[0], c.cor[1], c.cor[2], c.cor[3]);
+        gl.drawArrays(gl.TRIANGLES, 0, malha.length / 3);
+      }
+      gl.disable(gl.BLEND);
+      gl.enable(gl.DEPTH_TEST);
+    },
+  };
+}

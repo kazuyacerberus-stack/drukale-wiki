@@ -56,7 +56,13 @@ export type Local = {
   motivoReprovacao: string | null;
   linksDominio: string[] | null;   // cenas provando domínio sobre o território — exigido do jogador, não do admin
   apresentacao: Apresentacao | null; // a "aba" do território: textos e imagens
+  raio: number;     // tamanho da região no globo, em graus de arco (0 = só o ponto)
 };
+
+/** Raio máximo de uma região, em graus de arco. */
+export const RAIO_MAX = 25;
+/** Graus de arco em quilômetros, na escala da Terra. */
+export const grausParaKm = (g: number) => Math.round(g * 111.2);
 
 export const LIMITES_LOCAL = { nome: 60, resumo: 600, total: 300, link: 500 };
 export const MINIMO_LINKS_DOMINIO = 4;
@@ -170,6 +176,7 @@ export function lerLocais(valor: unknown): Local[] {
         ? (o.links_dominio as unknown[]).filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
         : null,
       apresentacao: lerApresentacao(o.apresentacao),
+      raio: Number.isFinite(Number(o.raio)) ? Math.min(RAIO_MAX, Math.max(0, Number(o.raio))) : 0,
     });
     if (out.length >= LIMITES_LOCAL.total) break;
   }
