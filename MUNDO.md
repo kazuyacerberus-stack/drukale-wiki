@@ -138,7 +138,7 @@ nenhum deles deu erro vermelho antes de seguir para o próximo.
 ## PASSO 4 — Ver funcionando
 
 1. Abra o navegador e digite na **barra de endereço**:
-   `drukale-wiki-wa62.vercel.app`
+   `terrasave.vercel.app`
 2. **Não** use Ctrl+Shift+R nesta página. Digite o endereço e dê Enter.
 3. Lá em cima, do lado direito, apareceu um botão novo: **◍ mundo**.
    Clique nele.

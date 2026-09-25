@@ -67,7 +67,7 @@ echo.
 echo   A Vercel ja esta republicando.
 echo   Daqui a uns 60 segundos, abra este endereco:
 echo.
-echo       https://drukale-wiki-wa62.vercel.app
+echo       https://terrasave.vercel.app
 echo.
 echo   Abra com Ctrl + Shift + R para forcar a versao nova.
 echo.
