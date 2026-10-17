@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 
 /**
  * O globo é WebGL puro: só existe dentro do navegador. Carregar o
@@ -35,7 +34,7 @@ export default function MundoPage() {
   return (
     <div className="term gotico">
       <main className="wrap">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -63,7 +62,7 @@ export default function MundoPage() {
         <footer className="ft">
           <span>TERRA SAVE // CARTOGRAFIA · CARTA DE SUPERFÍCIE</span>
         </footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

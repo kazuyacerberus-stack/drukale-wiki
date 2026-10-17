@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import { useBeep } from '../components/useBeep';
 import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
@@ -71,7 +70,7 @@ export default function CronicasPage() {
     <div className="term">
 
       <main className="wrap narrow">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -139,7 +138,7 @@ export default function CronicasPage() {
         )}
 
         <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

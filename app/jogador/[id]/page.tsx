@@ -4,20 +4,21 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import PerfilCard from '../../components/PerfilCard';
 import PerfilTimeline from '../../components/PerfilTimeline';
 import { supabase } from '../../lib/db';
 import { pedirAmizade, aceitarAmizade, recusarAmizade, desfazerAmizade, estadoAmizade, buscarMinhasAmizades, mensagemAmizade, type EstadoAmizade } from '../../lib/amizades';
 import type { Perfil } from '../../lib/perfil';
 
+const COLUNAS_PUBLICAS_PERFIL = 'user_id,apelido,avatar_url,bio,capa_url,banido,created_at';
+
 export default function JogadorPage() {
   return (
     <div className="term drukale">
       <main className="wrap">
-        <PrecisaAprovacao>
+        <>
           <JogadorPageInterna />
-        </PrecisaAprovacao>
+        </>
       </main>
     </div>
   );
@@ -43,10 +44,11 @@ function JogadorPageInterna() {
       setUserId(uid);
       const [{ data: admin }, { data: p }] = await Promise.all([
         supabase.rpc('drk_e_admin'),
-        supabase.from('profiles').select('*').eq('user_id', alvo).maybeSingle(),
+        // sem conta, só as colunas públicas do perfil (sql/42-site-aberto.sql)
+        supabase.from('profiles').select(uid ? '*' : COLUNAS_PUBLICAS_PERFIL).eq('user_id', alvo).maybeSingle(),
       ]);
       setEhAdmin(admin === true);
-      setPerfil(p as Perfil | null);
+      setPerfil(p as unknown as Perfil | null);
       if (uid && uid !== alvo) {
         const linhas = await buscarMinhasAmizades();
         setEstado(estadoAmizade(linhas, uid, alvo));
@@ -94,7 +96,7 @@ function JogadorPageInterna() {
         <span className="hd-path">terrasave://jogador/{alvo}</span>
         <div className="hd-act">
           <Link className="ico" href="/">← arquivo</Link>
-          <Link className="ico" href="/perfil">meu perfil</Link>
+          {userId ? <Link className="ico" href="/perfil">meu perfil</Link> : <Link className="ico" href="/admin/login">entrar</Link>}
         </div>
       </div>
 
@@ -108,7 +110,7 @@ function JogadorPageInterna() {
             ehAdmin={ehAdmin}
             estadoAmizade={estado}
             agindoAmizade={agindo}
-            onAcaoAmizade={agir}
+            onAcaoAmizade={userId ? agir : undefined}
           />
         </aside>
         <div className="drukale-principal">

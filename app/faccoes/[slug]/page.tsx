@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase, type Character } from '../../lib/db';
 import Avatar from '../../components/Avatar';
@@ -20,9 +19,9 @@ export default function FaccaoPage() {
   return (
     <div className="term">
       <main className="wrap">
-        <PrecisaAprovacao>
+        <>
           <FaccaoPageInterna />
-        </PrecisaAprovacao>
+        </>
       </main>
     </div>
   );

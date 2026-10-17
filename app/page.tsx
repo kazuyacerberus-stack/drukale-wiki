@@ -52,9 +52,9 @@ export default function Home() {
   const { beep, muted, setMuted } = useBeep();
 
   /**
-   * A home é a única página pública: quem não tem conta vê o herói e os
-   * atalhos (só texto e ícone, sem dado nenhum). Quem barra de verdade é
-   * cada página de destino, que fica atrás de `PrecisaAprovacao`.
+   * O site é aberto para leitura (sql/42-site-aberto.sql): quem não tem
+   * conta navega por tudo. A conta só é pedida na hora de publicar, e as
+   * telas de envio (nova/editar) continuam atrás de `PrecisaAprovacao`.
    */
   useEffect(() => {
     let vivo = true;

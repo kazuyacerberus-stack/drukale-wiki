@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import BotaoSom from '../../components/BotaoSom';
 import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
@@ -14,9 +13,9 @@ export default function PersonagemPage() {
   return (
     <div className="term">
       <main className="wrap">
-        <PrecisaAprovacao>
+        <>
           <PersonagemPageInterna />
-        </PrecisaAprovacao>
+        </>
       </main>
     </div>
   );

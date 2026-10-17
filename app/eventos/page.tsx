@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import Avatar from '../components/Avatar';
 import Icone from '../components/Icone';
 import { useBeep } from '../components/useBeep';
@@ -142,7 +141,7 @@ export default function EventosPage() {
     <div className="term">
 
       <main className="wrap narrow">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -253,7 +252,7 @@ export default function EventosPage() {
         )}
 
         <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

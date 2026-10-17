@@ -8,9 +8,9 @@ import { garantirPerfil } from '../lib/perfil';
 type Estado = 'verificando' | 'dentro' | 'fora' | 'pendente' | 'reprovado' | 'erro';
 
 /**
- * Envolve as telas que exigem conta aprovada pelo administrador — a
- * maior parte do site, desde que o cadastro deixou de liberar acesso na
- * hora (sql/22-conta-aprovacao-e-acesso.sql). Diferente de `PrecisaLogin`
+ * Envolve as telas de ENVIO que exigem conta aprovada pelo administrador
+ * (nova/editar ficha, facção, crônica). Desde sql/42-site-aberto.sql as
+ * páginas de leitura não passam mais por aqui. Diferente de `PrecisaLogin`
  * (só exige sessão) e de `Protegido` (só admin): aqui uma sessão válida
  * não basta, a conta também precisa estar com status_conta = 'aprovado'
  * — admin sempre passa, independente do próprio status.

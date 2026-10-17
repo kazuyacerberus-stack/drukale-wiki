@@ -34,6 +34,16 @@ if "%MSG%"=="" set "MSG=Atualizacao"
 
 echo.
 echo ------------------------------------------------------------
+echo   0 de 3   Buscando mudancas que ja estao no GitHub
+echo ------------------------------------------------------------
+echo.
+rem  traz o que foi publicado por outro lugar (ex.: pelo Claude)
+rem  antes de compilar; sem isso o envio no passo 3 seria recusado
+git pull --rebase --autostash
+if errorlevel 1 goto falhou_pull
+
+echo.
+echo ------------------------------------------------------------
 echo   1 de 3   Compilando... isso leva uns 30 segundos
 echo ------------------------------------------------------------
 echo.
@@ -116,6 +126,21 @@ echo   nada, a pasta esta errada.
 echo.
 pause
 exit /b 0
+
+
+:falhou_pull
+echo.
+echo ============================================================
+echo   NAO CONSEGUI BUSCAR AS MUDANCAS DO GITHUB
+echo ============================================================
+echo.
+echo   Nada foi enviado e o site no ar continua intacto.
+echo   Provavelmente o mesmo arquivo foi mudado aqui e no GitHub.
+echo.
+echo   Copie o texto acima e mande para o Claude.
+echo.
+pause
+exit /b 1
 
 
 :falhou_commit

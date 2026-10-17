@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import Realce from '../components/Realce';
 import RegraEditor from '../components/RegraEditor';
 import DocLeitor from '../components/DocLeitor';
@@ -20,7 +19,7 @@ export default function RegrasPage() {
   return (
     <div className="term drukale">
       <main className="wrap">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -41,7 +40,7 @@ export default function RegrasPage() {
         <RegrasConteudo />
 
         <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

@@ -4,23 +4,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import '../../matrix.css';
-import PrecisaAprovacao from '../../components/PrecisaAprovacao';
 import { useBeep } from '../../components/useBeep';
 import { supabase } from '../../lib/db';
 import { mensagemGlossario, type Termo } from '../../lib/glossario';
 
 /**
- * A busca do termo só começa depois que `PrecisaAprovacao` libera —
- * senão, para quem ainda não tem conta aprovada, a RLS devolveria vazio
- * e a tela mostraria "termo não encontrado" em vez do aviso de espera.
+ * Leitura aberta a qualquer visitante (sql/42-site-aberto.sql). Na
+ * prática este endereço redireciona para /reservas (next.config.mjs).
  */
 export default function TermoPage() {
   return (
     <div className="term">
       <main className="wrap narrow">
-        <PrecisaAprovacao>
+        <>
           <TermoPageInterna />
-        </PrecisaAprovacao>
+        </>
       </main>
     </div>
   );

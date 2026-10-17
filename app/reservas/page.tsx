@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import ReservaForm from '../components/ReservaForm';
 import Avatar from '../components/Avatar';
 import { useBeep } from '../components/useBeep';
@@ -20,7 +19,7 @@ export default function ReservasPage() {
   return (
     <div className="term drukale">
       <main className="wrap">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -41,7 +40,7 @@ export default function ReservasPage() {
         <ReservasConteudo />
 
         <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

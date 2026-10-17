@@ -200,11 +200,11 @@ function Item({
         {no.musica && <div className="post-comentario-midia"><MusicaEmbed musica={no.musica} /></div>}
         <div className="post-comentario-meta">
           <time dateTime={no.created_at}>{new Date(no.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
-          <button type="button" onClick={() => setRespondendo((v) => !v)}>responder</button>
+          {userId && <button type="button" onClick={() => setRespondendo((v) => !v)}>responder</button>}
           {(no.user_id === userId || ehAdmin) && <button type="button" onClick={() => onApagar(no.id)}>apagar</button>}
         </div>
 
-        {respondendo && (
+        {respondendo && userId && (
           <Compositor
             postId={no.post_id}
             parentId={no.id}
@@ -288,7 +288,7 @@ export default function PostComentarios({
 
   return (
     <div className="post-comentarios">
-      <Compositor postId={postId} parentId={null} onPublicado={adicionar} />
+      {userId ? <Compositor postId={postId} parentId={null} onPublicado={adicionar} /> : <p className="dica">entre na sua conta para comentar</p>}
       {erro && <p role="alert" className="erro">{erro}</p>}
       {carregando ? (
         <p>carregando comentários…</p>

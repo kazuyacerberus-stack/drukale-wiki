@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
-import PrecisaAprovacao from '../components/PrecisaAprovacao';
 import PostComposer from '../components/PostComposer';
 import PostCard from '../components/PostCard';
 import { useBeep } from '../components/useBeep';
@@ -73,7 +72,7 @@ export default function LinhaDoTempoPage() {
   return (
     <div className="term drukale">
       <main className="wrap narrow">
-       <PrecisaAprovacao>
+       <>
         <header className="hd">
           <div className="hd-bar">
             <span className="dot" /><span className="dot" /><span className="dot" />
@@ -123,7 +122,7 @@ export default function LinhaDoTempoPage() {
         )}
 
         <footer className="ft">terrasave_system v1.0 // conexão segura estabelecida</footer>
-       </PrecisaAprovacao>
+       </>
       </main>
     </div>
   );

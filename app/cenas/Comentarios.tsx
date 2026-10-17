@@ -156,11 +156,11 @@ function Item({
         {no.anexo && <div className={s.comentarioMidia}><Midia anexo={no.anexo} /></div>}
         <div className={s.comentarioMeta}>
           <time dateTime={no.created_at}>{new Date(no.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</time>
-          <button type="button" onClick={() => setRespondendo((v) => !v)}>responder</button>
+          {userId && <button type="button" onClick={() => setRespondendo((v) => !v)}>responder</button>}
           {(no.user_id === userId || ehAdmin) && <button type="button" onClick={() => onApagar(no.id)}>apagar</button>}
         </div>
 
-        {respondendo && (
+        {respondendo && userId && (
           <Compositor
             cenaId={no.cena_id}
             parentId={no.id}
@@ -242,7 +242,7 @@ export default function Comentarios({ cenaId, userId, ehAdmin }: { cenaId: strin
 
   return (
     <div className={s.comentarios}>
-      <Compositor cenaId={cenaId} parentId={null} onPublicado={adicionar} />
+      {userId ? <Compositor cenaId={cenaId} parentId={null} onPublicado={adicionar} /> : <p className="dica">entre na sua conta para comentar</p>}
       {erro && <p role="alert" className={s.erro}>{erro}</p>}
       {carregando ? (
         <p>carregando comentários…</p>
