@@ -206,6 +206,7 @@ function FaccaoPageInterna() {
               <span className="epi" style={{ color: alvo.cor }}>facção</span>
               <h1 data-txt={alvo.nome}>{alvo.nome}</h1>
               {alvo.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
+              {alvo.proposto_por && <span className="dica">proposta por {alvo.proposto_por} (sem conta)</span>}
             </div>
           </div>
 

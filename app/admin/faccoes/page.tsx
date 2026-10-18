@@ -42,7 +42,10 @@ export default function PainelFaccoes() {
   };
 
   const q = query.trim().toLowerCase();
-  const filtrada = q ? lista.filter((f) => f.nome.toLowerCase().includes(q)) : lista;
+  // em análise primeiro: é o que o GM precisa olhar
+  const ordenada = [...lista].sort((x, y) => Number(y.status_aprovacao === 'pendente') - Number(x.status_aprovacao === 'pendente'));
+  const filtrada = q ? ordenada.filter((f) => f.nome.toLowerCase().includes(q)) : ordenada;
+  const pendentes = lista.filter((f) => f.status_aprovacao === 'pendente').length;
   const ruim = aviso.startsWith('FALHA');
 
   return (
@@ -64,7 +67,7 @@ export default function PainelFaccoes() {
 
         <div className="bar">
           <input className="srch" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="filtrar facções..." />
-          <span className="count">{loading ? 'CARREGANDO' : `${filtrada.length} DE ${lista.length}`}</span>
+          <span className="count">{loading ? 'CARREGANDO' : `${filtrada.length} DE ${lista.length}${pendentes ? ` · ${pendentes} EM ANÁLISE` : ''}`}</span>
         </div>
 
         {erro && <p className="erro">FALHA :: {erro}</p>}
@@ -89,7 +92,12 @@ export default function PainelFaccoes() {
                     )}
                   </div>
                   <div className="info">
-                    <strong>{f.nome}</strong>
+                    <strong>
+                      {f.nome}
+                      {f.status_aprovacao === 'pendente' && <span className="selo-pendente" style={{ marginLeft: 8 }}>em análise</span>}
+                      {f.status_aprovacao === 'reprovado' && <span className="dica" style={{ marginLeft: 8 }}>reprovada</span>}
+                    </strong>
+                    {f.proposto_por && <span className="meta">proposta por {f.proposto_por} (sem conta)</span>}
                     <span className="meta">{f.resumo || <em>sem resumo</em>}</span>
                     <span className="slug">/faccoes/{f.slug}</span>
                   </div>
@@ -102,7 +110,7 @@ export default function PainelFaccoes() {
                     </div>
                   ) : (
                     <div className="acoes">
-                      <Link className="mini-btn" href={`/faccoes/${f.slug}`}>ver</Link>
+                      <Link className="mini-btn" href={`/faccoes/${f.slug}`}>{f.status_aprovacao === 'pendente' ? 'avaliar' : 'ver'}</Link>
                       <Link className="mini-btn" href={`/admin/faccoes/editar/${f.slug}`}>editar</Link>
                       <button className="mini-btn dim" onClick={() => { setConfirmar(f.id); setAviso(''); }}>excluir</button>
                     </div>

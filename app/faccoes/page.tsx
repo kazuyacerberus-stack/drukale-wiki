@@ -52,7 +52,7 @@ export default function FaccoesPage() {
               <Link className="ico" href="/cronicas">crônicas</Link>
               <Link className="ico" href="/eventos">eventos</Link>
               <Link className="ico" href="/reservas">reserva de imagens</Link>
-              {userId && <Link className="ico" href="/faccoes/nova">+ propor facção</Link>}
+              <Link className="ico" href="/faccoes/nova">+ propor facção</Link>
               <Link className="ico" href="/admin/faccoes">+ nova</Link>
             </div>
           </div>

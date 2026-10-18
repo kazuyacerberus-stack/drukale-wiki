@@ -12,6 +12,8 @@ export type Faccao = {
   user_id: string | null;
   status_aprovacao: 'pendente' | 'aprovado' | 'reprovado';
   motivo_reprovacao: string | null;
+  /** nome/apelido de quem propôs sem conta (sql/43-faccao-sem-conta.sql) */
+  proposto_por?: string | null;
   created_at: string;
 };
 
@@ -47,9 +49,10 @@ export function validarSimbolo(f: Pick<File, 'size' | 'type'>): string | null {
 }
 
 /** Sobe o símbolo direto do navegador para o Storage e devolve o endereço público. */
-export async function subirSimbolo(file: File, base: string): Promise<string> {
+export async function subirSimbolo(file: File, base: string, pasta?: 'propostas'): Promise<string> {
   const ext = file.type.split('/')[1].replace('jpeg', 'jpg');
-  const caminho = `${Date.now()}-${slugify(base, 'faccao')}.${ext}`;
+  const nome = `${Date.now()}-${slugify(base, 'faccao')}.${ext}`;
+  const caminho = pasta ? `${pasta}/${nome}` : nome;
   const { error } = await supabase.storage.from(BUCKET_FACCOES).upload(caminho, file, {
     contentType: file.type,
     cacheControl: '3600',
@@ -81,9 +84,28 @@ export async function slugLivre(base: string, ignorar?: string | null): Promise<
   return `${base}-${Date.now()}`;
 }
 
+/**
+ * Proposta de quem não tem conta: passa pela função do banco, que força
+ * "pendente", sem dono, e devolve o endereço reservado. Ver
+ * sql/43-faccao-sem-conta.sql.
+ */
+export async function proporFaccaoSemConta(c: {
+  nome: string; slug: string; cor: string; resumo: string | null; historia: string | null;
+  territorio: string | null; simbolo: string | null; propostoPor: string;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc('drk_propor_faccao', {
+    p_nome: c.nome, p_slug: c.slug, p_cor: c.cor, p_resumo: c.resumo, p_historia: c.historia,
+    p_territorio: c.territorio, p_simbolo: c.simbolo, p_proposto_por: c.propostoPor,
+  });
+  if (error) throw error;
+  return data as string;
+}
+
 export function mensagemFaccao(erro: unknown): string {
   const e = erro as { message?: string; code?: string };
   if (['42P01', 'PGRST205'].includes(e?.code ?? '')) return 'As facções ainda precisam ser configuradas no Supabase. Aplique o arquivo sql/10-faccoes.sql.';
+  if (['42883', 'PGRST202'].includes(e?.code ?? '')) return 'O envio sem conta ainda precisa ser ativado no Supabase. Aplique o arquivo sql/43-faccao-sem-conta.sql.';
+  if (e?.code === 'P0001' && e.message) return e.message;
   if (e?.code === '42501') return 'Sua sessão não tem permissão para isto. Entre novamente como administrador.';
   if (e?.code === '23505') return 'Já existe uma facção com esse endereço.';
   if (/fetch|network/i.test(e?.message ?? '')) return 'Não foi possível conectar. Tente novamente.';

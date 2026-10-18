@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { slugify } from '../lib/db';
 import {
-  validarSimbolo, subirSimbolo, apagarSimbolo, slugLivre, mensagemFaccao,
+  validarSimbolo, subirSimbolo, apagarSimbolo, slugLivre, mensagemFaccao, proporFaccaoSemConta,
   LIMITES_FACCAO, type Faccao,
 } from '../lib/faccoes';
 import { supabase } from '../lib/db';
@@ -31,9 +31,14 @@ function doFaccao(f: Faccao): CamposFaccao {
   };
 }
 
-/** Formulário de facção, usado tanto para criar quanto para editar. */
-export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
+/**
+ * Formulário de facção, usado tanto para criar quanto para editar.
+ * `semConta`: visitante sem login — envia pela função do banco
+ * (sql/43-faccao-sem-conta.sql), sempre como pendente.
+ */
+export default function FaccaoForm({ inicial, semConta = false }: { inicial?: Faccao | null; semConta?: boolean }) {
   const editando = !!inicial;
+  const [autor, setAutor] = useState('');
 
   const [f, setF] = useState<CamposFaccao>(inicial ? doFaccao(inicial) : VAZIO);
   const set =
@@ -77,7 +82,7 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
       let imagem = removerSimbolo ? null : simboloAtual;
       if (simbolo) {
         setStatus('ENVIANDO SÍMBOLO...');
-        imagem = await subirSimbolo(simbolo, f.nome || 'faccao');
+        imagem = await subirSimbolo(simbolo, f.nome || 'faccao', semConta ? 'propostas' : undefined);
         subiuAgora = imagem;
         setStatus(editando ? 'ATUALIZANDO...' : 'GRAVANDO...');
       }
@@ -90,6 +95,20 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
         territorio: f.territorio.trim().slice(0, LIMITES_FACCAO.territorio) || null,
         simbolo: imagem,
       };
+
+      if (semConta) {
+        await proporFaccaoSemConta({
+          nome: linha.nome as string, slug: novoSlug, cor: linha.cor as string,
+          resumo: linha.resumo as string | null, historia: linha.historia as string | null,
+          territorio: linha.territorio as string | null, simbolo: imagem, propostoPor: autor.trim(),
+        });
+        setStatus('FACÇÃO ENVIADA — ela aparece no site quando o GM aprovar');
+        setF(VAZIO);
+        setSimbolo(null);
+        setPreview('');
+        setLoading(false);
+        return;
+      }
 
       // quem cria vira o dono/líder — inclusive um admin criando direto,
       // que só pula a fila de análise mas continua sendo o dono. Ao
@@ -141,6 +160,14 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
     <form className="panel" onSubmit={submit}>
       <div className="grupo">
         <span className="grupo-t">identificação</span>
+        {semConta && (
+          <div className="field">
+            <label>seu nome ou apelido *</label>
+            <input value={autor} onChange={(e) => setAutor(e.target.value)} placeholder="como o grupo te conhece"
+              minLength={2} maxLength={60} required />
+            <p className="dica">aparece na página da facção como autor da proposta — o GM usa para saber de quem é</p>
+          </div>
+        )}
         <div className="field">
           <label>nome *</label>
           <input value={f.nome} onChange={set('nome')} placeholder="Casa Drukale" maxLength={LIMITES_FACCAO.nome} required />
@@ -238,7 +265,7 @@ export default function FaccaoForm({ inicial }: { inicial?: Faccao | null }) {
       </div>
 
       <button className="go" disabled={loading}>
-        {loading ? '// salvando...' : editando ? 'SALVAR ALTERAÇÕES' : 'GRAVAR FACÇÃO'}
+        {loading ? '// salvando...' : editando ? 'SALVAR ALTERAÇÕES' : semConta ? 'ENVIAR PARA O GM' : 'GRAVAR FACÇÃO'}
       </button>
 
       {status && (
