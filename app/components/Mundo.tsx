@@ -124,13 +124,14 @@ export default function Mundo() {
   const [erroFoto, setErroFoto] = useState('');
   const [tirarFoto, setTirarFoto] = useState(false);
 
-  /* ---------- quem está logado pode propor; o admin aprova ---------- */
+  /* ---------- todos veem o mapa; só o GM cadastra (sql/46-mapa-so-gm.sql) ---------- */
   useEffect(() => {
     const verificar = (s: { user: { id: string } } | null) => {
       setLogado(!!s);
       setUserId(s?.user.id ?? null);
       if (!s) { setEhAdmin(false); return; }
-      supabase.rpc('drk_e_admin').then(({ data }) => setEhAdmin(data === true));
+      // GM real, não qualquer sessão aberta: só ele cadastra locais
+      supabase.rpc('drk_e_gm').then(({ data }) => setEhAdmin(data === true));
     };
     supabase.auth.getSession().then(({ data }) => verificar(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => verificar(s));
@@ -427,7 +428,7 @@ export default function Mundo() {
   const aoDescer = (e: React.PointerEvent) => {
     // cravando um ponto: apertar no planeta marca o centro, e arrastar
     // abre a região em volta — o globo fica parado enquanto isso
-    if (cravando && logado && !rascunho && !(e.target as HTMLElement).closest?.('.marco')) {
+    if (cravando && ehAdmin && !rascunho && !(e.target as HTMLElement).closest?.('.marco')) {
       const p = pontoNoGlobo(e.clientX, e.clientY);
       if (p) {
         desenhandoRaio.current = { ...p, raio: 0 };
@@ -732,7 +733,7 @@ export default function Mundo() {
   /* ============================================================
      A ABA DO TERRITÓRIO
      ============================================================ */
-  const podeMontar = (l: Local) => ehAdmin || (logado && !!userId && l.userId === userId);
+  const podeMontar = (_l: Local) => ehAdmin;
 
   /** Desenha o globinho do rodapé a partir do mapa que o globo já gerou. */
   const prepararGlobinho = (l: Local) => {
@@ -901,7 +902,7 @@ export default function Mundo() {
         >
           {girando ? '❚❚ parar o giro' : '▶ girar de novo'}
         </button>
-        {logado && (
+        {ehAdmin && (
           <button
             type="button"
             className={`mini-btn${cravando ? ' perigo' : ''}`}
@@ -1061,7 +1062,7 @@ export default function Mundo() {
                 )}
               </div>
 
-              {(ehAdmin || (logado && selecionado.userId === userId && selecionado.statusAprovacao !== 'aprovado')) && (
+              {ehAdmin && (
                 <div className="painel-acoes">
                   <button type="button" className="mini-btn"
                     onClick={() => editar(selecionado)}>{selecionado.statusAprovacao === 'reprovado' ? 'editar e reenviar' : 'editar'}</button>
