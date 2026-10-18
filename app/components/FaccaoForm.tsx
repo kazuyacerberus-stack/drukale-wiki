@@ -8,6 +8,7 @@ import {
   LIMITES_FACCAO, type Faccao,
 } from '../lib/faccoes';
 import { supabase } from '../lib/db';
+import { souGm, proporAlteracao } from '../lib/alteracoes';
 
 export type CamposFaccao = {
   nome: string;
@@ -120,6 +121,24 @@ export default function FaccaoForm({ inicial, semConta = false }: { inicial?: Fa
       if (pendente) {
         linha.status_aprovacao = 'pendente';
         linha.motivo_reprovacao = null;
+      }
+
+      if (editando && inicial && !(await souGm())) {
+        // quem não é o GM: a facção publicada só muda quando o GM aprovar
+        const slug = trocarSlug ? await slugLivre(slugify(f.nome), inicial.slug) : inicial.slug;
+        await proporAlteracao('faccoes', inicial.id, {
+          nome: linha.nome, cor: linha.cor, resumo: linha.resumo, historia: linha.historia,
+          territorio: linha.territorio, simbolo: linha.simbolo, slug,
+        });
+        setStatus('ALTERAÇÃO ENVIADA — A FACÇÃO MUDA QUANDO O GM APROVAR');
+        setDestino(inicial.slug);
+        setSimbolo(null);
+        setPreview('');
+        setRemoverSimbolo(false);
+        setTrocarSlug(false);
+        setEnviouPendente(true);
+        setLoading(false);
+        return;
       }
 
       if (editando && inicial) {

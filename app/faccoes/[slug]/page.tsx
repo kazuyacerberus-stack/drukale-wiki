@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import '../../matrix.css';
 import { useBeep } from '../../components/useBeep';
 import { supabase, type Character } from '../../lib/db';
+import { tenhoAlteracaoPendente } from '../../lib/alteracoes';
 import Avatar from '../../components/Avatar';
 import {
   normalizarNome, mensagemFaccao, solicitarFaccao, convidarParaFaccao, aceitarMembro, recusarMembro, sairFaccao,
@@ -32,6 +33,14 @@ function FaccaoPageInterna() {
   const chave = decodeURIComponent(String(params?.slug ?? ''));
 
   const [alvo, setAlvo] = useState<Faccao | null>(null);
+  // quem propôs uma edição vê que ela está na fila do GM (sql/45, sql/47)
+  const [minhaPendente, setMinhaPendente] = useState(false);
+  useEffect(() => {
+    if (!alvo?.id) return;
+    let vivo = true;
+    tenhoAlteracaoPendente('faccoes', alvo.id).then((sim) => { if (vivo) setMinhaPendente(sim); });
+    return () => { vivo = false; };
+  }, [alvo?.id]);
   const [membros, setMembros] = useState<Character[]>([]);
   const [territorio, setTerritorio] = useState<Local[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,6 +215,7 @@ function FaccaoPageInterna() {
               <span className="epi" style={{ color: alvo.cor }}>facção</span>
               <h1 data-txt={alvo.nome}>{alvo.nome}</h1>
               {alvo.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
+                {minhaPendente && <span className="selo-pendente">sua alteração aguarda aprovação do GM</span>}
               {alvo.proposto_por && <span className="dica">proposta por {alvo.proposto_por} (sem conta)</span>}
             </div>
           </div>

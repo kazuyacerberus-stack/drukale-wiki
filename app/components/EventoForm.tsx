@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/db';
+import { souGm, proporAlteracao } from '../lib/alteracoes';
 import {
   mensagemEvento, proximaOrdem, validarAnexoEvento, subirAnexoEvento, apagarAnexoEvento, urlAnexoEvento,
   LIMITES_EVENTO, type Evento, type AnexoEvento,
@@ -84,6 +85,21 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
         linha.user_id = auth.user?.id ?? null;
         linha.status_aprovacao = 'pendente';
         linha.motivo_reprovacao = null;
+      }
+
+      if (editando && inicial && !(await souGm())) {
+        // quem não é o GM: a crônica publicada só muda quando o GM aprovar
+        await proporAlteracao('eventos', inicial.id, {
+          titulo: linha.titulo, data: linha.data, resumo: linha.resumo, descricao: linha.descricao, anexo: linha.anexo,
+        });
+        setStatus('ALTERAÇÃO ENVIADA — A CRÔNICA MUDA QUANDO O GM APROVAR');
+        setAnexo(null);
+        setPreview('');
+        setRemoverAnexo(false);
+        setSalvo(true);
+        setEnviouPendente(true);
+        setLoading(false);
+        return;
       }
 
       if (editando && inicial) {

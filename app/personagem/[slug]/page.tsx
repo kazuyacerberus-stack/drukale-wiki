@@ -7,6 +7,7 @@ import '../../matrix.css';
 import { useBeep } from '../../components/useBeep';
 import BotaoSom from '../../components/BotaoSom';
 import { supabase, FICHA, lerSecoes, type Character } from '../../lib/db';
+import { tenhoAlteracaoPendente } from '../../lib/alteracoes';
 import { normalizarNome } from '../../lib/faccoes';
 
 export default function PersonagemPage() {
@@ -26,6 +27,14 @@ function PersonagemPageInterna() {
   const chave = decodeURIComponent(String(params?.slug ?? ''));
 
   const [alvo, setAlvo] = useState<Character | null>(null);
+  // quem propôs uma edição vê que ela está na fila do GM (sql/45, sql/47)
+  const [minhaPendente, setMinhaPendente] = useState(false);
+  useEffect(() => {
+    if (!alvo?.id) return;
+    let vivo = true;
+    tenhoAlteracaoPendente('characters', String(alvo.id)).then((sim) => { if (vivo) setMinhaPendente(sim); });
+    return () => { vivo = false; };
+  }, [alvo?.id]);
   const [vizinhos, setVizinhos] = useState<{ ant: Character | null; prox: Character | null }>({
     ant: null,
     prox: null,
@@ -191,6 +200,7 @@ function PersonagemPageInterna() {
                 {alvo.epithet && <span className="epi">{alvo.epithet}</span>}
                 <h1 data-txt={alvo.name ?? 'sem nome'}>{alvo.name ?? 'sem nome'}</h1>
                 {alvo.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
+                {minhaPendente && <span className="selo-pendente">sua alteração aguarda aprovação do GM</span>}
               </div>
             </div>
 
