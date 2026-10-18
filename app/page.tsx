@@ -62,7 +62,7 @@ export default function Home() {
       if (!logado) { if (vivo) { setEhAdmin(false); setMeuPerfil(null); } return; }
       const { data: auth } = await supabase.auth.getUser();
       const [admin, perfil] = await Promise.all([
-        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_e_gm'),
         auth.user ? supabase.from('profiles').select('apelido,avatar_url').eq('user_id', auth.user.id).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       if (vivo) {

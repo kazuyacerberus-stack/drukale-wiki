@@ -78,7 +78,7 @@ export default function ChatPage() {
     (async () => {
       const [p, admin, todos] = await Promise.all([
         garantirPerfil(),
-        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_e_gm'),
         supabase.from('profiles').select('user_id,apelido,avatar_url,banido'),
       ]);
       if (!vivo) return;

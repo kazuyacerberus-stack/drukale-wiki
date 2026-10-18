@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSouGm } from './useSouGm';
 import { slugify } from '../lib/db';
 import {
   validarSimbolo, subirSimbolo, apagarSimbolo, slugLivre, mensagemFaccao, proporFaccaoSemConta,
@@ -39,6 +40,7 @@ function doFaccao(f: Faccao): CamposFaccao {
  */
 export default function FaccaoForm({ inicial, semConta = false }: { inicial?: Faccao | null; semConta?: boolean }) {
   const editando = !!inicial;
+  const ehGm = useSouGm();
   const [autor, setAutor] = useState('');
 
   const [f, setF] = useState<CamposFaccao>(inicial ? doFaccao(inicial) : VAZIO);
@@ -297,7 +299,7 @@ export default function FaccaoForm({ inicial, semConta = false }: { inicial?: Fa
               {' · '}
               {enviouPendente
                 ? <Link href="/perfil">ver meus envios</Link>
-                : <Link href="/admin/faccoes">voltar à lista</Link>}
+                : ehGm ? <Link href="/admin/faccoes">voltar à lista</Link> : <Link href="/faccoes">ver facções</Link>}
             </>
           )}
         </p>

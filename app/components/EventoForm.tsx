@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSouGm } from './useSouGm';
 import { supabase } from '../lib/db';
 import { souGm, proporAlteracao } from '../lib/alteracoes';
 import {
@@ -19,6 +20,7 @@ function doEvento(e: Evento): CamposEvento {
 
 /** Formulário de evento, usado tanto para criar quanto para editar. */
 export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
+  const ehGm = useSouGm();
   const editando = !!inicial;
 
   const [f, setF] = useState<CamposEvento>(inicial ? doEvento(inicial) : VAZIO);
@@ -231,7 +233,7 @@ export default function EventoForm({ inicial }: { inicial?: Evento | null }) {
               {' · '}
               {enviouPendente
                 ? <Link href="/perfil">ver meus envios</Link>
-                : <Link href="/admin/cronicas">voltar à lista</Link>}
+                : ehGm ? <Link href="/admin/cronicas">voltar à lista</Link> : <Link href="/cronicas">ver crônicas</Link>}
             </>
           )}
         </p>

@@ -72,7 +72,7 @@ function FaccaoPageInterna() {
 
       const [{ data: auth }, { data: admin }, { data: fac, error: erroFac }, { data: chars }, { data: locs }] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_e_gm'),
         supabase.from('faccoes').select('*').eq('slug', chave).maybeSingle(),
         supabase.from('characters').select('*'),
         supabase.from('locais').select('*'),
@@ -192,7 +192,9 @@ function FaccaoPageInterna() {
           <span className="hd-path">terrasave://arquivo/faccoes/{alvo.slug}</span>
           <div className="hd-act">
             <Link className="ico" href="/faccoes" onClick={() => beep('close')}>← facções</Link>
-            <Link className="ico" href="/admin/faccoes">gerenciar</Link>
+            {ehAdmin
+              ? <Link className="ico" href="/admin/faccoes">gerenciar</Link>
+              : <Link className="ico" href={`/faccoes/editar/${alvo.slug}`}>✎ propor edição</Link>}
           </div>
         </div>
 

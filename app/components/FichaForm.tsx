@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useSouGm } from './useSouGm';
 import {
   slugify, lerSecoes, LIMITES, conferirFicha, subirFicha,
   apagarFichaDoNavegador, FICHA_MAX_ROTULO,
@@ -57,6 +58,7 @@ function doPersonagem(c: Character): Campos {
  */
 export default function FichaForm({ inicial }: { inicial?: Character | null }) {
   const editando = !!inicial;
+  const souGm = useSouGm();
 
   const [f, setF] = useState<Campos>(inicial ? doPersonagem(inicial) : VAZIO);
   const set =
@@ -789,7 +791,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               {' · '}
               {enviouPendente
                 ? <Link href="/perfil">ver meus envios</Link>
-                : <Link href="/admin">voltar ao painel</Link>}
+                : souGm ? <Link href="/admin">voltar ao painel</Link> : <Link href="/personagens">ver personagens</Link>}
             </>
           )}
         </p>

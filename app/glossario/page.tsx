@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import { useBeep } from '../components/useBeep';
+import { useSouGm } from '../components/useSouGm';
 import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { CATEGORIAS_GLOSSARIO, mensagemGlossario, type Termo } from '../lib/glossario';
@@ -15,6 +16,7 @@ export default function GlossarioPage() {
   const [query, setQuery] = useState('');
   const [categoria, setCategoria] = useState('');
   const { beep, muted, setMuted } = useBeep();
+  const souGm = useSouGm();
 
   useEffect(() => {
     (async () => {
@@ -40,7 +42,7 @@ export default function GlossarioPage() {
             <div className="hd-act">
               <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
               <Link className="ico" href="/">← arquivo</Link>
-              <Link className="ico" href="/admin/glossario">+ novo</Link>
+              {souGm && <Link className="ico" href="/admin/glossario">+ novo</Link>}
             </div>
           </div>
 

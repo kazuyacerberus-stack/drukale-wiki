@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import { useBeep } from '../components/useBeep';
+import { useSouGm } from '../components/useSouGm';
 import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
 import { mensagemFaccao, type Faccao } from '../lib/faccoes';
@@ -16,6 +17,7 @@ export default function FaccoesPage() {
   const [broken, setBroken] = useState<Record<string, boolean>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const { beep, muted, setMuted } = useBeep();
+  const souGm = useSouGm();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
@@ -53,7 +55,7 @@ export default function FaccoesPage() {
               <Link className="ico" href="/eventos">eventos</Link>
               <Link className="ico" href="/reservas">reserva de imagens</Link>
               <Link className="ico" href="/faccoes/nova">+ propor facção</Link>
-              <Link className="ico" href="/admin/faccoes">+ nova</Link>
+              {souGm && <Link className="ico" href="/admin/faccoes">+ nova</Link>}
             </div>
           </div>
 

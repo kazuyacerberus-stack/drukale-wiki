@@ -61,7 +61,7 @@ export default function PerfilPage() {
         supabase.from('characters').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
         supabase.from('eventos').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
         supabase.from('faccoes').select('*').eq('user_id', uid).order('created_at', { ascending: false }),
-        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_e_gm'),
       ]);
       if (!vivo) return;
       setPerfil(p);

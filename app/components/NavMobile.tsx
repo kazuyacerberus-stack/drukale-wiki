@@ -52,7 +52,7 @@ export default function NavMobile() {
       if (!vivo) return;
       setLogado(temSessao);
       if (!temSessao) { setEhAdmin(false); return; }
-      const { data } = await supabase.rpc('drk_e_admin');
+      const { data } = await supabase.rpc('drk_e_gm');
       if (vivo) setEhAdmin(data === true);
     };
     supabase.auth.getSession().then(({ data }) => { void verificar(Boolean(data.session)); });

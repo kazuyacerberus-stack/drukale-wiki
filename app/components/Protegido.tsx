@@ -24,7 +24,7 @@ export default function Protegido({ children }: { children: ReactNode }) {
     const verificar = async (logado: boolean) => {
       const atual = ++versao;
       if (!logado) { if (vivo) setEstado('fora'); return; }
-      const { data, error } = await supabase.rpc('drk_e_admin');
+      const { data, error } = await supabase.rpc('drk_e_gm');
       if (vivo && atual === versao) setEstado(error ? 'erro' : data === true ? 'dentro' : 'jogador');
     };
     supabase.auth.getSession().then(({ data }) => { if (vivo) void verificar(Boolean(data.session)); });

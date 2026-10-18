@@ -40,7 +40,7 @@ export default function LinhaDoTempoPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
-    supabase.rpc('drk_e_admin').then(({ data }) => setEhAdmin(data === true));
+    supabase.rpc('drk_e_gm').then(({ data }) => setEhAdmin(data === true));
     (async () => {
       try {
         const lista = await buscarFeedPublico(0);

@@ -48,7 +48,7 @@ export default function EventosPage() {
     supabase.auth.getSession().then(({ data }) => {
       setUserId(data.session?.user.id ?? null);
       if (!data.session) { setEhAdmin(false); return; }
-      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
+      supabase.rpc('drk_e_gm').then(({ data: admin }) => setEhAdmin(admin === true));
     });
     return () => { if (previewRef.current) URL.revokeObjectURL(previewRef.current); };
   }, []);

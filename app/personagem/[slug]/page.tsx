@@ -53,7 +53,7 @@ function PersonagemPageInterna() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { setEhAdmin(false); return; }
-      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
+      supabase.rpc('drk_e_gm').then(({ data: admin }) => setEhAdmin(admin === true));
     });
   }, []);
 
@@ -172,6 +172,10 @@ function PersonagemPageInterna() {
             <Link className="ico" href="/" onClick={() => beep('close')}>
               ← arquivo
             </Link>
+            {/* GM edita direto no painel; os demais propõem a edição (vai para a fila do GM) */}
+            {ehAdmin
+              ? <Link className="ico" href={`/admin/editar/${alvo.slug ?? alvo.id}`}>✎ editar</Link>
+              : <Link className="ico" href={`/personagens/editar/${alvo.id}`}>✎ propor edição</Link>}
           </div>
         </div>
 

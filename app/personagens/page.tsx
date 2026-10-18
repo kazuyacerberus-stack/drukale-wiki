@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import { useBeep } from '../components/useBeep';
+import { useSouGm } from '../components/useSouGm';
 import BotaoSom from '../components/BotaoSom';
 import { supabase, type Character } from '../lib/db';
 
@@ -17,6 +18,7 @@ export default function PersonagensPage() {
   const [broken, setBroken] = useState<Record<string, boolean>>({});
   const [userId, setUserId] = useState<string | null>(null);
   const { beep, muted, setMuted } = useBeep();
+  const souGm = useSouGm();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
@@ -133,7 +135,7 @@ export default function PersonagensPage() {
               <Link className="ico" href="/mundo" title="o mundo Terra Save em 3D">◍ mundo terra save</Link>
               <Link className="ico" href="/chat" title="o chat da comunidade">✉ chat</Link>
               {userId && <Link className="ico" href="/personagens/nova">+ enviar personagem</Link>}
-              <Link className="ico" href="/admin">+ novo</Link>
+              {souGm && <Link className="ico" href="/admin">+ novo</Link>}
             </div>
           </div>
 

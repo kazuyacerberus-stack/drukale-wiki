@@ -33,7 +33,7 @@ export default function CronicasPage() {
     supabase.auth.getSession().then(({ data }) => {
       setUserId(data.session?.user.id ?? null);
       if (!data.session) { setEhAdmin(false); return; }
-      supabase.rpc('drk_e_admin').then(({ data: admin }) => setEhAdmin(admin === true));
+      supabase.rpc('drk_e_gm').then(({ data: admin }) => setEhAdmin(admin === true));
     });
   }, []);
 
@@ -83,7 +83,7 @@ export default function CronicasPage() {
               <Link className="ico" href="/eventos">✦ eventos</Link>
               <Link className="ico" href="/reservas">reserva de imagens</Link>
               {userId && <Link className="ico" href="/cronicas/nova">+ enviar crônica</Link>}
-              <Link className="ico" href="/admin/cronicas">+ novo</Link>
+              {ehAdmin && <Link className="ico" href="/admin/cronicas">+ novo</Link>}
             </div>
           </div>
 
@@ -105,6 +105,7 @@ export default function CronicasPage() {
                 {ev.data && <span className="evento-data">{ev.data}</span>}
                 <h2>{ev.titulo}</h2>
                 {ev.status_aprovacao === 'pendente' && <span className="selo-pendente">em análise</span>}
+                <Link className="mini-btn dim" href={`/cronicas/editar/${ev.id}`}>✎ {ehAdmin ? 'editar' : 'propor edição'}</Link>
                 {ehAdmin && ev.status_aprovacao === 'pendente' && (
                   <div className="acoes-aprovacao">
                     <button type="button" className="mini-btn" disabled={avaliando === ev.id} onClick={() => aprovar(ev.id)}>✓ aprovar</button>

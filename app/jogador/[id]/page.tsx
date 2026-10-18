@@ -43,7 +43,7 @@ function JogadorPageInterna() {
       const uid = auth.user?.id ?? null;
       setUserId(uid);
       const [{ data: admin }, { data: p }] = await Promise.all([
-        supabase.rpc('drk_e_admin'),
+        supabase.rpc('drk_e_gm'),
         // sem conta, só as colunas públicas do perfil (sql/42-site-aberto.sql)
         supabase.from('profiles').select(uid ? '*' : COLUNAS_PUBLICAS_PERFIL).eq('user_id', alvo).maybeSingle(),
       ]);
