@@ -405,15 +405,18 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
       } else {
         setEnviouPendente(Boolean(data.pendente));
         setStatus(data.pendente
-          ? (editando ? 'FICHA REENVIADA PARA ANÁLISE' : 'FICHA ENVIADA PARA ANÁLISE')
+          ? (editando ? 'ALTERAÇÃO ENVIADA — A FICHA MUDA QUANDO O GM APROVAR' : 'FICHA ENVIADA PARA ANÁLISE')
           : (editando ? 'REGISTRO ATUALIZADO' : 'REGISTRO GRAVADO'));
         setDestino(data.slug ?? null);
         setFicha(null);
         setRemoverFicha(false);
         if (editando) {
           if (data.imageUrl !== undefined) setImagemAtual(data.imageUrl);
-          setFichaAtual(enderecoFicha);
-          setFichaNome(nomeFicha);
+          // proposta: a ficha publicada não mudou, então o anexo atual também não
+          if (!data.pendente) {
+            setFichaAtual(enderecoFicha);
+            setFichaNome(nomeFicha);
+          }
           setImage(null);
           setFinalPreview('');
           setRemoverImagem(false);

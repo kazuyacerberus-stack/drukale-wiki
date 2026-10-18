@@ -11,7 +11,7 @@ import { supabase } from '../lib/db';
 import { garantirSessao } from '../lib/auth';
 import { garantirPerfil } from '../lib/perfil';
 import { normalizarBusca } from '../lib/regras';
-import { mensagemReserva, removerImagemReserva, urlImagemReserva, type Reserva } from '../lib/reservas';
+import { hashDaImagem, mensagemReserva, removerImagemReserva, urlImagemReserva, validarImagemReserva, type Reserva } from '../lib/reservas';
 
 type PerfilLeve = { user_id: string; apelido: string; avatar_url: string | null };
 
@@ -61,6 +61,48 @@ function ReservasConteudo() {
   const [formAberto, setFormAberto] = useState(false);
   const [abrindo, setAbrindo] = useState(false);
   const [pedirApelido, setPedirApelido] = useState(false);
+  const [trocasPendentes, setTrocasPendentes] = useState<Set<string>>(new Set());
+  const [trocando, setTrocando] = useState<string | null>(null);
+  const [avisoTroca, setAvisoTroca] = useState('');
+
+  /**
+   * Trocar a imagem de uma reserva não troca na hora: a imagem nova sobe
+   * para a pasta do dono e vira uma proposta que o GM aprova no painel
+   * (sql/45-alteracoes-com-aprovacao.sql). Até lá, a antiga continua.
+   */
+  const pedirTrocaImagem = async (r: Reserva, arquivo: File | null) => {
+    if (!arquivo || !userId) return;
+    setErro(''); setAvisoTroca('');
+    const problema = validarImagemReserva(arquivo);
+    if (problema) { setErro(problema); return; }
+    setTrocando(r.id);
+    let caminho = '';
+    try {
+      const hash = await hashDaImagem(arquivo);
+      const { data: igual } = await supabase.from('reservas_imagens').select('id').eq('imagem_hash', hash).limit(1);
+      if ((igual ?? []).length) throw new Error('Essa imagem (o mesmo arquivo) já foi reservada por alguém.');
+      const ext = arquivo.type.split('/')[1].replace('jpeg', 'jpg');
+      caminho = `${userId}/${crypto.randomUUID()}.${ext}`;
+      const { error: erroUpload } = await supabase.storage.from('reservas').upload(caminho, arquivo, {
+        contentType: arquivo.type, cacheControl: '3600', upsert: false,
+      });
+      if (erroUpload) throw new Error(`Não consegui enviar a imagem: ${erroUpload.message}`);
+      const { error } = await supabase.from('alteracoes_pendentes').insert({
+        tabela: 'reservas_imagens', alvo_id: r.id, dados: { caminho, imagem_hash: hash }, user_id: userId,
+      });
+      if (error) throw error;
+      setTrocasPendentes((prev) => new Set(prev).add(r.id));
+      setAvisoTroca(`Troca de imagem de "${r.titulo}" enviada — a imagem muda quando o GM aprovar.`);
+    } catch (e) {
+      if (caminho) await removerImagemReserva(caminho);
+      const ee = e as { code?: string };
+      setErro(['42P01', 'PGRST205'].includes(ee?.code ?? '')
+        ? 'A aprovação de trocas ainda não foi ativada. Aplique o sql/45-alteracoes-com-aprovacao.sql.'
+        : e instanceof Error ? e.message : mensagemReserva(e));
+    } finally {
+      setTrocando(null);
+    }
+  };
 
   // qualquer pessoa reserva: sem conta, a sessão de visitante nasce no clique
   const abrirFormulario = async () => {
@@ -89,7 +131,8 @@ function ReservasConteudo() {
     (async () => {
       const [{ data: auth }, { data: admin }, { data, error }, { data: fac }] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.rpc('drk_e_admin'),
+        // liberar reserva alheia é só do GM real (sql/45)
+        supabase.rpc('drk_e_gm'),
         supabase.from('reservas_imagens').select('*').order('created_at', { ascending: false }).limit(500),
         supabase.from('faccoes').select('nome').neq('status_aprovacao', 'reprovado').order('nome'),
       ]);
@@ -99,6 +142,11 @@ function ReservasConteudo() {
       if (error) { setErro(mensagemReserva(error)); setCarregando(false); return; }
       const lista = (data ?? []) as Reserva[];
       setReservas(lista);
+      if (auth.user) {
+        const { data: minhas } = await supabase.from('alteracoes_pendentes').select('alvo_id')
+          .eq('tabela', 'reservas_imagens').eq('status', 'pendente').eq('user_id', auth.user.id);
+        setTrocasPendentes(new Set(((minhas ?? []) as { alvo_id: string }[]).map((m) => m.alvo_id)));
+      }
       await carregarPerfis(lista.map((r) => r.user_id));
       setCarregando(false);
     })();
@@ -147,6 +195,7 @@ function ReservasConteudo() {
       )}
 
       {erro && <p className="erro">FALHA :: {erro}</p>}
+      {avisoTroca && <p className="stat ok" style={{ textAlign: 'left' }}>{avisoTroca}</p>}
 
       <p className="regras-contagem" style={{ margin: '4px 2px 14px' }}>
         {termo || soMinhas ? `${visiveis.length} de ${reservas.length} reservas` : `${reservas.length} ${reservas.length === 1 ? 'reserva' : 'reservas'}`}
@@ -181,6 +230,15 @@ function ReservasConteudo() {
                     </Link>
                     <time dateTime={r.created_at}>{new Date(r.created_at).toLocaleDateString('pt-BR')}</time>
                   </div>
+                  {trocasPendentes.has(r.id) && <p className="dica">troca de imagem aguardando o GM</p>}
+                  {r.user_id === userId && (
+                    <label className="mini-btn" style={{ cursor: 'pointer' }}>
+                      {trocando === r.id ? 'enviando...' : 'trocar imagem'}
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style={{ display: 'none' }}
+                        disabled={trocando !== null}
+                        onChange={(e) => { void pedirTrocaImagem(r, e.target.files?.[0] ?? null); e.target.value = ''; }} />
+                    </label>
+                  )}
                   {(r.user_id === userId || ehAdmin) && (
                     <button type="button" className="mini-btn dim" onClick={() => liberar(r)}>liberar reserva</button>
                   )}

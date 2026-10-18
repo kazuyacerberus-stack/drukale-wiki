@@ -237,9 +237,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'O nome é obrigatório' }, { status: 400 });
     }
 
-    // quem não é admin só edita a própria ficha, e ela volta para a fila
-    // de análise — corrigir e reenviar apaga a reprovação anterior
-    const pendente = await aplicarAprovacao(cli, userId!, registro);
+    // só o GM altera a ficha publicada na hora; para todos os outros a
+    // edição vira uma proposta que o GM aprova no painel
+    // (sql/45-alteracoes-com-aprovacao.sql)
+    const { data: gm } = await cli.rpc('drk_e_gm');
+    const pendente = gm !== true;
 
     aplicarSecoes(form, registro);
     aplicarFicha(form, registro);
@@ -274,6 +276,31 @@ export async function PUT(request: NextRequest) {
       registro.image_url = null;
     }
 
+    if (pendente) {
+      const { error: erroProposta } = await cli
+        .from('alteracoes_pendentes')
+        .insert({ tabela: 'characters', alvo_id: id, dados: registro, user_id: userId });
+      if (erroProposta) {
+        // proposta não entrou: a imagem nova que acabou de subir não serve a ninguém
+        if (trocouImagem) await apagarImagem(cli, imageUrl);
+        const falta = ['42P01', 'PGRST205'].includes(erroProposta.code ?? '');
+        return NextResponse.json(
+          { error: falta ? 'A aprovação de alterações ainda não foi ativada. Aplique o sql/45-alteracoes-com-aprovacao.sql.' : `Erro ao enviar a alteração: ${erroProposta.message}` },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Alteração enviada para o GM aprovar. Até lá, a ficha publicada continua como estava.',
+          slug: slugAtual,
+          imageUrl: atual.image_url ?? null,
+          pendente: true,
+        },
+        { status: 200 }
+      );
+    }
+
     // o .select() devolve as linhas afetadas: vazio significa que as
     // políticas bloquearam a escrita (o Supabase não reporta isso como erro)
     const { data: alterados, error } = await cli
@@ -302,7 +329,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: pendente ? 'Ficha atualizada e reenviada para análise!' : 'Registro atualizado!',
+        message: 'Registro atualizado!',
         slug,
         imageUrl,
         pendente,

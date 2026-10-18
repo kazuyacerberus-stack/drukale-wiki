@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import '../matrix.css';
 import Protegido from '../components/Protegido';
+import AlteracoesPendentes from '../components/AlteracoesPendentes';
 import { cabecalhoAuth, sair } from '../lib/auth';
 import { supabase, lerSecoes, type Character } from '../lib/db';
 import { type Evento } from '../lib/eventos';
@@ -204,6 +205,8 @@ export default function Painel() {
         </header>
 
         {erroPainel && <p className="erro">FALHA :: {erroPainel}</p>}
+
+        <AlteracoesPendentes />
 
         {resumo && (
           <div className="imp-numeros" style={{ margin: '0 0 30px' }}>

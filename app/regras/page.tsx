@@ -64,7 +64,8 @@ function RegrasConteudo() {
     (async () => {
       const [{ data: auth }, { data: admin }, { data, error }] = await Promise.all([
         supabase.auth.getUser(),
-        supabase.rpc('drk_e_admin'),
+        // editar regras é só do GM real (sql/45), não de qualquer sessão aberta
+        supabase.rpc('drk_e_gm'),
         supabase.from('regras').select('*').order('doc_ordem').order('ordem'),
       ]);
       setUserId(auth.user?.id ?? null);
