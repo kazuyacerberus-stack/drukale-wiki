@@ -12,13 +12,27 @@ import { useEffect, useRef, useState } from 'react';
  * - O vídeo é mantido inteiro, com os créditos originais. Quando ele
  *   termina, entra o cartão de Terra Save, que é nosso, e o site abre.
  */
-type Fase = 'portao' | 'video' | 'cartao' | 'saindo' | 'fim';
+type Fase = 'checando' | 'portao' | 'video' | 'cartao' | 'saindo' | 'fim';
 
 const SAIDA_MS = 700;
+
+/**
+ * Uma vez por sessão: depois de assistida (ou pulada), a abertura não
+ * volta até a pessoa fechar o navegador/aba. Marca só ao terminar — se a
+ * página recarregar no meio (1ª visita), a abertura recomeça.
+ */
+const CHAVE_VISTA = 'drk-intro-vista';
+function jaViu(): boolean {
+  try { return window.sessionStorage.getItem(CHAVE_VISTA) === '1'; } catch { return false; }
+}
+function marcarVista() {
+  try { window.sessionStorage.setItem(CHAVE_VISTA, '1'); } catch { /* sem armazenamento: volta a tocar, sem prejuízo */ }
+}
 const CARTAO_MS = 3200;
 
 export default function IntroVideo() {
-  const [fase, setFase] = useState<Fase>('video');
+  const [fase, setFase] = useState<Fase>('checando');
+  const iniciado = useRef(false);
   const [mudo, setMudo] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const timers = useRef<number[]>([]);
@@ -26,6 +40,7 @@ export default function IntroVideo() {
   const agenda = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
 
   const fechar = () => {
+    marcarVista();
     video.current?.pause();
     setFase('saindo');
     agenda(() => setFase('fim'), SAIDA_MS);
@@ -36,7 +51,22 @@ export default function IntroVideo() {
     agenda(fechar, CARTAO_MS);
   };
 
+  // primeiro decide se toca (antes disso a tela fica preta, sem baixar o vídeo)
   useEffect(() => {
+    setFase(jaViu() ? 'fim' : 'video');
+    const aoTecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
+    window.addEventListener('keydown', aoTecla);
+    return () => {
+      window.removeEventListener('keydown', aoTecla);
+      timers.current.forEach(clearTimeout);
+      document.body.style.overflow = '';
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (fase !== 'video' || iniciado.current) return;
+    iniciado.current = true;
     document.body.style.overflow = 'hidden';
     const v = video.current;
     if (v) {
@@ -49,19 +79,12 @@ export default function IntroVideo() {
         setFase('portao');
       });
     }
-    const aoTecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
-    window.addEventListener('keydown', aoTecla);
-    return () => {
-      window.removeEventListener('keydown', aoTecla);
-      timers.current.forEach(clearTimeout);
-      document.body.style.overflow = '';
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fase]);
 
   useEffect(() => { if (fase === 'fim') document.body.style.overflow = ''; }, [fase]);
 
   if (fase === 'fim') return null;
+  if (fase === 'checando') return <div aria-hidden="true" style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#000' }} />;
 
   /** O clique em "entrar" é o gesto que o navegador exige para liberar o som. */
   const entrar = () => {
