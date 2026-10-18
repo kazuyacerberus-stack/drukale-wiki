@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { supabase } from '../lib/db';
 import { garantirPerfil } from '../lib/perfil';
+import { garantirSessao } from '../lib/auth';
 
 /**
  * Portas abertas (sql/44-portas-abertas.sql): todo visitante sem login
@@ -16,9 +17,10 @@ import { garantirPerfil } from '../lib/perfil';
 const CHAVE_RECARREGOU = 'drk-sessao-anonima-recarregou';
 
 async function entrarComoVisitante() {
-  const { error } = await supabase.auth.signInAnonymously();
-  if (error) {
-    console.warn('Sessão de visitante indisponível — ligue "Allow anonymous sign-ins" no Supabase.', error.message);
+  try {
+    await garantirSessao();
+  } catch (e) {
+    console.warn(e instanceof Error ? e.message : e);
     return;
   }
   try { await garantirPerfil(); } catch { /* o perfil é criado depois, na primeira tela que precisar */ }

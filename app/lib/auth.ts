@@ -18,6 +18,22 @@ export async function cabecalhoAuth(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Devolve o id de quem está usando o site. Se ainda não há sessão, cria
+ * na hora a conta invisível de visitante (sql/44-portas-abertas.sql) —
+ * assim um botão como "reservar imagem" funciona mesmo na 1ª visita.
+ * Lança erro com explicação se o Supabase não permitir contas anônimas.
+ */
+export async function garantirSessao(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  if (data.session) return data.session.user.id;
+  const { data: novo, error } = await supabase.auth.signInAnonymously();
+  if (error || !novo.user) {
+    throw new Error('O envio sem conta ainda não foi ativado no site. Avise o GM (falta ligar "Allow anonymous sign-ins" no Supabase).');
+  }
+  return novo.user.id;
+}
+
 export async function entrar(email: string, senha: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
   if (error) throw new Error(traduz(error.message));

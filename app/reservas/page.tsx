@@ -8,6 +8,8 @@ import Avatar from '../components/Avatar';
 import { useBeep } from '../components/useBeep';
 import BotaoSom from '../components/BotaoSom';
 import { supabase } from '../lib/db';
+import { garantirSessao } from '../lib/auth';
+import { garantirPerfil } from '../lib/perfil';
 import { normalizarBusca } from '../lib/regras';
 import { mensagemReserva, removerImagemReserva, urlImagemReserva, type Reserva } from '../lib/reservas';
 
@@ -57,6 +59,24 @@ function ReservasConteudo() {
   const [busca, setBusca] = useState('');
   const [soMinhas, setSoMinhas] = useState(false);
   const [formAberto, setFormAberto] = useState(false);
+  const [abrindo, setAbrindo] = useState(false);
+  const [pedirApelido, setPedirApelido] = useState(false);
+
+  // qualquer pessoa reserva: sem conta, a sessão de visitante nasce no clique
+  const abrirFormulario = async () => {
+    setAbrindo(true); setErro('');
+    try {
+      const uid = await garantirSessao();
+      // visitante ainda com nome automático: o formulário pede como ele quer aparecer
+      try { const p = await garantirPerfil(); setPedirApelido(!p || p.apelido.startsWith('visitante_')); } catch { setPedirApelido(true); }
+      setUserId(uid);
+      setFormAberto(true);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível abrir o formulário.');
+    } finally {
+      setAbrindo(false);
+    }
+  };
 
   const carregarPerfis = async (ids: string[]) => {
     const novos = [...new Set(ids)];
@@ -113,12 +133,13 @@ function ReservasConteudo() {
           aria-label="Buscar reservas"
         />
         <button type="button" className={soMinhas ? 'mini-btn on' : 'mini-btn'} onClick={() => setSoMinhas((v) => !v)}>só as minhas</button>
-        {userId && !formAberto && <button type="button" className="mini-btn" onClick={() => setFormAberto(true)}>+ reservar imagem</button>}
+        {!formAberto && <button type="button" className="mini-btn on" disabled={abrindo} onClick={abrirFormulario}>{abrindo ? 'abrindo...' : '+ RESERVAR IMAGEM'}</button>}
       </div>
 
       {formAberto && userId && (
         <ReservaForm
           userId={userId}
+          pedirApelido={pedirApelido}
           faccoes={faccoes}
           onCancelar={() => setFormAberto(false)}
           onCriada={(nova) => { setReservas((prev) => [nova, ...prev]); void carregarPerfis([nova.user_id]); setFormAberto(false); }}

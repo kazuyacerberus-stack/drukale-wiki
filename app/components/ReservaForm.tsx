@@ -15,8 +15,9 @@ type Ocupada = { nome: string; quem: string; quando: string };
  * mesma imagem (o arquivo) já não está reservada por outra pessoa.
  */
 export default function ReservaForm({
-  userId, faccoes, onCriada, onCancelar,
-}: { userId: string; faccoes: string[]; onCriada: (r: Reserva) => void; onCancelar: () => void }) {
+  userId, faccoes, onCriada, onCancelar, pedirApelido = false,
+}: { userId: string; faccoes: string[]; onCriada: (r: Reserva) => void; onCancelar: () => void; pedirApelido?: boolean }) {
+  const [apelido, setApelido] = useState('');
   const [nome, setNome] = useState('');
   const [faccao, setFaccao] = useState('');
   const [raca, setRaca] = useState('');
@@ -75,6 +76,13 @@ export default function ReservaForm({
     setEnviando(true); setErro('');
     let caminho = '';
     try {
+      // quem reserva sem conta escolhe como aparece na lista ("jogador")
+      if (pedirApelido) {
+        const { error: erroApelido } = await supabase.from('profiles').update({ apelido: apelido.trim() }).eq('user_id', userId);
+        if (erroApelido) {
+          throw new Error(erroApelido.code === '23505' ? 'Esse apelido já é usado por outra pessoa. Escolha outro.' : `Não consegui salvar seu apelido: ${erroApelido.message}`);
+        }
+      }
       const hash = await hashDaImagem(arquivo);
       const { data: igual } = await supabase.from('reservas_imagens').select('id').eq('imagem_hash', hash).limit(1);
       if ((igual ?? []).length) throw new Error('Essa imagem (o mesmo arquivo) já foi reservada por alguém.');
@@ -105,6 +113,17 @@ export default function ReservaForm({
   return (
     <form className="panel reserva-form" onSubmit={reservar}>
       <span className="grupo-t">nova reserva de imagem</span>
+
+      {pedirApelido && (
+        <div className="grupo">
+          <div className="field">
+            <label>seu nome ou apelido no grupo *</label>
+            <input value={apelido} onChange={(e) => setApelido(e.target.value)} minLength={2} maxLength={32} required
+              placeholder="como o grupo te conhece" />
+            <p className="dica">aparece na reserva como o jogador dono dela — não precisa criar conta</p>
+          </div>
+        </div>
+      )}
 
       <div className="grupo">
         <p className="dica" style={{ marginTop: 0 }}>o personagem do RPG que vai usar a imagem</p>
