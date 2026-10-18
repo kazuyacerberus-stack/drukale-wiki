@@ -5,20 +5,21 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * Abertura em vídeo da página inicial (substitui a abertura Matrix).
  *
- * - Começa sem som: navegador nenhum deixa vídeo tocar com áudio sozinho.
- *   O botão "ativar som" liga o áudio com um clique.
+ * - Tenta tocar COM som. Se o navegador bloquear (Chrome, Safari e Firefox
+ *   bloqueiam áudio que começa sem um clique da pessoa), mostra a tela
+ *   "▶ ENTRAR": esse clique é o que libera o som, e o vídeo começa do zero.
  * - "pular" fecha na hora, a qualquer momento.
  * - O vídeo é mantido inteiro, com os créditos originais. Quando ele
  *   termina, entra o cartão de Terra Save, que é nosso, e o site abre.
  */
-type Fase = 'video' | 'cartao' | 'saindo' | 'fim';
+type Fase = 'portao' | 'video' | 'cartao' | 'saindo' | 'fim';
 
 const SAIDA_MS = 700;
 const CARTAO_MS = 3200;
 
 export default function IntroVideo() {
   const [fase, setFase] = useState<Fase>('video');
-  const [mudo, setMudo] = useState(true);
+  const [mudo, setMudo] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
   const timers = useRef<number[]>([]);
 
@@ -38,8 +39,16 @@ export default function IntroVideo() {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const v = video.current;
-    // se o vídeo não carregar (rede ruim, formato), não prende ninguém na tela preta
-    v?.play().catch(() => { /* fica parado; os botões continuam funcionando */ });
+    if (v) {
+      v.muted = false;
+      v.volume = 1;
+      v.play().catch(() => {
+        // som bloqueado pelo navegador: pede o clique que libera o áudio
+        v.pause();
+        v.currentTime = 0;
+        setFase('portao');
+      });
+    }
     const aoTecla = (e: KeyboardEvent) => { if (e.key === 'Escape') fechar(); };
     window.addEventListener('keydown', aoTecla);
     return () => {
@@ -53,6 +62,23 @@ export default function IntroVideo() {
   useEffect(() => { if (fase === 'fim') document.body.style.overflow = ''; }, [fase]);
 
   if (fase === 'fim') return null;
+
+  /** O clique em "entrar" é o gesto que o navegador exige para liberar o som. */
+  const entrar = () => {
+    const v = video.current;
+    if (!v) return;
+    v.muted = false;
+    v.volume = 1;
+    v.currentTime = 0;
+    setMudo(false);
+    setFase('video');
+    v.play().catch(() => {
+      // nem com clique (raro: aba sem permissão de áudio): toca mudo para não travar
+      v.muted = true;
+      setMudo(true);
+      v.play().catch(() => {});
+    });
+  };
 
   const alternarSom = () => {
     const v = video.current;
@@ -81,16 +107,29 @@ export default function IntroVideo() {
         ref={video}
         src="/intro/terra-save-intro.mp4"
         poster="/intro/terra-save-intro.jpg"
-        muted
-        autoPlay
         playsInline
         preload="auto"
         onEnded={mostrarCartao}
         style={{
           position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain',
-          opacity: fase === 'video' ? 1 : 0, transition: 'opacity 900ms ease',
+          opacity: fase === 'video' || fase === 'portao' ? 1 : 0, transition: 'opacity 900ms ease',
         }}
       />
+
+      {fase === 'portao' && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: 22, background: 'rgba(0,0,0,.55)', padding: 24, textAlign: 'center',
+        }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-terra-save.png" alt="Terra Save" style={{ width: 'min(320px, 60vw)', height: 'auto' }} />
+          <button type="button" onClick={entrar} autoFocus style={{
+            ...botao, fontSize: 18, padding: '14px 34px', letterSpacing: '.3em',
+            border: '1px solid rgba(233,228,218,.7)', background: 'rgba(20,16,43,.75)',
+          }}>▶ ENTRAR</button>
+          <p style={{ margin: 0, color: 'rgba(233,228,218,.6)', fontSize: 12, letterSpacing: '.15em' }}>🔊 com som</p>
+        </div>
+      )}
 
       {/* cartão final: a marca de Terra Save, depois do vídeo */}
       <div
@@ -117,7 +156,7 @@ export default function IntroVideo() {
         {fase === 'video' && (
           <button type="button" style={botao} onClick={alternarSom}>{mudo ? '🔊 ativar som' : '🔇 sem som'}</button>
         )}
-        <button type="button" style={botao} onClick={fechar} autoFocus>pular ›</button>
+        <button type="button" style={botao} onClick={fechar}>pular ›</button>
       </div>
     </div>
   );
