@@ -49,7 +49,7 @@ export default function ComunidadeAdmin() {
   useEffect(() => { void carregar(); }, [carregar]);
 
   const q = busca.trim().toLowerCase();
-  const lista = q ? contas.filter((c) => c.email.toLowerCase().includes(q) || c.apelido.toLowerCase().includes(q)) : contas;
+  const lista = q ? contas.filter((c) => (c.email ?? '').toLowerCase().includes(q) || c.apelido.toLowerCase().includes(q)) : contas;
 
   const silenciar = async (uid: string) => {
     const idx = duracao[uid] ?? 1;

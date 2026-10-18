@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './matrix.css';
 import NavMobile from './components/NavMobile';
 import Ajudante from './components/Ajudante';
+import SessaoAnonima from './components/SessaoAnonima';
 
 export const metadata: Metadata = {
   title: 'Terra Save',
@@ -20,6 +21,7 @@ export default function RootLayout({
         {children}
         <NavMobile />
         <Ajudante />
+        <SessaoAnonima />
       </body>
     </html>
   );

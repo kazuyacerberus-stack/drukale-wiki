@@ -17,7 +17,8 @@ export default function Login() {
   // quem já está logado não precisa ver esta tela
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/admin');
+      // a conta invisível de visitante (SessaoAnonima) não conta como login
+      if (data.session && !data.session.user.is_anonymous) router.replace('/admin');
     });
   }, [router]);
 

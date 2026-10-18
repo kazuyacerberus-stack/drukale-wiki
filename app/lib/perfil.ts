@@ -57,6 +57,8 @@ export async function garantirPerfil(): Promise<Perfil | null> {
   const doCadastro = typeof user.user_metadata?.apelido === 'string' ? user.user_metadata.apelido.trim() : '';
   const provisorio = doCadastro.length >= 2 && doCadastro.length <= 32
     ? doCadastro
+    : user.is_anonymous
+    ? `visitante_${user.id.slice(0, 6)}`
     : (user.email ?? 'membro').split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24) || 'membro';
 
   const { data: criado, error } = await supabase

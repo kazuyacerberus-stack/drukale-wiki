@@ -24,7 +24,7 @@ export default function Cadastro() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace('/perfil');
+      if (data.session && !data.session.user.is_anonymous) router.replace('/perfil');
     });
   }, [router]);
 
