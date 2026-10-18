@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import './matrix.css';
-import Abertura from './components/Abertura';
+import IntroVideo from './components/IntroVideo';
 import Avatar from './components/Avatar';
 import { useBeep } from './components/useBeep';
 import BotaoSom from './components/BotaoSom';
@@ -79,7 +79,7 @@ export default function Home() {
 
   return (
     <div className="term tn">
-      <Abertura />
+      <IntroVideo />
 
       <header className="tn-topo">
         <Link href="/" className="tn-marca">
