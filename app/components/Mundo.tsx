@@ -9,6 +9,7 @@ import { gerarMapaPolitico } from './mundo/politico';
 import {
   TIPOS, tipoDe, paraVetor, paraLatLon, coordenadaLegivel, lerLocais,
   LIMITES_LOCAL, MINIMO_LINKS_DOMINIO, BUCKET_LOCAIS, conferirImagem, caminhoDaImagem,
+  BUCKET_LOCAIS_DOCS, conferirDocumento, tipoMimeDocumento, caminhoDoDocumento,
   linksDominioValidos, mensagemLocal, RAIO_MAX, grausParaKm,
   type Local, type TipoLocal,
 } from '../lib/mundo';
@@ -16,6 +17,7 @@ import { normalizarNome } from '../lib/faccoes';
 import { completude, type Apresentacao } from '../lib/apresentacao';
 import TerritorioApresentacao from './mundo/TerritorioApresentacao';
 import TerritorioEditor from './mundo/TerritorioEditor';
+import DocumentoViewer from './mundo/DocumentoViewer';
 import { desenharMiniGlobo } from './mundo/miniGlobo';
 import type { Mapas } from './mundo/textura';
 
@@ -123,6 +125,11 @@ export default function Mundo() {
   const [fotoPreview, setFotoPreview] = useState('');
   const [erroFoto, setErroFoto] = useState('');
   const [tirarFoto, setTirarFoto] = useState(false);
+  // o documento (PDF/Word) do ambiente, enquanto o formulário está aberto
+  const [doc, setDoc] = useState<File | null>(null);
+  const [erroDoc, setErroDoc] = useState('');
+  const [tirarDoc, setTirarDoc] = useState(false);
+  const [verDoc, setVerDoc] = useState(false);
 
   /* ---------- todos veem o mapa; só o GM cadastra (sql/46-mapa-so-gm.sql) ---------- */
   useEffect(() => {
@@ -551,6 +558,7 @@ export default function Mundo() {
     limparFoto();
     setRascunho({
       id: '', nome: '', tipo: 'cidade', resumo: '', lat, lon, altitude: 0, imagem: null, faccao: null,
+      documento: null, documentoNome: null,
       userId: ehAdmin ? null : userId,
       statusAprovacao: ehAdmin ? 'aprovado' : 'pendente',
       motivoReprovacao: null,
@@ -570,7 +578,39 @@ export default function Mundo() {
     setFotoPreview((v) => { if (v) URL.revokeObjectURL(v); return ''; });
     setErroFoto('');
     setTirarFoto(false);
+    setDoc(null);
+    setErroDoc('');
+    setTirarDoc(false);
   };
+
+  function escolherDoc(f: File | null) {
+    if (!f) { setDoc(null); setErroDoc(''); return; }
+    const reclamacao = conferirDocumento(f);
+    if (reclamacao) { setErroDoc(reclamacao); setDoc(null); return; }
+    setErroDoc('');
+    setDoc(f);
+    setTirarDoc(false);
+  }
+
+  /** O documento também vai do navegador direto para o Supabase (a Vercel corta acima de 4,5 MB). */
+  async function subirDoc(f: File) {
+    const ext = (/\.([^.]+)$/.exec(f.name)?.[1] ?? 'pdf').toLowerCase();
+    const nome = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await supabase.storage
+      .from(BUCKET_LOCAIS_DOCS).upload(nome, f, { upsert: false, contentType: tipoMimeDocumento(f) });
+    if (error) {
+      throw new Error(/bucket|not found/i.test(error.message)
+        ? 'O envio de documentos ainda não foi ativado. Aplique o sql/48-documento-dos-locais.sql no Supabase.'
+        : `Não consegui enviar o documento: ${error.message}`);
+    }
+    return supabase.storage.from(BUCKET_LOCAIS_DOCS).getPublicUrl(nome).data.publicUrl;
+  }
+
+  async function apagarDoc(url: string | null) {
+    const caminho = caminhoDoDocumento(url);
+    if (!caminho) return;
+    await supabase.storage.from(BUCKET_LOCAIS_DOCS).remove([caminho]);
+  }
 
   function escolherFoto(f: File | null) {
     if (!f) { limparFoto(); return; }
@@ -624,12 +664,19 @@ export default function Mundo() {
     const antiga = rascunho.imagem;
     let imagem = antiga;
     let subiuAgora: string | null = null;
+    const docAntigo = rascunho.documento;
+    let documento = docAntigo;
+    let documentoNome = rascunho.documentoNome;
+    let docSubiuAgora: string | null = null;
     try {
       if (foto) { imagem = await subirFoto(foto); subiuAgora = imagem; }
       else if (tirarFoto) imagem = null;
+      if (doc) { documento = await subirDoc(doc); docSubiuAgora = documento; documentoNome = doc.name.slice(0, 240); }
+      else if (tirarDoc) { documento = null; documentoNome = null; }
     } catch (e) {
+      if (subiuAgora) await apagarFoto(subiuAgora);
       setSalvando(false);
-      setErro(e instanceof Error ? e.message : 'não consegui enviar a imagem');
+      setErro(e instanceof Error ? e.message : 'não consegui enviar o arquivo');
       return;
     }
 
@@ -643,6 +690,8 @@ export default function Mundo() {
       altitude: tipoDe(rascunho.tipo).orbital ? (rascunho.altitude || 0.55) : 0,
       imagem,
       faccao: rascunho.faccao || null,
+      documento_url: documento,
+      documento_nome: documento ? documentoNome : null,
     };
 
     // quem não é admin está propondo um território: fica pendente, em
@@ -666,11 +715,15 @@ export default function Mundo() {
       // a gravação falhou depois do envio: a imagem ficaria órfã no
       // balde para sempre, então ela volta atrás junto
       if (subiuAgora) await apagarFoto(subiuAgora);
-      setErro(mensagemLocal(error));
+      if (docSubiuAgora) await apagarDoc(docSubiuAgora);
+      setErro(/documento_url|documento_nome/.test(error.message ?? '')
+        ? 'Aplique o sql/48-documento-dos-locais.sql no Supabase para guardar documentos.'
+        : mensagemLocal(error));
       return;
     }
-    // deu certo: agora sim a imagem velha pode ir embora
+    // deu certo: agora sim a imagem e o documento velhos podem ir embora
     if (antiga && antiga !== imagem) await apagarFoto(antiga);
+    if (docAntigo && docAntigo !== documento) await apagarDoc(docAntigo);
 
     setRascunho(null);
     setCravando(false);
@@ -713,6 +766,7 @@ export default function Mundo() {
     const { error } = await supabase.from('locais').delete().eq('id', l.id);
     if (error) { setErro(error.message); return; }
     await apagarFoto(l.imagem);
+    await apagarDoc(l.documento);
     setSelecionado(null);
     setRascunho(null);
     limparFoto();
@@ -1048,6 +1102,14 @@ export default function Mundo() {
                 </div>
               )}
 
+              {selecionado.documento && (
+                <div className="painel-acoes" style={{ marginTop: 14 }}>
+                  <button type="button" className="mini-btn perigo" onClick={() => setVerDoc(true)}>
+                    📄 abrir documento{selecionado.documentoNome ? ` · ${selecionado.documentoNome}` : ''}
+                  </button>
+                </div>
+              )}
+
               {/* a aba do território: todo mundo abre; o dono e o game master montam */}
               <div className="painel-acoes" style={{ marginTop: 14 }}>
                 {selecionado.apresentacao && (
@@ -1200,6 +1262,30 @@ export default function Mundo() {
                   : <p className="dica">JPG, PNG, WEBP ou GIF, até 8 MB.</p>}
               </div>
 
+              <div className="field">
+                <label>documento do ambiente (PDF ou Word)</label>
+                {(doc || (rascunho.documento && !tirarDoc)) && (
+                  <p className="dica" style={{ margin: '0 0 6px' }}>
+                    📄 {doc ? `${doc.name} (novo)` : rascunho.documentoNome || 'documento atual'}
+                  </p>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={(e) => { escolherDoc(e.target.files?.[0] ?? null); }}
+                />
+                {(rascunho.documento || doc) && !tirarDoc && (
+                  <button
+                    type="button"
+                    className="mini-btn dim"
+                    onClick={() => { setDoc(null); setErroDoc(''); setTirarDoc(true); }}
+                  >tirar o documento</button>
+                )}
+                {erroDoc
+                  ? <p className="erro">{erroDoc}</p>
+                  : <p className="dica">PDF, DOC ou DOCX, até 20 MB. Todos poderão ler no mapa.</p>}
+              </div>
+
               <div className="painel-acoes">
                 <button type="button" className="mini-btn perigo"
                   disabled={salvando} onClick={salvar}>
@@ -1224,6 +1310,15 @@ export default function Mundo() {
         podeEditar={podeMontar(aba)}
         onEditar={() => montarAba(aba)}
         onFechar={() => setAba(null)}
+      />
+    )}
+
+    {verDoc && selecionado?.documento && (
+      <DocumentoViewer
+        url={selecionado.documento}
+        nome={selecionado.documentoNome}
+        titulo={selecionado.nome}
+        onFechar={() => setVerDoc(false)}
       />
     )}
 

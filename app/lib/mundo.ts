@@ -50,6 +50,8 @@ export type Local = {
   lon: number;      // -180 a 180
   altitude: number; // 0 no chão; acima disso, em órbita
   imagem: string | null;   // endereço da foto do ambiente, no Storage
+  documento: string | null;      // PDF ou Word do ambiente (sql/48), no Storage
+  documentoNome: string | null;  // nome original do arquivo, para baixar
   faccao: string | null;   // nome da facção dona deste local, para o mapa político
   userId: string | null;           // quem propôs este território
   statusAprovacao: StatusAprovacao;
@@ -105,6 +107,50 @@ export function conferirImagem(f: { type: string; size: number; name: string }) 
     return `A imagem tem ${(f.size / 1024 / 1024).toFixed(1)} MB e o limite é 8 MB.`;
   }
   return null;
+}
+
+/* ---------- o documento do ambiente (PDF ou Word) ---------- */
+
+export const BUCKET_LOCAIS_DOCS = 'locais_docs';
+export const DOCUMENTO_MAX_BYTES = 20 * 1024 * 1024;   // 20 MB — o mesmo limite do balde (sql/48)
+const DOC_TIPOS: Record<string, 'pdf' | 'word'> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'word',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'word',
+};
+const DOC_EXT: Record<string, 'pdf' | 'word'> = { pdf: 'pdf', doc: 'word', docx: 'word' };
+
+const extensao = (nome: string) => (/\.([^.?#/]+)(?:[?#].*)?$/.exec(nome)?.[1] ?? '').toLowerCase();
+
+/** Diz se o documento escolhido serve; null quando está tudo certo. */
+export function conferirDocumento(f: { type: string; size: number; name: string }) {
+  if (!DOC_TIPOS[f.type] && !DOC_EXT[extensao(f.name)]) return 'O documento precisa ser PDF ou Word (.doc / .docx).';
+  if (f.size === 0) return 'O arquivo está vazio.';
+  if (f.size > DOCUMENTO_MAX_BYTES) return `O documento tem ${(f.size / 1024 / 1024).toFixed(1)} MB e o limite é 20 MB.`;
+  return null;
+}
+
+/** O tipo de conteúdo que o Supabase precisa receber, mesmo quando o navegador não informa. */
+export function tipoMimeDocumento(f: { type: string; name: string }) {
+  if (DOC_TIPOS[f.type]) return f.type;
+  const e = extensao(f.name);
+  return e === 'pdf' ? 'application/pdf'
+    : e === 'doc' ? 'application/msword'
+    : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+}
+
+/** PDF ou Word, olhando o nome (ou o endereço) do arquivo. */
+export function tipoDocumento(nomeOuUrl: string): 'pdf' | 'word' {
+  return DOC_EXT[extensao(nomeOuUrl)] ?? 'pdf';
+}
+
+/** O caminho do documento dentro do balde, a partir do endereço público. */
+export function caminhoDoDocumento(url: string | null) {
+  if (!url) return null;
+  const marca = `/${BUCKET_LOCAIS_DOCS}/`;
+  const i = url.indexOf(marca);
+  if (i < 0) return null;
+  return decodeURIComponent(url.slice(i + marca.length).split('?')[0]) || null;
 }
 
 /** O caminho do arquivo dentro do balde, a partir do endereço público. */
@@ -167,6 +213,8 @@ export function lerLocais(valor: unknown): Local[] {
       lon: ((((lon + 180) % 360) + 360) % 360) - 180,
       altitude: Number.isFinite(Number(o.altitude)) ? Number(o.altitude) : 0,
       imagem: typeof o.imagem === 'string' && o.imagem.trim() ? o.imagem : null,
+      documento: typeof o.documento_url === 'string' && o.documento_url.trim() ? o.documento_url : null,
+      documentoNome: typeof o.documento_nome === 'string' && o.documento_nome.trim() ? o.documento_nome : null,
       faccao: typeof o.faccao === 'string' && o.faccao.trim() ? o.faccao : null,
       userId: typeof o.user_id === 'string' ? o.user_id : null,
       statusAprovacao: (['pendente', 'aprovado', 'reprovado'].includes(o.status_aprovacao as string)
