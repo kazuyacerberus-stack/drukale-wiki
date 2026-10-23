@@ -4,11 +4,12 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useSouGm } from './useSouGm';
 import {
-  slugify, lerSecoes, LIMITES, conferirFicha, subirFicha,
+  supabase, slugify, lerSecoes, LIMITES, conferirFicha, subirFicha,
   apagarFichaDoNavegador, FICHA_MAX_ROTULO,
   type Character, type Secao,
 } from '../lib/db';
 import { cabecalhoAuth } from '../lib/auth';
+import { lerRascunhoFicha, type RascunhoFicha } from '../lib/rascunhoFicha';
 
 /** 350000 -> "342 KB" ; 5300000 -> "5.1 MB" */
 function tamanhoLegivel(bytes: number): string {
@@ -69,6 +70,51 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
   /* ---------- abas da história ---------- */
   const [secoes, setSecoes] = useState<Secao[]>(() => lerSecoes(inicial?.sections));
   const [confirmarAba, setConfirmarAba] = useState<number | null>(null);
+  const [chaveRascunho, setChaveRascunho] = useState<string | null>(null);
+  const [rascunhoDisponivel, setRascunhoDisponivel] = useState<RascunhoFicha | null>(null);
+  const [avisoRascunho, setAvisoRascunho] = useState('');
+  const [mostrarPrevia, setMostrarPrevia] = useState(false);
+  const [confirmarRestauro, setConfirmarRestauro] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    const abrir = (id: string | null) => {
+      if (!vivo) return;
+      const chave = id ? `drk-ficha-rascunho:${id}:${inicial?.id ?? 'nova'}` : null;
+      setChaveRascunho(chave);
+      setRascunhoDisponivel(null);
+      setAvisoRascunho('');
+      setConfirmarRestauro(false);
+      if (chave) {
+        try { setRascunhoDisponivel(lerRascunhoFicha(window.localStorage.getItem(chave))); }
+        catch { /* o formulário continua utilizável sem armazenamento local */ }
+      }
+    };
+    supabase.auth.getSession().then(({ data }) => abrir(data.session?.user.id ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, sessao) => abrir(sessao?.user.id ?? null));
+    return () => { vivo = false; sub.subscription.unsubscribe(); };
+  }, [inicial?.id]);
+
+  const salvarRascunho = () => {
+    if (!chaveRascunho) return;
+    const rascunho: RascunhoFicha = { versao: 1, campos: { ...f }, secoes: secoes.map((s) => ({ ...s })) };
+    try {
+      window.localStorage.setItem(chaveRascunho, JSON.stringify(rascunho));
+      setRascunhoDisponivel(rascunho);
+      setAvisoRascunho('Rascunho de texto salvo neste navegador.');
+    } catch {
+      setAvisoRascunho('Não foi possível salvar neste navegador. Seu texto permanece no formulário.');
+    }
+  };
+
+  const restaurarRascunho = () => {
+    if (!rascunhoDisponivel) return;
+    setF({ ...rascunhoDisponivel.campos });
+    setSecoes(rascunhoDisponivel.secoes.map((s) => ({ ...s })));
+    setConfirmarAba(null);
+    setConfirmarRestauro(false);
+    setAvisoRascunho('Textos restaurados. Confira as imagens e os arquivos antes de enviar.');
+  };
 
   const novaAba = () =>
     setSecoes((s) => (s.length >= LIMITES.abas ? s : [...s, { titulo: '', texto: '' }]));
@@ -488,7 +534,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
 
         <div className="zoom">
           <button type="button" onClick={() => setZoom((z) => clamp(z - 15, 100, 400))}>−</button>
-          <input type="range" min={100} max={400} step={1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
+          <input type="range" aria-label="Zoom do retrato" min={100} max={400} step={1} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} />
           <button type="button" onClick={() => setZoom((z) => clamp(z + 15, 100, 400))}>+</button>
           <span className="zval">{zoom}%</span>
           <button type="button" className="rst" onClick={() => { setZoom(100); setOffset({ x: 0, y: 0 }); }}>reset</button>
@@ -510,18 +556,18 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
       <div className="grupo">
         <span className="grupo-t">identificação</span>
         <div className="field">
-          <label>nome *</label>
-          <input value={f.name} onChange={set('name')} placeholder="Elsharion Drukale" required />
+          <label htmlFor="ficha-nome">nome *</label>
+          <input id="ficha-nome" value={f.name} onChange={set('name')} placeholder="Ex.: Elsharion Drukale" required />
         </div>
         <div className="field">
-          <label>epíteto</label>
-          <input value={f.epithet} onChange={set('epithet')} placeholder="Hierarca da Anarquia" />
-          <p className="dica">o título pelo qual ele é conhecido</p>
+          <label htmlFor="ficha-epiteto">epíteto</label>
+          <input id="ficha-epiteto" aria-describedby="ficha-epiteto-dica" value={f.epithet} onChange={set('epithet')} placeholder="Ex.: Hierarca da Anarquia" />
+          <p className="dica" id="ficha-epiteto-dica">o título pelo qual ele é conhecido</p>
         </div>
 
         {editando && inicial && (
           <div className="field">
-            <label>endereço da página</label>
+            <span className="field-rotulo">endereço da página</span>
             <div className="slugbox">
               <code>/personagem/{trocarSlug ? novoSlug : inicial.slug}</code>
               {novoSlug !== inicial.slug && (
@@ -546,24 +592,24 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
         <span className="grupo-t">classificação</span>
         <div className="dupla">
           <div className="field">
-            <label>facção</label>
-            <input value={f.faction} onChange={set('faction')} placeholder="Casa Drukale" />
+            <label htmlFor="ficha-faccao">facção</label>
+            <input id="ficha-faccao" value={f.faction} onChange={set('faction')} placeholder="Ex.: Casa Drukale" />
           </div>
           <div className="field">
-            <label>status</label>
-            <select value={f.status} onChange={set('status')}>
+            <label htmlFor="ficha-status">status</label>
+            <select id="ficha-status" value={f.status} onChange={set('status')}>
               {STATUS.map((s) => (
                 <option key={s || 'indef'} value={s}>{s || '— indefinido —'}</option>
               ))}
             </select>
           </div>
           <div className="field">
-            <label>raça / origem</label>
-            <input value={f.race} onChange={set('race')} placeholder="Sangue-Antigo" />
+            <label htmlFor="ficha-raca">raça / origem</label>
+            <input id="ficha-raca" value={f.race} onChange={set('race')} placeholder="Ex.: Sangue-Antigo" />
           </div>
           <div className="field">
-            <label>afiliações</label>
-            <input value={f.affiliation} onChange={set('affiliation')} placeholder="Conselho Sombrio" />
+            <label htmlFor="ficha-afiliacoes">afiliações</label>
+            <input id="ficha-afiliacoes" value={f.affiliation} onChange={set('affiliation')} placeholder="Ex.: Conselho Sombrio" />
           </div>
         </div>
       </div>
@@ -571,13 +617,13 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
       <div className="grupo">
         <span className="grupo-t">conteúdo</span>
         <div className="field">
-          <label>citação</label>
-          <input value={f.quote} onChange={set('quote')} placeholder="A ordem é só o caos que ainda não acordou." />
-          <p className="dica">aparece em destaque no topo da página dele</p>
+          <label htmlFor="ficha-citacao">citação</label>
+          <input id="ficha-citacao" aria-describedby="ficha-citacao-dica" value={f.quote} onChange={set('quote')} placeholder="Ex.: A ordem é só o caos que ainda não acordou." />
+          <p className="dica" id="ficha-citacao-dica">aparece em destaque no topo da página dele</p>
         </div>
         <div className="field">
-          <label>resumo *</label>
-          <textarea value={f.description} onChange={set('description')} rows={3}
+          <label htmlFor="ficha-resumo">resumo *</label>
+          <textarea id="ficha-resumo" value={f.description} onChange={set('description')} rows={3}
             placeholder="Uma ou duas frases — é o que aparece na galeria." required />
         </div>
       </div>
@@ -600,17 +646,18 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
             <div className="aba-edit-topo">
               <span className="aba-num">{i + 1}</span>
               <input
+                aria-label={`Título da aba ${i + 1}`}
                 value={a.titulo}
                 maxLength={LIMITES.titulo}
                 onChange={(e) => mudarAba(i, 'titulo', e.target.value)}
                 placeholder="nome da aba — ex: Origem"
               />
               <button
-                type="button" className="mini-btn" title="subir"
+                type="button" className="mini-btn" title="subir" aria-label={`Mover aba ${i + 1} para cima`}
                 onClick={() => moverAba(i, -1)} disabled={i === 0}
               >↑</button>
               <button
-                type="button" className="mini-btn" title="descer"
+                type="button" className="mini-btn" title="descer" aria-label={`Mover aba ${i + 1} para baixo`}
                 onClick={() => moverAba(i, 1)} disabled={i === secoes.length - 1}
               >↓</button>
               {confirmarAba === i ? (
@@ -629,6 +676,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               )}
             </div>
             <textarea
+              aria-label={`Conteúdo da aba ${i + 1}`}
               value={a.texto}
               rows={7}
               maxLength={LIMITES.texto}
@@ -671,7 +719,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               <label className="lnk" style={{ cursor: 'pointer' }}>
                 trocar imagem
                 <input
-                  type="file" accept="image/*" style={{ display: 'none' }}
+                  type="file" accept="image/*" className="ficha-arquivo-input" aria-label="Trocar retrato do personagem"
                   onChange={(e) => { const file = e.target.files?.[0]; if (file) loadFile(file); e.target.value = ''; }}
                 />
               </label>
@@ -694,7 +742,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               }}
             >
               <input
-                type="file" accept="image/*"
+                type="file" accept="image/*" className="ficha-arquivo-input" aria-label="Selecionar retrato do personagem"
                 onChange={(e) => { const file = e.target.files?.[0]; if (file) loadFile(file); e.target.value = ''; }}
               />
               <div className="drop-ico">[ + ]</div>
@@ -741,7 +789,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               trocar
               <input
                 type="file" accept=".pdf,.doc,.docx"
-                style={{ display: 'none' }} onChange={escolherFicha}
+                className="ficha-arquivo-input" aria-label="Trocar arquivo da ficha" onChange={escolherFicha}
               />
             </label>
             <button
@@ -753,7 +801,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
           <label className="arq-vazio">
             <input
               type="file" accept=".pdf,.doc,.docx"
-              style={{ display: 'none' }} onChange={escolherFicha}
+              className="ficha-arquivo-input" aria-label="Selecionar arquivo da ficha" onChange={escolherFicha}
             />
             <strong>escolher arquivo</strong>
             <span>
@@ -774,6 +822,30 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
 
         {erroFicha && <p className="erro" style={{ marginTop: 12 }}>{erroFicha}</p>}
       </div>
+
+      <div className="ficha-acoes-secundarias">
+        <button type="button" className="mini-btn" disabled={loading || !chaveRascunho} onClick={salvarRascunho}>Salvar rascunho</button>
+        {rascunhoDisponivel && <button type="button" className="mini-btn" disabled={loading} onClick={() => setConfirmarRestauro(true)}>Restaurar rascunho salvo</button>}
+        <button type="button" className="mini-btn" aria-expanded={mostrarPrevia} aria-controls="ficha-previa" onClick={() => setMostrarPrevia((v) => !v)}>
+          {mostrarPrevia ? 'Fechar prévia' : 'Pré-visualizar'}
+        </button>
+      </div>
+      {confirmarRestauro && <div className="consulta-erro" role="group" aria-label="Confirmar restauração do rascunho">
+        <p>Restaurar substitui os textos atuais pelos textos do rascunho salvo.</p>
+        <button type="button" className="mini-btn" onClick={restaurarRascunho}>Confirmar restauração</button>{' '}
+        <button type="button" className="mini-btn" onClick={() => setConfirmarRestauro(false)}>Manter textos atuais</button>
+      </div>}
+      <p className="ficha-rascunho-dica">O rascunho salva os textos neste navegador. Imagens e arquivos precisam ser anexados novamente ao reabrir.</p>
+      {avisoRascunho && <p role="status">{avisoRascunho}</p>}
+      {mostrarPrevia && (
+        <section className="ficha-previa" id="ficha-previa" aria-label="Prévia do conteúdo do personagem">
+          <h2>{f.name || 'Nome do personagem'}</h2>
+          {f.epithet && <p>{f.epithet}</p>}
+          {f.quote && <blockquote>{f.quote}</blockquote>}
+          <p>{f.description || 'Preencha o resumo para conferir a prévia.'}</p>
+          {secoes.map((secao, i) => <section key={i}><h3>{secao.titulo || `Aba ${i + 1}`}</h3><p>{secao.texto}</p></section>)}
+        </section>
+      )}
 
       <button className="go" disabled={loading}>
         {loading

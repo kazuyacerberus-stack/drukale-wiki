@@ -20,6 +20,7 @@ import TerritorioEditor from './mundo/TerritorioEditor';
 import DocumentoViewer from './mundo/DocumentoViewer';
 import { desenharMiniGlobo } from './mundo/miniGlobo';
 import type { Mapas } from './mundo/textura';
+import MapaPlano from './mundo/MapaPlano';
 
 const FOV = 38;
 const PERTO = 1.6;    // aproximação máxima
@@ -107,6 +108,10 @@ export default function Mundo() {
   const [filtroTipo, setFiltroTipo] = useState<Set<TipoLocal>>(new Set());
   const [buscaLocal, setBuscaLocal] = useState('');
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
+  const [modoPlano, setModoPlano] = useState(false);
+  const planoAtivo = modoPlano || fase === 'sem-webgl';
+  const planoAtivoRef = useRef(false);
+  useEffect(() => { planoAtivoRef.current = planoAtivo; }, [planoAtivo]);
   const [erro, setErro] = useState('');
   const [logado, setLogado] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
@@ -205,7 +210,7 @@ export default function Mundo() {
         }
 
         const globo = criarGlobo(tela, mapas);
-        if (!globo) { setFase('sem-webgl'); return; }
+        if (!globo) { setFase('sem-webgl'); setMostrarLista(false); return; }
         globoRef.current = globo;
         setFase('pronto');
 
@@ -229,6 +234,7 @@ export default function Mundo() {
         const quadro = (t: number) => {
           if (!vivo) return;
           raf = requestAnimationFrame(quadro);
+          if (planoAtivoRef.current) return;
 
           // gira sozinho quando ninguém está mexendo nem lendo uma ficha
           if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
@@ -433,6 +439,7 @@ export default function Mundo() {
   };
 
   const aoDescer = (e: React.PointerEvent) => {
+    if (planoAtivo) return;
     // cravando um ponto: apertar no planeta marca o centro, e arrastar
     // abre a região em volta — o globo fica parado enquanto isso
     if (cravando && ehAdmin && !rascunho && !(e.target as HTMLElement).closest?.('.marco')) {
@@ -454,6 +461,7 @@ export default function Mundo() {
   };
 
   const aoMover = (e: React.PointerEvent) => {
+    if (planoAtivo) return;
     const dr = desenhandoRaio.current;
     if (dr) {
       const q = pontoNoGlobo(e.clientX, e.clientY);
@@ -487,6 +495,7 @@ export default function Mundo() {
   };
 
   const aoRolar = (e: React.WheelEvent) => {
+    if (planoAtivo) return;
     // rolar é só para aproximar — sem isto, o planeta continuava girando
     // sozinho embaixo de quem só queria dar zoom num ponto parado
     if (girando) mudarGiro(false);
@@ -829,7 +838,7 @@ export default function Mundo() {
     <>
     <div className="mundo">
       <div
-        className={`palco${cravando ? ' cravando' : ''}`}
+        className={`palco${cravando ? ' cravando' : ''}${planoAtivo ? ' modo-plano' : ''}`}
         ref={palcoRef}
         onPointerDown={aoDescer}
         onPointerMove={aoMover}
@@ -838,10 +847,15 @@ export default function Mundo() {
         onWheel={aoRolar}
       >
         <canvas ref={fundoRef} className="ceu" />
-        <canvas ref={telaRef} className="globo" />
+        <canvas ref={telaRef} className="globo" style={{ visibility: planoAtivo ? 'hidden' : 'visible' }} />
+
+        {planoAtivo && <MapaPlano mapa={mapasRef.current?.cor ?? null} locais={locais}
+          selecionado={selecionado?.id ?? null} onSelecionar={(local) => {
+            setSelecionado(local); setRascunho(null); setMostrarLista(false); pausado.current = true;
+          }} />}
 
         {/* os marcadores: o React cria, o laço de desenho posiciona */}
-        {fase === 'pronto' && locais.map((l) => (
+        {fase === 'pronto' && !planoAtivo && locais.map((l) => (
           <button
             key={l.id}
             type="button"
@@ -875,13 +889,6 @@ export default function Mundo() {
           </div>
         )}
 
-        {fase === 'sem-webgl' && (
-          <div className="mundo-aviso">
-            <p>este navegador não consegue desenhar o globo</p>
-            <small>o 3D precisa de WebGL, que está desligado ou indisponível aqui</small>
-          </div>
-        )}
-
         {fase === 'pronto' && cravando && !emEdicao && (
           <div className="mundo-dica">
             {raioAoVivo !== null
@@ -890,12 +897,12 @@ export default function Mundo() {
           </div>
         )}
 
-        {fase === 'pronto' && modoPolitico && !gerandoPolitico && pontosPoliticos.length === 0 && (
+        {fase === 'pronto' && !planoAtivo && modoPolitico && !gerandoPolitico && pontosPoliticos.length === 0 && (
           <div className="mundo-dica">nenhum local tem facção definida ainda — edite um local e escolha uma</div>
         )}
 
         {/* ---------- zoom e giro por botão ---------- */}
-        {fase === 'pronto' && (
+        {fase === 'pronto' && !planoAtivo && (
           <div className="mundo-controles" aria-label="Controles de zoom e giro">
             <div className="giro-pad">
               <button type="button" className="giro-cima" title="inclinar para cima"
@@ -935,15 +942,23 @@ export default function Mundo() {
         <button
           type="button"
           className={`mini-btn${mostrarLista ? ' on' : ''}`}
+          aria-expanded={mostrarLista}
           onClick={() => setMostrarLista((v) => !v)}
         >
           ▤ locais
+        </button>
+        <button type="button" className={`mini-btn${planoAtivo ? ' on' : ''}`}
+          aria-pressed={planoAtivo}
+          disabled={fase !== 'pronto' || !!rascunho || cravando}
+          title={fase === 'sem-webgl' ? 'O mapa 2D está ativo porque WebGL não está disponível.' : 'Alternar entre o globo e o mapa plano'}
+          onClick={() => { setModoPlano((v) => !v); segurando.current = null; arrasto.current.ativo = false; }}>
+          {planoAtivo ? (fase === 'sem-webgl' ? 'Mapa 2D ativo' : 'Voltar ao globo 3D') : 'Ver mapa 2D'}
         </button>
         <button
           type="button"
           className={`mini-btn${modoPolitico ? ' on' : ''}`}
           onClick={alternarPolitico}
-          disabled={gerandoPolitico}
+          disabled={gerandoPolitico || planoAtivo || fase !== 'pronto'}
           title="pinta o território de cada facção sobre o globo"
         >
           {gerandoPolitico ? 'calculando território...' : modoPolitico ? <><Icone nome="globo" /> mapa por tipo</> : '◑ mapa político'}
@@ -951,6 +966,7 @@ export default function Mundo() {
         <button
           type="button"
           className={`mini-btn${girando ? '' : ' on'}`}
+          disabled={planoAtivo || fase !== 'pronto'}
           onClick={() => mudarGiro(!girando)}
           title={girando ? 'travar o planeta para olhar com calma' : 'deixar o planeta girar de novo'}
         >
@@ -960,6 +976,7 @@ export default function Mundo() {
           <button
             type="button"
             className={`mini-btn${cravando ? ' perigo' : ''}`}
+            disabled={planoAtivo || fase !== 'pronto'}
             onClick={() => { setCravando(!cravando); fechar(); }}
           >
             {cravando ? 'cancelar' : ehAdmin ? '+ novo local' : '+ propor território'}
@@ -970,7 +987,7 @@ export default function Mundo() {
       {/* ---------- lista e filtro de locais ---------- */}
       {mostrarLista && (
         <aside className="painel painel-locais" aria-label="Lista de locais">
-          <button type="button" className="painel-x" onClick={() => setMostrarLista(false)}>✕</button>
+          <button type="button" className="painel-x" aria-label="Fechar lista de locais" onClick={() => setMostrarLista(false)}>✕</button>
           <span className="painel-tipo">buscar no mapa</span>
           <h2>Locais</h2>
 
@@ -1029,7 +1046,7 @@ export default function Mundo() {
       {/* ---------- painel lateral ---------- */}
       {(selecionado || rascunho) && (
         <aside className="painel">
-          <button type="button" className="painel-x" onClick={fechar}>✕</button>
+          <button type="button" className="painel-x" aria-label="Fechar painel do local" onClick={fechar}>✕</button>
 
           {selecionado && !rascunho && (
             <>

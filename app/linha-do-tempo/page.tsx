@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import '../matrix.css';
 import PostComposer from '../components/PostComposer';
@@ -31,17 +31,16 @@ export default function LinhaDoTempoPage() {
   const [erro, setErro] = useState('');
   const { beep, muted, setMuted } = useBeep();
 
-  const carregarPerfis = async (lista: PerfilPost[]) => {
+  const carregarPerfis = useCallback(async (lista: PerfilPost[]) => {
     const ids = [...new Set(lista.map((p) => p.user_id))];
     if (!ids.length) return;
     const { data } = await supabase.from('profiles').select('user_id,apelido,avatar_url').in('user_id', ids);
     if (data) setPerfis((prev) => new Map([...prev, ...(data as (PerfilLeve & { user_id: string })[]).map((p): [string, PerfilLeve] => [p.user_id, p])]));
-  };
+  }, []);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
-    supabase.rpc('drk_e_gm').then(({ data }) => setEhAdmin(data === true));
-    (async () => {
+  const carregarInicial = useCallback(async () => {
+      setLoading(true);
+      setErro('');
       try {
         const lista = await buscarFeedPublico(0);
         setPosts(lista);
@@ -52,11 +51,17 @@ export default function LinhaDoTempoPage() {
       } finally {
         setLoading(false);
       }
-    })();
-  }, []);
+  }, [carregarPerfis]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
+    supabase.rpc('drk_e_gm').then(({ data }) => setEhAdmin(data === true));
+    void carregarInicial();
+  }, [carregarInicial]);
 
   const carregarMais = async () => {
     setCarregandoMais(true);
+    setErro('');
     try {
       const lista = await buscarFeedPublico(posts.length);
       setPosts((prev) => [...prev, ...lista]);
@@ -92,11 +97,19 @@ export default function LinhaDoTempoPage() {
 
         {userId && <PostComposer visibilidadeFixa="publico" onPublicado={(post) => setPosts((prev) => [post, ...prev])} />}
 
-        {erro && <p className="erro">FALHA :: {erro}</p>}
+        {erro && (
+          <div className="erro consulta-erro" role="alert">
+            <p>{erro}</p>
+            <button type="button" className="mini-btn" disabled={loading || carregandoMais}
+              onClick={() => { if (posts.length) void carregarMais(); else void carregarInicial(); }}>
+              Tentar novamente
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="load"><span /><span /><span /><p>decodificando arquivo...</p></div>
-        ) : posts.length === 0 ? (
+        ) : !erro && posts.length === 0 ? (
           <p className="vazio">ninguém postou nada público ainda — seja o primeiro aqui em cima</p>
         ) : (
           <>
@@ -113,7 +126,7 @@ export default function LinhaDoTempoPage() {
                 />
               ))}
             </div>
-            {temMais && (
+            {temMais && posts.length > 0 && !erro && (
               <button type="button" className="mini-btn" disabled={carregandoMais} onClick={carregarMais} style={{ margin: '18px auto', display: 'block' }}>
                 {carregandoMais ? '// carregando...' : 'carregar mais'}
               </button>
