@@ -95,6 +95,8 @@ export default function PersonagensPage() {
     <div className="abas">
       <span className="abas-rot">{titulo}</span>
       <button
+        type="button"
+        aria-pressed={valor === ''}
         className={`aba${valor === '' ? ' on' : ''}`}
         onClick={() => { definir(''); beep('click'); }}
         onMouseEnter={() => beep('hover')}
@@ -104,6 +106,8 @@ export default function PersonagensPage() {
       {opcoes.map((o) => (
         <button
           key={o.chave}
+          type="button"
+          aria-pressed={valor === o.chave}
           className={`aba${valor === o.chave ? ' on' : ''}`}
           onClick={() => { definir(valor === o.chave ? '' : o.chave); beep('click'); }}
           onMouseEnter={() => beep('hover')}
@@ -156,6 +160,8 @@ export default function PersonagensPage() {
         <div className="bar">
           <input
             className="srch"
+            type="search"
+            aria-label="Buscar personagens por nome, epíteto ou facção"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="buscar por nome, epíteto ou facção..."

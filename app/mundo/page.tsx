@@ -53,7 +53,7 @@ export default function MundoPage() {
 
           <h1 data-txt="MUNDO TERRA SAVE">MUNDO TERRA SAVE</h1>
           <p className="sub">
-            &gt; arraste para girar · role para aproximar <span className="cur" />
+            &gt; explore os territórios · selecione um local no mapa ou na lista <span className="cur" />
           </p>
         </header>
 

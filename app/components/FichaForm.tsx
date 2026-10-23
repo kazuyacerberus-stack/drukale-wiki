@@ -719,7 +719,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               <label className="lnk" style={{ cursor: 'pointer' }}>
                 trocar imagem
                 <input
-                  type="file" accept="image/*" style={{ display: 'none' }}
+                  type="file" accept="image/*" className="ficha-arquivo-input" aria-label="Trocar retrato do personagem"
                   onChange={(e) => { const file = e.target.files?.[0]; if (file) loadFile(file); e.target.value = ''; }}
                 />
               </label>
@@ -742,7 +742,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               }}
             >
               <input
-                type="file" accept="image/*"
+                type="file" accept="image/*" className="ficha-arquivo-input" aria-label="Selecionar retrato do personagem"
                 onChange={(e) => { const file = e.target.files?.[0]; if (file) loadFile(file); e.target.value = ''; }}
               />
               <div className="drop-ico">[ + ]</div>
@@ -789,7 +789,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
               trocar
               <input
                 type="file" accept=".pdf,.doc,.docx"
-                style={{ display: 'none' }} onChange={escolherFicha}
+                className="ficha-arquivo-input" aria-label="Trocar arquivo da ficha" onChange={escolherFicha}
               />
             </label>
             <button
@@ -801,7 +801,7 @@ export default function FichaForm({ inicial }: { inicial?: Character | null }) {
           <label className="arq-vazio">
             <input
               type="file" accept=".pdf,.doc,.docx"
-              style={{ display: 'none' }} onChange={escolherFicha}
+              className="ficha-arquivo-input" aria-label="Selecionar arquivo da ficha" onChange={escolherFicha}
             />
             <strong>escolher arquivo</strong>
             <span>

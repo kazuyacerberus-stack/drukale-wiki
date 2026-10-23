@@ -35,7 +35,7 @@ export default function MapaPlano({ mapa, locais, selecionado, onSelecionar }: {
               title={`${local.nome} · ${tipo.rotulo}`}
               onClick={() => onSelecionar(local)}>
               <span aria-hidden="true">●</span>
-              <span className="mapa-plano-local-nome" aria-hidden="true">{local.nome}</span>
+              <span className={`mapa-plano-local-nome${ponto.x > 75 ? ' nome-a-direita' : ponto.x < 25 ? ' nome-a-esquerda' : ''}`} aria-hidden="true">{local.nome}</span>
             </button>
           );
         })}

@@ -2404,6 +2404,14 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
   outline: 2px solid #f2d49a; outline-offset: 3px;
 }
 .field-rotulo { display: block; color: #dce9df; margin-bottom: 8px; }
+.term .hd-act .ico { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; font-size: 13px; letter-spacing: .6px; }
+.term:not(.imperio):not(.gotico) .hd-act .ico { color: #f0dfb8; border-color: #9a8254; }
+.drukale .filtros .abas-rot { color: #d4c6ac; font-size: 13px; }
+.drukale .filtros .aba { min-height: 44px; min-width: 44px; font-size: 14px; letter-spacing: .4px; color: #eee1c7; background: #111a20; border-color: #817457; }
+.drukale .filtros .aba .n { color: #d7c7a5; font-size: 13px; }
+.drukale .filtros .aba.on { color: #fff1c9; background: #3d311c; border-color: #ecc878; text-shadow: none; box-shadow: inset 0 -3px #ecc878; }
+.drukale .bar .srch { min-height: 44px; font-size: 16px; color: #f1e6d1; background: #10171c; border-color: #817457; }
+.drukale .bar .srch::placeholder { color: #b9b09e; opacity: 1; }
 .mundo-barra .mini-btn { min-height: 44px; font-size: 14px; letter-spacing: .5px; }
 .mundo-barra .mini-btn:disabled { cursor: not-allowed; }
 .painel h2 { padding-right: 30px; }
@@ -2422,23 +2430,37 @@ mark.regra-marca.atual { background: var(--g); color: #16110a; box-shadow: 0 0 0
 .tn-primeiros-passos > a span { font-size: 14px; color: #d2cab9; }
 .ficha-acoes-secundarias { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
 .ficha-acoes-secundarias .mini-btn { min-height: 44px; font-size: 14px; }
+.panel .mini-btn { min-height: 44px; min-width: 44px; font-size: 14px; letter-spacing: .6px; }
+.panel .mini-btn:not(.dim):not(.perigo) { color: #c1efd2; background: #10281b; border-color: #668e75; }
+.panel .mini-btn:not(.dim):not(.perigo):hover { color: #fff; background: #1a3b28; border-color: #b0e5c3; }
+.panel .mini-btn.dim { color: #ffb4ad; border-color: #ad6963; }
+.panel :is(.drop, .arq-vazio) { border-color: #668e75; }
+.panel .drop-s, .panel .arq-vazio span { font-size: 13px; color: #bacbbc; }
+.panel .arq-vazio strong { font-size: 14px; color: #c1efd2; }
+.panel .ficha-arquivo-input {
+  display: block; position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+.panel label:has(> .ficha-arquivo-input):focus-within { outline: 2px solid #f2d49a; outline-offset: 3px; }
 .ficha-rascunho-dica { color: #bacbbc; font-size: 13px; line-height: 1.5; }
 .ficha-previa { margin: 20px 0; padding: 22px; background: #0a1710; border: 1px solid #688778; color: #edf3ed; overflow-wrap: anywhere; }
 .ficha-previa p { white-space: pre-wrap; font-size: 16px; line-height: 1.6; }
 .palco.modo-plano { cursor: default; touch-action: pan-y; }
 .gotico .palco.modo-plano::after { display: none; }
-.mapa-plano { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: flex-start; gap: 16px; padding: 18px; color: #edf3ed; overflow-y: auto; }
+.mapa-plano { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; justify-content: flex-start; gap: 16px; padding: 28px; color: #edf3ed; overflow-y: auto; overflow-x: hidden; }
 .mapa-plano-superficie { position: relative; width: 100%; aspect-ratio: 2; flex: 0 0 auto; margin: auto 0; }
 .mapa-plano-superficie canvas { position: absolute; inset: 0; width: 100%; height: 100%; border: 1px solid #a68b51; }
 .mapa-plano-local { position: absolute; transform: translate(-50%, -50%); width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; cursor: pointer; font-size: 21px; text-shadow: 0 0 4px #000, 0 1px 4px #000; }
 .mapa-plano-local:hover, .mapa-plano-local.on { background: #101b22cc; outline: 2px solid #f2d49a; }
-.mapa-plano-local-nome { position: absolute; top: calc(100% - 4px); left: 50%; transform: translateX(-50%); color: #f4ecdb; background: #07101ce6; font-size: 12px; line-height: 1.25; padding: 3px 5px; max-width: 140px; width: max-content; text-align: center; pointer-events: none; }
+.mapa-plano-local-nome { position: absolute; top: calc(100% - 4px); left: 50%; transform: translateX(-50%); color: #f4ecdb; background: #07101ce6; font-size: 14px; line-height: 1.25; padding: 3px 5px; max-width: 140px; width: max-content; text-align: center; pointer-events: none; overflow-wrap: anywhere; }
+.mapa-plano-local-nome.nome-a-direita { left: auto; right: 0; transform: none; }
+.mapa-plano-local-nome.nome-a-esquerda { left: 0; transform: none; }
 .mapa-plano p { flex-shrink: 0; margin: 0; font-size: 14px; line-height: 1.5; text-align: center; }
 @media (max-width: 760px) {
   .tn-primeiros-passos { margin: 16px; padding: 20px; }
   .tn-primeiros-passos ol { grid-template-columns: 1fr; gap: 14px; }
   .tn-acoes .tn-cta { width: 100%; justify-content: center; text-align: center; }
-  .mapa-plano { padding: 12px; }
+  .mapa-plano { padding: 24px; }
   .mundo-barra .mini-btn:first-of-type { margin-left: 0; }
   .ficha-acoes-secundarias .mini-btn { width: 100%; }
 }
