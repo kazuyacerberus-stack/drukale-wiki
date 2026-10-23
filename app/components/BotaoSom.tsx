@@ -17,6 +17,8 @@ export default function BotaoSom({
       className={className}
       onClick={() => { const n = !muted; setMuted(n); if (!n) beep('hover'); }}
       title={muted ? 'ativar som' : 'silenciar'}
+      aria-label={muted ? 'Som desligado: ativar sons' : 'Som ligado: silenciar sons'}
+      aria-pressed={!muted}
     >
       <Icone nome={muted ? 'som-off' : 'som-on'} /> {muted ? 'off' : 'on'}
     </button>

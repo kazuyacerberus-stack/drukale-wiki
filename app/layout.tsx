@@ -6,7 +6,7 @@ import SessaoAnonima from './components/SessaoAnonima';
 
 export const metadata: Metadata = {
   title: 'Terra Save',
-  description: 'Arquivo central de personagens de Terra Save',
+  description: 'Explore o mundo de Terra Save, consulte as regras do RPG e acompanhe personagens, cenas e eventos da comunidade.',
 };
 
 export default function RootLayout({

@@ -379,7 +379,7 @@ export default function ChatPage() {
                 onChange={(e) => { escolherArquivo(e.target.files?.[0] ?? null); e.target.value = ''; }}
               />
             </label>
-            <button type="button" className={s.btnIcone} title="GIF ou figurinha" disabled={composerDesabilitado} onClick={() => setGifAberto((v) => !v)}>🖼</button>
+            <button type="button" className={s.btnIcone} title="GIF ou figurinha" aria-label="Abrir GIFs e figurinhas" aria-expanded={gifAberto} disabled={composerDesabilitado} onClick={() => setGifAberto((v) => !v)}>🖼</button>
             {gifAberto && <GifPicker onFechar={() => setGifAberto(false)} onEscolher={enviarGif} />}
             <textarea
               ref={textareaRef}
@@ -391,7 +391,7 @@ export default function ChatPage() {
               rows={1}
               maxLength={4000}
             />
-            <button type="submit" className={`${s.btnIcone} ${s.primario}`} disabled={composerDesabilitado || (!texto.trim() && !anexoArquivo)} title="Enviar">➤</button>
+            <button type="submit" className={`${s.btnIcone} ${s.primario}`} disabled={composerDesabilitado || (!texto.trim() && !anexoArquivo)} title="Enviar" aria-label="Enviar mensagem">➤</button>
           </form>
         </div>
       </div>

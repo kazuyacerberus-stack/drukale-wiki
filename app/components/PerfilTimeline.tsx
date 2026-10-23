@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/db';
 import { buscarPostsPerfil, buscarAtividadePerfil, mensagemPerfilPost, type PerfilPost, type AtividadeCena } from '../lib/perfilPosts';
 import Avatar from './Avatar';
@@ -26,7 +26,7 @@ export default function PerfilTimeline({ alvo, ehProprioPerfil, ehAdmin }: { alv
     supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id ?? null));
   }, []);
 
-  const carregar = async () => {
+  const carregar = useCallback(async () => {
     setCarregando(true); setErro('');
     try {
       const [meusPosts, minhaAtividade] = await Promise.all([buscarPostsPerfil(alvo), buscarAtividadePerfil(alvo)]);
@@ -42,9 +42,9 @@ export default function PerfilTimeline({ alvo, ehProprioPerfil, ehAdmin }: { alv
     } finally {
       setCarregando(false);
     }
-  };
+  }, [alvo]);
 
-  useEffect(() => { void carregar(); }, [alvo]);
+  useEffect(() => { void carregar(); }, [carregar]);
 
   const linhas: ItemLinha[] = [
     ...posts.map((post): ItemLinha => ({ tipo: 'post', data: post.created_at, post })),
@@ -55,11 +55,16 @@ export default function PerfilTimeline({ alvo, ehProprioPerfil, ehAdmin }: { alv
     <div>
       {ehProprioPerfil && <PostComposer onPublicado={(post) => setPosts((prev) => [post, ...prev])} />}
 
-      {erro && <p className="erro">FALHA :: {erro}</p>}
+      {erro && (
+        <div className="erro consulta-erro" role="alert">
+          <p>{erro}</p>
+          <button type="button" className="mini-btn" disabled={carregando} onClick={() => void carregar()}>Tentar novamente</button>
+        </div>
+      )}
 
       {carregando ? (
         <div className="load"><span /><span /><span /></div>
-      ) : linhas.length === 0 ? (
+      ) : !erro && linhas.length === 0 ? (
         <p className="vazio">nada por aqui ainda</p>
       ) : (
         <div className="novidades-lista">

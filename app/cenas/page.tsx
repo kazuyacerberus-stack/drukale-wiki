@@ -297,8 +297,16 @@ export default function CenasPage() {
                 <button type="button" onClick={() => alternarExpulsao(c.user_id, !perfis.get(c.user_id)?.banido)}>{perfis.get(c.user_id)?.banido ? '✓ reintegrar' : <><Icone nome="bloqueado" /> expulsar</>}</button>
               </span>}
             </div>}
-            <h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p><div className={s.texto}>{c.texto}</div>
-            {c.anexos.length > 0 && <div className={s.midias}>{c.anexos.map(a => <figure key={a.caminho}><Midia url={urlAnexoCena(a.caminho)} tipo={a.tipo} nome={a.nome} /></figure>)}</div>}
+            <h2>{c.titulo}</h2><p className={s.local}>⌖ {c.local}</p>
+            <details className={s.leitura}>
+              <summary>
+                <span className={s.resumoCena}>{c.texto.length > 280 ? `${c.texto.slice(0, 280).trimEnd()}…` : c.texto}</span>
+                <span className={s.abrirCena}>Ler cena completa</span>
+                <span className={s.fecharCena}>Recolher cena</span>
+              </summary>
+              <div className={s.texto}>{c.texto}</div>
+              {c.anexos.length > 0 && <div className={s.midias}>{c.anexos.map(a => <figure key={a.caminho}><Midia url={urlAnexoCena(a.caminho)} tipo={a.tipo} nome={a.nome} /></figure>)}</div>}
+            </details>
 
             <div className={s.reacoes}>
               {REACOES.map(tipo => (
@@ -307,6 +315,8 @@ export default function CenasPage() {
                   type="button"
                   className={c.minha_reacao === tipo ? s.reacaoOn : ''}
                   title={tipo}
+                  aria-label={tipo.replace(/_/g, ' ')}
+                  aria-pressed={c.minha_reacao === tipo}
                   onClick={() => reagir(c, tipo)}
                 >
                   {ICONE_REACAO[tipo]}{c.reacoes[tipo] > 0 && <span>{c.reacoes[tipo]}</span>}

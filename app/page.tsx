@@ -24,7 +24,7 @@ const CARTOES = [
     ),
   },
   {
-    href: '/eventos', titulo: 'História', desc: 'Conheça o passado, o presente e o que está por vir.',
+    href: '/eventos', titulo: 'Eventos', desc: 'Acompanhe as novidades e os encontros da comunidade.',
     icone: (
       <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 8h22a4 4 0 014 4v0a4 4 0 01-4 4H14m0-8a4 4 0 00-4 4v22a4 4 0 004 4h20a4 4 0 004-4V16M18 24h14M18 31h10" /></svg>
     ),
@@ -92,7 +92,7 @@ export default function Home() {
           <Link href="/" className="on" aria-current="page">Início</Link>
           <Link href="/regras" onClick={() => beep('click')}>Regras</Link>
           <Link href="/mundo" onClick={() => beep('click')}>Mapa</Link>
-          <Link href="/eventos" onClick={() => beep('click')}>História</Link>
+          <Link href="/eventos" onClick={() => beep('click')}>Eventos</Link>
           <Link href="/personagens" onClick={() => beep('click')}>Personagens</Link>
           <details className="tn-mais">
             <summary>Mais</summary>
@@ -129,10 +129,23 @@ export default function Home() {
             poder, antigas profecias se despertam e o destino da Terra está nas
             mãos de quem ousa sonhar.
           </p>
-          <Link href="/mundo" className="tn-cta" onClick={() => beep('click')}>
-            ENTRAR NO MUNDO <span>→</span>
-          </Link>
+          <div className="tn-acoes">
+            <Link href="/mundo" className="tn-cta" onClick={() => beep('click')}>
+              EXPLORAR O MUNDO <span aria-hidden="true">→</span>
+            </Link>
+            <a href="#como-comecar" className="tn-cta tn-cta-secundario">COMEÇAR A JOGAR</a>
+          </div>
         </div>
+      </section>
+
+      <section className="tn-primeiros-passos" id="como-comecar" aria-labelledby="primeiros-passos-titulo">
+        <h2 id="primeiros-passos-titulo">Seu primeiro personagem em Terra Save</h2>
+        <ol>
+          <li><Link href="/regras">Conheça as regras</Link><p>Consulte o funcionamento das cenas e da criação de personagens.</p></li>
+          <li><Link href="/reservas">Reserve sua imagem</Link><p>Confira as reservas existentes e escolha a imagem do seu personagem.</p></li>
+          <li><Link href="/personagens/nova">Criar personagem</Link><p>Preencha a ficha e acompanhe seu envio pelo perfil.</p></li>
+        </ol>
+        <a href="https://terrasaverpg.com.br/" target="_blank" rel="noopener noreferrer">Central de regras e ajuda <span>(site externo, abre em nova aba)</span></a>
       </section>
 
       <footer className="tn-rodape">

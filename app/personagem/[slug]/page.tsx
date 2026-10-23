@@ -170,8 +170,9 @@ function PersonagemPageInterna() {
           <div className="hd-act">
             <BotaoSom muted={muted} setMuted={setMuted} beep={beep} />
             <Link className="ico" href="/" onClick={() => beep('close')}>
-              ← arquivo
+              Início
             </Link>
+            <Link className="ico" href="/personagens">← Voltar aos personagens</Link>
             {/* GM edita direto no painel; os demais propõem a edição (vai para a fila do GM) */}
             {ehAdmin
               ? <Link className="ico" href={`/admin/editar/${alvo.slug ?? alvo.id}`}>✎ editar</Link>
@@ -244,6 +245,9 @@ function PersonagemPageInterna() {
                   {secoes.map((s, i) => (
                     <button
                       key={i}
+                      type="button"
+                      aria-pressed={i === ativa}
+                      aria-controls="personagem-capitulo"
                       className={`aba${i === ativa ? ' on' : ''}`}
                       onClick={() => { setAbaAtiva(i); beep('click'); }}
                       onMouseEnter={() => beep('hover')}
@@ -254,7 +258,7 @@ function PersonagemPageInterna() {
                 </div>
 
                 {/* a key faz o texto reaparecer com a animação a cada troca */}
-                <section className="sec sec-aba" key={ativa}>
+                <section className="sec sec-aba" id="personagem-capitulo" aria-label={secoes[ativa].titulo} key={ativa}>
                   <p>{secoes[ativa].texto}</p>
                 </section>
               </div>
