@@ -46,6 +46,13 @@ body:has(.atlas-page) :is(.navm,.navm-espaco,.navm-fundo,.navm-folha,.ajudante) 
 .atlas-page .painel-locais { left: 18px; right: auto; width: 330px; }
 .atlas-page .painel h2 { margin: 7px 0 12px; color: #f3e6cd; font-size: 22px; letter-spacing: 0; text-shadow: none; }
 .atlas-page .painel-x { top: 7px; right: 7px; width: 44px; height: 44px; color: #d5e6ef; font-size: 24px; }
+.atlas-page.gotico .painel-x { z-index: 5; background: #081522f2; border: 1px solid #68818f; border-radius: 8px; color: #f0f5f7; }
+.atlas-page.gotico .painel-x:hover { background: #244357; color: #fff; }
+.atlas-page.gotico .painel-coord { color: #b7cbd8; font: 12px/1.5 Arial,Helvetica,sans-serif; letter-spacing: .2px; }
+.atlas-page.gotico .painel-txt { color: #dce8ef; font: 15px/1.7 Arial,Helvetica,sans-serif; }
+.atlas-page.gotico .painel-vazio,.atlas-page.gotico .painel .dica { color: #afc3d0; font-size: 13px; }
+.atlas-page.gotico .painel .mini-btn { min-height: 44px; padding: 10px 12px; background: #1a3346; border: 1px solid #7694a5; border-radius: 7px; color: #f0e2c6; font: 13px Arial,Helvetica,sans-serif; letter-spacing: 0; }
+.atlas-page.gotico .painel .mini-btn:hover { background: #294d65; border-color: #b9cfdb; }
 .atlas-page .painel-tipo { color: #a8c0cf; font: 11px Arial,Helvetica,sans-serif; letter-spacing: 1px; }
 .atlas-page .painel .lista-busca { min-height: 44px; background: #122a3a; color: #e9f0f4; border-color: #68818d; font-size: 16px; }
 .atlas-page .lista-busca::placeholder { color: #adbdc7; }
