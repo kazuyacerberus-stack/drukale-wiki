@@ -164,6 +164,8 @@ export type Mapas = {
   redemoinhos: PontoMundo[];
   /** mar aberto grande o bastante para um leviatã nadar sem encostar em terra */
   monstros: PontoMundo[];
+  /** Centros já desenhados na textura, reaproveitados para a arquitetura em volume. */
+  cidades: (PontoMundo & { raio: number })[];
 };
 export type AjustesMundo = {
   sementeNum?: number;
@@ -1010,6 +1012,7 @@ export function gerarMundo(L: number, A: number, cfg: AjustesMundo = {}): Mapas 
      fora do gelo e longe da ferida.
      ============================================================ */
   const nucleos: number[][] = [];
+  const cidades3D: { x: number; y: number; raio: number }[] = [];
   for (let t = 0; t < 600 && nucleos.length < 15; t++) {
     const cx = rnd() * L, cy = A * (0.2 + rnd() * 0.6);
     const k = (cy | 0) * L + (cx | 0);
@@ -1018,6 +1021,7 @@ export function gerarMundo(L: number, A: number, cfg: AjustesMundo = {}): Mapas 
     nucleos.push([cx, cy]);
 
     const raio = (14 + rnd() * 30) * escala;
+    cidades3D.push({ x: cx, y: cy, raio });
     const dens = 20 + rnd() * 55;
 
     for (const [contexto, alfa] of [[ctx, 0.15], [emi, 1.0]] as [CanvasRenderingContext2D, number][]) {
@@ -1096,5 +1100,6 @@ export function gerarMundo(L: number, A: number, cfg: AjustesMundo = {}): Mapas 
     L, A,
     redemoinhos: redemoinhos.map((p) => latLon(p.x, p.y)),
     monstros: leviatas.map((p) => latLon(p.x, p.y)),
+    cidades: cidades3D.map(p => ({ ...latLon(p.x, p.y), raio: p.raio / A * 180 })),
   };
 }

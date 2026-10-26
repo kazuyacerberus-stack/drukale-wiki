@@ -21,9 +21,15 @@ import DocumentoViewer from './mundo/DocumentoViewer';
 import { desenharMiniGlobo } from './mundo/miniGlobo';
 import type { Mapas } from './mundo/textura';
 import MapaPlano from './mundo/MapaPlano';
+import { candidatosClima, type Fenomeno, type PontoClima } from './mundo/clima';
+import { useClima } from './mundo/useClima';
+import PainelClima from './mundo/PainelClima';
+import { criarDetalhesGpu } from './mundo/detalhesGpu';
+import { criarFenomenosGpu } from './mundo/fenomenosGpu';
+import { olhoDaCamera, pontoNaVista, raioDaCamera, relevoNoMapa } from './mundo/geometria';
 
 const FOV = 38;
-const PERTO = 1.6;    // aproximação máxima
+const PERTO = 1.25;   // permite inspecionar o relevo e a arquitetura
 const LONGE = 6.5;    // afastamento máximo
 
 /** Multiplica a matriz 3x3 (coluna-primeiro) por um vetor. */
@@ -64,6 +70,23 @@ export default function Mundo() {
   const telaRef = useRef<HTMLCanvasElement>(null);
   const fundoRef = useRef<HTMLCanvasElement>(null);
   const palcoRef = useRef<HTMLDivElement>(null);
+  const detalhesRef=useRef<ReturnType<typeof criarDetalhesGpu>|null>(null);
+  const [pontosClima,setPontosClima]=useState<PontoClima[]>([]);
+  const clima=useClima(pontosClima);
+  const quadroClima=clima.quadro;
+  const [mostrarClima,setMostrarClima]=useState(false);
+  const [qualidade,setQualidade]=useState('equilibrada');
+  const qualidadeRef=useRef(qualidade);
+  const movimentoReduzido=useRef(false);
+  const [climaSelecionado,setClimaSelecionado]=useState<string|null>(null);
+  const [focoPlano,setFocoPlano]=useState<{lat:number;lon:number;chave:number;zoom?:number}|null>(null);
+  const focoSequencia=useRef(0);
+  const [resetPlano,setResetPlano]=useState(0);
+  const dedos=useRef(new Map<number,{x:number;y:number}>());
+  const pinca=useRef(0);
+  const [vistaInclinada,setVistaInclinada]=useState(false);
+  const inclinacaoAlvo=useRef(0),inclinacaoVista=useRef(0);
+  useEffect(()=>{inclinacaoAlvo.current=vistaInclinada?.85:0;},[vistaInclinada]);
   const marcosRef = useRef<Map<string, HTMLElement>>(new Map());
 
   // a câmera vive em ref, não em estado: ela muda a cada quadro e
@@ -104,7 +127,7 @@ export default function Mundo() {
   const coresRef = useRef<Map<string, string>>(new Map());
   const [modoPolitico, setModoPolitico] = useState(false);
   const [gerandoPolitico, setGerandoPolitico] = useState(false);
-  const [mostrarLista, setMostrarLista] = useState(true);
+  const [mostrarLista, setMostrarLista] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<Set<TipoLocal>>(new Set());
   const [buscaLocal, setBuscaLocal] = useState('');
   const [fase, setFase] = useState<'gerando' | 'pronto' | 'sem-webgl'>('gerando');
@@ -135,6 +158,15 @@ export default function Mundo() {
   const [erroDoc, setErroDoc] = useState('');
   const [tirarDoc, setTirarDoc] = useState(false);
   const [verDoc, setVerDoc] = useState(false);
+
+  useEffect(()=>{qualidadeRef.current=qualidade;},[qualidade]);
+  useEffect(()=>{
+    const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const atualizar=()=>{movimentoReduzido.current=media.matches;if(media.matches){giraSozinho.current=false;setGirando(false);}};
+    atualizar();media.addEventListener('change',atualizar);
+    return ()=>media.removeEventListener('change',atualizar);
+  },[]);
+  useEffect(()=>{detalhesRef.current?.atualizarLocais(locais);},[locais]);
 
   /* ---------- todos veem o mapa; só o GM cadastra (sql/46-mapa-so-gm.sql) ---------- */
   useEffect(() => {
@@ -188,6 +220,7 @@ export default function Mundo() {
 
     let raf = 0;
     let vivo = true;
+    const liberar:(()=>void)[]=[];
 
     // gerar a textura trava a aba por cerca de um segundo. O quadro
     // seguinte garante que a tela de "gerando" apareça antes disso.
@@ -200,6 +233,8 @@ export default function Mundo() {
         tamRef.current = { L: TAM, A: TAM / 2 };
         const mapas = gerarMundo(TAM, TAM / 2, {});
         mapasRef.current = mapas;
+        const mascara=mapas.mascara.getContext('2d')!.getImageData(0,0,TAM,TAM/2).data;
+        setPontosClima(candidatosClima(mascara,TAM,TAM/2));
 
         const fundo = fundoRef.current;
         if (fundo) {
@@ -211,7 +246,14 @@ export default function Mundo() {
 
         const globo = criarGlobo(tela, mapas);
         if (!globo) { setFase('sem-webgl'); setMostrarLista(false); return; }
+        liberar.push(()=>globo.liberar());
         globoRef.current = globo;
+        const detalhes=criarDetalhesGpu(globo.contexto,mapas,mascara);
+        detalhesRef.current=detalhes;
+        detalhes.atualizarLocais(locaisRef.current);
+        liberar.push(()=>detalhes.liberar());
+        const ambiente=criarFenomenosGpu(globo.contexto,mapas);
+        liberar.push(()=>ambiente.liberar());
         setFase('pronto');
 
         // A cidadela só nasce quando existe alguma em órbita. Ela usa
@@ -230,33 +272,39 @@ export default function Mundo() {
           return m ? [parseInt(m[1], 16) / 255, parseInt(m[2], 16) / 255, parseInt(m[3], 16) / 255] : [1, 1, 1];
         };
 
-        let n = 0;
+        let n = 0, anterior=0, tempoCena=0;
         const quadro = (t: number) => {
           if (!vivo) return;
           raf = requestAnimationFrame(quadro);
+          const delta=anterior?Math.min(.05,(t-anterior)/1000):1/60;
+          anterior=t;
           if (planoAtivoRef.current) return;
+          if(!movimentoReduzido.current&&document.visibilityState!=='hidden')tempoCena+=delta;
+          const ritmo=delta*60;
+          try {
 
           // gira sozinho quando ninguém está mexendo nem lendo uma ficha
           if (giraSozinho.current && !arrasto.current.ativo && !pausado.current) {
-            cam.current.giro += 0.0011;
+            cam.current.giro += 0.0011*ritmo;
           }
 
           // segurando um botão de zoom ou de giro: ajusta a câmera a cada quadro
           if (segurando.current) {
             const s = segurando.current;
-            if (s === 'zoomMais') cam.current.dist = Math.max(PERTO, cam.current.dist * 0.985);
-            else if (s === 'zoomMenos') cam.current.dist = Math.min(LONGE, cam.current.dist * 1.015);
-            else if (s === 'giroEsq') cam.current.giro -= 0.022;
-            else if (s === 'giroDir') cam.current.giro += 0.022;
-            else if (s === 'inclinaCima') cam.current.inclina = Math.max(-1.35, cam.current.inclina - 0.016);
-            else if (s === 'inclinaBaixo') cam.current.inclina = Math.min(1.35, cam.current.inclina + 0.016);
+            if (s === 'zoomMais') cam.current.dist = Math.max(PERTO, cam.current.dist * Math.pow(.985,ritmo));
+            else if (s === 'zoomMenos') cam.current.dist = Math.min(LONGE, cam.current.dist * Math.pow(1.015,ritmo));
+            else if (s === 'giroEsq') cam.current.giro -= 0.022*ritmo;
+            else if (s === 'giroDir') cam.current.giro += 0.022*ritmo;
+            else if (s === 'inclinaCima') cam.current.inclina = Math.max(-1.35, cam.current.inclina - 0.016*ritmo);
+            else if (s === 'inclinaBaixo') cam.current.inclina = Math.min(1.35, cam.current.inclina + 0.016*ritmo);
           }
 
           // viajando sozinha até o local que alguém escolheu na lista
           if (alvoCam.current) {
             const a = alvoCam.current;
-            cam.current.giro += (a.giro - cam.current.giro) * 0.08;
-            cam.current.inclina += (a.inclina - cam.current.inclina) * 0.08;
+            const suavizar=1-Math.exp(-delta*5);
+            cam.current.giro += (a.giro - cam.current.giro) * suavizar;
+            cam.current.inclina += (a.inclina - cam.current.inclina) * suavizar;
             if (Math.abs(a.giro - cam.current.giro) < 0.002 && Math.abs(a.inclina - cam.current.inclina) < 0.002) {
               cam.current.giro = a.giro;
               cam.current.inclina = a.inclina;
@@ -268,33 +316,40 @@ export default function Mundo() {
           politicoAtual.current += (politicoAlvo.current - politicoAtual.current) * 0.08;
 
           const { giro, inclina, dist } = cam.current;
-          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current, t / 1000);
+          inclinacaoVista.current+=(inclinacaoAlvo.current-inclinacaoVista.current)*(1-Math.exp(-delta*7));
+          const cena = globo.desenhar(giro, inclina, dist, 1, politicoAtual.current, tempoCena,quadroClima.current,inclinacaoVista.current);
+          detalhes.desenhar(cena.proj,cena.vista,cena.r3,qualidadeRef.current,cena.olho);
 
           // as cidadelas orbitais são desenhadas por cima do planeta
           const orbitais = locaisRef.current.filter((l) => tipoDe(l.tipo).orbital === true);
           if (orbitais.length > 0) {
-            const cid = cidadela ?? (cidadela = criarCidadela(cena.gl));
+            if(!cidadela){cidadela=criarCidadela(cena.gl);liberar.push(()=>cidadela?.liberar());}
+            const cid=cidadela;
             for (const l of orbitais) {
               const p = paraVetor(l.lat, l.lon, 1 + (l.altitude || 0.55));
-              cid.desenhar(cena.proj, cena.vista, cena.r3, p, 0.085, t / 2600);
+              cid.desenhar(cena.proj, cena.vista, cena.r3, p, 0.085, tempoCena/2.6,cena.olho);
             }
           }
 
           // e as serpentes, nadando rente à água
           const bichos = locaisRef.current.filter((l) => tipoDe(l.tipo).serpente === true);
           if (bichos.length > 0) {
-            const s = serpente ?? (serpente = criarSerpente(cena.gl));
+            if(!serpente){serpente=criarSerpente(cena.gl);liberar.push(()=>serpente?.liberar());}
+            const s=serpente;
             for (const l of bichos) {
-              s.desenhar(cena.proj, cena.vista, cena.r3, l.lat, l.lon, t / 1400);
+              s.desenhar(cena.proj, cena.vista, cena.r3, l.lat, l.lon, tempoCena/1.4,cena.olho);
             }
           }
 
           if (mapas.monstros.length > 0) {
-            const lv = leviata ?? (leviata = criarSerpente(cena.gl, { vao: 0.34, grossura: 0.013, cor: [0.14, 0.22, 0.28] }));
+            if(!leviata){leviata=criarSerpente(cena.gl,{vao:.34,grossura:.013,cor:[.14,.22,.28]});liberar.push(()=>leviata?.liberar());}
+            const lv=leviata;
             mapas.monstros.forEach((m, i) => {
-              lv.desenhar(cena.proj, cena.vista, cena.r3, m.lat, m.lon, t / 1700 + i * 2.1);
+              const p=aplicar3(cena.r3,paraVetor(m.lat,m.lon,1));
+              if(p[2]>.02)lv.desenhar(cena.proj, cena.vista, cena.r3, m.lat, m.lon, tempoCena/1.7+i*2.1,cena.olho);
             });
           }
+          ambiente.desenhar(cena.proj,cena.vista,cena.r3,quadroClima.current,qualidadeRef.current);
 
           // as fronteiras tracejadas: cor da facção dona (ou do tipo),
           // âmbar se ainda está em análise, dourado correndo enquanto se desenha
@@ -310,7 +365,8 @@ export default function Mundo() {
           if (rasc && rasc.raio > 0) lista.push({ lat: rasc.lat, lon: rasc.lon, raio: rasc.raio, cor: [1, 0.84, 0.45, 0.95], largura: 0.007, anda: true });
           if (naMao && naMao.raio > 0) lista.push({ lat: naMao.lat, lon: naMao.lon, raio: naMao.raio, cor: [1, 0.84, 0.45, 0.95], largura: 0.007, anda: true });
           if (lista.length > 0) {
-            const fr = fronteiras ?? (fronteiras = criarContornos(cena.gl));
+            if(!fronteiras){fronteiras=criarContornos(cena.gl);liberar.push(()=>fronteiras?.liberar());}
+            const fr=fronteiras;
             fr.desenhar(cena.proj, cena.vista, cena.r3, cam.current.dist, lista, t / 1000);
           }
 
@@ -324,6 +380,10 @@ export default function Mundo() {
           }
 
           posicionarMarcos(giro, inclina, dist);
+          } catch(e) {
+            console.error('mundo: renderização',e);
+            cancelAnimationFrame(raf);setFase('sem-webgl');setMostrarLista(false);
+          }
         };
         raf = requestAnimationFrame(quadro);
       } catch (e) {
@@ -332,15 +392,15 @@ export default function Mundo() {
       }
     });
 
-    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf); globoRef.current = null; };
-  }, []);
+    return () => { vivo = false; cancelAnimationFrame(inicia); cancelAnimationFrame(raf);for(const acao of liberar.reverse())acao();globoRef.current=null;detalhesRef.current=null; };
+  }, [quadroClima]);
 
   /* ---------- redimensionar ---------- */
   useEffect(() => {
     const ajustar = () => {
       const palco = palcoRef.current;
       if (!palco) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, qualidade==='leve'?1:qualidade==='alta'?2:1.5);
       for (const cv of [telaRef.current, fundoRef.current]) {
         if (!cv) continue;
         cv.width = palco.clientWidth * dpr;
@@ -348,11 +408,14 @@ export default function Mundo() {
         cv.style.width = palco.clientWidth + 'px';
         cv.style.height = palco.clientHeight + 'px';
       }
+      const fundo=fundoRef.current,ctx=fundo?.getContext('2d');
+      if(fundo&&ctx){let a=7;const rnd=()=>{a=a*16807%2147483647;return a/2147483647;};pintarEspaco(ctx,fundo.width,fundo.height,rnd);}
     };
     ajustar();
     window.addEventListener('resize', ajustar);
-    return () => window.removeEventListener('resize', ajustar);
-  }, []);
+    const observador=new ResizeObserver(ajustar);if(palcoRef.current)observador.observe(palcoRef.current);
+    return () => {window.removeEventListener('resize', ajustar);observador.disconnect();};
+  }, [qualidade]);
 
   /**
    * Recalcula o mapa político sempre que os locais ou as cores das
@@ -406,21 +469,25 @@ export default function Mundo() {
       const el = marcosRef.current.get(l.id);
       if (!el) continue;
 
-      const raio = tipoDe(l.tipo).orbital ? 1 + (l.altitude || 0.55) : 1.005;
+      const mapas=mapasRef.current;
+      const relevo=mapas?relevoNoMapa(mapas.altura,mapas.L,mapas.A,(l.lon+180)/360,(90-l.lat)/180):0;
+      const raio = tipoDe(l.tipo).orbital ? 1 + (l.altitude || 0.55) : 1.008+relevo;
       const mundo = aplicar3(r3, paraVetor(l.lat, l.lon, raio));
-      const vz = mundo[2] - dist;
+      const vista=pontoNaVista(mundo,dist,inclinacaoVista.current);
+      const vz = vista[2];
 
       if (vz > -0.05) { el.style.opacity = '0'; el.style.pointerEvents = 'none'; continue; }
 
       // o ponto some quando passa para o outro lado do planeta
-      const camDir = [-mundo[0], -mundo[1], dist - mundo[2]];
+      const olho=olhoDaCamera(dist,inclinacaoVista.current);
+      const camDir = [olho[0]-mundo[0],olho[1]-mundo[1],olho[2]-mundo[2]];
       const nc = Math.hypot(camDir[0], camDir[1], camDir[2]) || 1;
       const nm = Math.hypot(mundo[0], mundo[1], mundo[2]) || 1;
       const frente =
         (mundo[0] * camDir[0] + mundo[1] * camDir[1] + mundo[2] * camDir[2]) / (nm * nc);
 
-      const x = ((f / prop) * mundo[0] / -vz * 0.5 + 0.5) * L;
-      const y = (1 - (f * mundo[1] / -vz * 0.5 + 0.5)) * A;
+      const x = ((f / prop) * vista[0] / -vz * 0.5 + 0.5) * L;
+      const y = (1 - (f * vista[1] / -vz * 0.5 + 0.5)) * A;
 
       const vis = Math.max(0, Math.min(1, (frente - 0.02) * 9));
       el.style.transform = `translate(${x}px, ${y}px)`;
@@ -440,6 +507,12 @@ export default function Mundo() {
 
   const aoDescer = (e: React.PointerEvent) => {
     if (planoAtivo) return;
+    if((e.target as HTMLElement).closest('button'))return;
+    dedos.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(dedos.current.size>1){
+      arrasto.current.ativo=false;pinca.current=0;desenhandoRaio.current=null;setRaioAoVivo(null);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);return;
+    }
     // cravando um ponto: apertar no planeta marca o centro, e arrastar
     // abre a região em volta — o globo fica parado enquanto isso
     if (cravando && ehAdmin && !rascunho && !(e.target as HTMLElement).closest?.('.marco')) {
@@ -462,6 +535,13 @@ export default function Mundo() {
 
   const aoMover = (e: React.PointerEvent) => {
     if (planoAtivo) return;
+    if(dedos.current.has(e.pointerId))dedos.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const pontos=[...dedos.current.values()];
+    if(pontos.length>1){
+      const d=Math.hypot(pontos[0].x-pontos[1].x,pontos[0].y-pontos[1].y);
+      if(pinca.current)cam.current.dist=Math.max(PERTO,Math.min(LONGE,cam.current.dist*pinca.current/Math.max(1,d)));
+      pinca.current=d;return;
+    }
     const dr = desenhandoRaio.current;
     if (dr) {
       const q = pontoNoGlobo(e.clientX, e.clientY);
@@ -484,8 +564,11 @@ export default function Mundo() {
     cam.current.inclina = Math.max(-1.35, Math.min(1.35, cam.current.inclina + dy * passo));
   };
 
-  const aoSubir = () => {
+  const aoSubir = (e:React.PointerEvent) => {
+    dedos.current.delete(e.pointerId);pinca.current=0;
     arrasto.current.ativo = false;
+    const restante=[...dedos.current.values()][0];
+    if(restante)arrasto.current={ativo:true,x:restante.x,y:restante.y,andou:0};
     const dr = desenhandoRaio.current;
     if (!dr) return;
     desenhandoRaio.current = null;
@@ -512,9 +595,26 @@ export default function Mundo() {
     segurando.current = tipo;
   };
   const soltar = (e: React.PointerEvent) => { e.stopPropagation(); segurando.current = null; };
+  const passoControle=(tipo:NonNullable<typeof segurando.current>)=>{
+    mudarGiro(false);alvoCam.current=null;
+    if(tipo==='zoomMais')cam.current.dist=Math.max(PERTO,cam.current.dist*.87);
+    else if(tipo==='zoomMenos')cam.current.dist=Math.min(LONGE,cam.current.dist/ .87);
+    else if(tipo==='giroEsq')cam.current.giro-=.10;
+    else if(tipo==='giroDir')cam.current.giro+=.10;
+    else if(tipo==='inclinaCima')cam.current.inclina=Math.max(-1.35,cam.current.inclina-.08);
+    else cam.current.inclina=Math.min(1.35,cam.current.inclina+.08);
+  };
+  const cancelarArrasto=()=>{dedos.current.clear();pinca.current=0;arrasto.current.ativo=false;desenhandoRaio.current=null;setRaioAoVivo(null);};
+  const restaurarVista=()=>{
+    cam.current={giro:2.2,inclina:.15,dist:3.6};alvoCam.current=null;setClimaSelecionado(null);setFocoPlano(null);setResetPlano(v=>v+1);
+    mudarGiro(false);
+    setVistaInclinada(false);
+  };
+  const alternarVista=()=>{setVistaInclinada(v=>!v);if(!vistaInclinada)cam.current.dist=Math.min(1.8,cam.current.dist);mudarGiro(false);};
 
   /** Gira a câmera sozinha até deixar o local de frente, pelo caminho mais curto. */
-  function focarLocal(l: Local) {
+  function focarLocal(l: {lat:number;lon:number}, zoom=2.5) {
+    setFocoPlano({lat:l.lat,lon:l.lon,chave:++focoSequencia.current,zoom});
     if (girando) mudarGiro(false);
     const alvo = mirarPara(l.lat, l.lon);
     let giro = alvo.giro;
@@ -522,6 +622,12 @@ export default function Mundo() {
     while (giro - cam.current.giro < -Math.PI) giro += Math.PI * 2;
     alvoCam.current = { giro, inclina: alvo.inclina };
   }
+  const observarClima=(evento:Fenomeno)=>{
+    if(rascunho||cravando)return;
+    setClimaSelecionado(evento.id);setSelecionado(null);pausado.current=false;
+    focarLocal(evento,Math.min(4,Math.max(1.7,180/(evento.raio*4))));
+    cam.current.dist=2.1;
+  };
 
   /**
    * Descobre em que ponto do planeta o clique caiu.
@@ -537,20 +643,14 @@ export default function Mundo() {
     const ndcX = ((clientX - r.left) / L) * 2 - 1;
     const ndcY = 1 - ((clientY - r.top) / A) * 2;
 
-    const t = Math.tan((FOV * Math.PI) / 360);
-    const d = [ndcX * t * (L / A), ndcY * t, -1];
-    const nd = Math.hypot(d[0], d[1], d[2]);
-    d[0] /= nd; d[1] /= nd; d[2] /= nd;
-
-    // esfera de raio 1 centrada em (0,0,-dist) a partir da câmera
-    const oc = [0, 0, cam.current.dist];
+    const {direcao:d,origem:oc}=raioDaCamera(ndcX,ndcY,L/A,cam.current.dist,inclinacaoVista.current,FOV);
     const b = 2 * (d[0] * oc[0] + d[1] * oc[1] + d[2] * oc[2]);
     const c = oc[0] * oc[0] + oc[1] * oc[1] + oc[2] * oc[2] - 1;
     const disc = b * b - 4 * c;
     if (disc < 0) return null;                 // o raio passou ao largo
 
     const s = (-b - Math.sqrt(disc)) / 2;
-    const mundo = [d[0] * s, d[1] * s, d[2] * s + cam.current.dist];
+    const mundo = [d[0]*s+oc[0],d[1]*s+oc[1],d[2]*s+oc[2]];
     const local = aplicar3T(rotacao3(cam.current.giro, cam.current.inclina), mundo);
     return paraLatLon(local[0], local[1], local[2]);
   }
@@ -836,20 +936,23 @@ export default function Mundo() {
 
   return (
     <>
-    <div className="mundo">
+    <div className="mundo" data-modo={fase==='gerando'?'carregando':planoAtivo?'2d':'3d'}>
       <div
         className={`palco${cravando ? ' cravando' : ''}${planoAtivo ? ' modo-plano' : ''}`}
         ref={palcoRef}
+        role="region" aria-label={planoAtivo?'Mapa de Terra Save':'Navegar no globo 3D'} aria-describedby="atlas-instrucoes" tabIndex={planoAtivo?-1:0}
         onPointerDown={aoDescer}
         onPointerMove={aoMover}
         onPointerUp={aoSubir}
-        onPointerLeave={() => { arrasto.current.ativo = false; }}
+        onPointerCancel={cancelarArrasto}
         onWheel={aoRolar}
+        onKeyDown={e=>{if(e.target!==e.currentTarget||planoAtivo)return;const teclas:Record<string,NonNullable<typeof segurando.current>>={'ArrowLeft':'giroEsq','ArrowRight':'giroDir','ArrowUp':'inclinaCima','ArrowDown':'inclinaBaixo','+':'zoomMais','=':'zoomMais','-':'zoomMenos'};const tipo=teclas[e.key];if(tipo){e.preventDefault();passoControle(tipo);}else if(e.key==='Home'){e.preventDefault();restaurarVista();}}}
       >
-        <canvas ref={fundoRef} className="ceu" />
-        <canvas ref={telaRef} className="globo" style={{ visibility: planoAtivo ? 'hidden' : 'visible' }} />
+        <canvas ref={fundoRef} className="ceu" aria-hidden="true" />
+        <canvas ref={telaRef} className="globo" aria-hidden="true" style={{ visibility: planoAtivo ? 'hidden' : 'visible' }} />
 
-        {planoAtivo && <MapaPlano mapa={mapasRef.current?.cor ?? null} locais={locais}
+        {planoAtivo && <MapaPlano mapa={mapasRef.current?.cor ?? null} mascara={mapasRef.current?.mascara??null} locais={locais}
+          eventos={clima.eventos} climaSelecionado={climaSelecionado} foco={focoPlano} reset={resetPlano} raios={clima.raios}
           selecionado={selecionado?.id ?? null} onSelecionar={(local) => {
             setSelecionado(local); setRascunho(null); setMostrarLista(false); pausado.current = true;
           }} />}
@@ -903,22 +1006,29 @@ export default function Mundo() {
 
         {/* ---------- zoom e giro por botão ---------- */}
         {fase === 'pronto' && !planoAtivo && (
-          <div className="mundo-controles" aria-label="Controles de zoom e giro">
+          <div className="mundo-controles" role="group" aria-label="Controles de zoom e giro">
             <div className="giro-pad">
               <button type="button" className="giro-cima" title="inclinar para cima"
+                aria-label="Inclinar para cima" onClick={()=>passoControle('inclinaCima')}
                 onPointerDown={segurar('inclinaCima')} onPointerUp={soltar} onPointerLeave={soltar}>▲</button>
               <button type="button" className="giro-esq" title="girar para a esquerda"
+                aria-label="Girar para a esquerda" onClick={()=>passoControle('giroEsq')}
                 onPointerDown={segurar('giroEsq')} onPointerUp={soltar} onPointerLeave={soltar}>◀</button>
               <button type="button" className="giro-dir" title="girar para a direita"
+                aria-label="Girar para a direita" onClick={()=>passoControle('giroDir')}
                 onPointerDown={segurar('giroDir')} onPointerUp={soltar} onPointerLeave={soltar}>▶</button>
               <button type="button" className="giro-baixo" title="inclinar para baixo"
+                aria-label="Inclinar para baixo" onClick={()=>passoControle('inclinaBaixo')}
                 onPointerDown={segurar('inclinaBaixo')} onPointerUp={soltar} onPointerLeave={soltar}>▼</button>
             </div>
             <div className="zoom-pad">
               <button type="button" title="aproximar"
+                aria-label="Aproximar globo" onClick={()=>passoControle('zoomMais')}
                 onPointerDown={segurar('zoomMais')} onPointerUp={soltar} onPointerLeave={soltar}>＋</button>
               <button type="button" title="afastar"
+                aria-label="Afastar globo" onClick={()=>passoControle('zoomMenos')}
                 onPointerDown={segurar('zoomMenos')} onPointerUp={soltar} onPointerLeave={soltar}>－</button>
+              <button type="button" aria-label="Vista inclinada" aria-pressed={vistaInclinada} title="Alternar entre vista de cima e inclinada" onClick={alternarVista}>◩</button>
             </div>
           </div>
         )}
@@ -943,10 +1053,12 @@ export default function Mundo() {
           type="button"
           className={`mini-btn${mostrarLista ? ' on' : ''}`}
           aria-expanded={mostrarLista}
-          onClick={() => setMostrarLista((v) => !v)}
+          onClick={() => {setMostrarLista((v) => !v);setMostrarClima(false);}}
         >
           ▤ locais
         </button>
+        <button type="button" className={`mini-btn${mostrarClima?' on':''}`} aria-expanded={mostrarClima} aria-controls="atlas-ambiente" onClick={()=>{setMostrarClima(v=>!v);setMostrarLista(false);}}>☁ Ambiente</button>
+        <button type="button" className="mini-btn" onClick={restaurarVista} disabled={fase==='gerando'||!!rascunho||cravando}>⊙ Vista inicial</button>
         <button type="button" className={`mini-btn${planoAtivo ? ' on' : ''}`}
           aria-pressed={planoAtivo}
           disabled={fase !== 'pronto' || !!rascunho || cravando}
@@ -984,6 +1096,9 @@ export default function Mundo() {
         )}
       </div>
 
+      {fase!=='gerando'&&<div className="atlas-estado" aria-live="polite"><i/>{planoAtivo?'Mapa 2D':'Globo 3D'}<span>•</span>{clima.ativo?clima.pausado?'Ambiente pausado':'Ambiente dinâmico':'Ambiente desativado'}</div>}
+      {mostrarClima&&<PainelClima controle={clima} locais={locais} qualidade={qualidade} setQualidade={setQualidade} observar={observarClima} fechar={()=>setMostrarClima(false)} emEdicao={!!rascunho||cravando} em3D={!planoAtivo&&fase==='pronto'}/>}
+
       {/* ---------- lista e filtro de locais ---------- */}
       {mostrarLista && (
         <aside className="painel painel-locais" aria-label="Lista de locais">
@@ -994,6 +1109,7 @@ export default function Mundo() {
           <input
             className="lista-busca"
             type="search"
+            aria-label="Buscar local no mapa"
             value={buscaLocal}
             onChange={(e) => setBuscaLocal(e.target.value)}
             placeholder="buscar pelo nome..."
