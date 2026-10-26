@@ -8,8 +8,29 @@ require.extensions['.ts'] = (mod, nome) => mod._compile(ts.transpileModule(fs.re
   compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
 }).outputText, nome);
 after(() => { if (antes) require.extensions['.ts'] = antes; else delete require.extensions['.ts']; });
-const { BIOMA, prepararTerrenoCarta, planejarLocaisCarta, regiaoNaCarta } = require(path.resolve(__dirname, '../app/components/mundo/cartografiaArtistica.ts'));
+const { BIOMA, ampliarVistaCarta, ancoraLocalCarta, prepararTerrenoCarta, planejarLocaisCarta, regiaoNaCarta } = require(path.resolve(__dirname, '../app/components/mundo/cartografiaArtistica.ts'));
 const local = { id: 'cidade-teste', nome: 'Cidade de teste', tipo: 'cidade', lat: -12, lon: 45, raio: 3, statusAprovacao: 'aprovado' };
+
+test('o zoom mantém o ponto sob o cursor e o centro da região observada', () => {
+  const vista = { zoom: 2.5, x: -700, y: 90 };
+  for (const ancora of [{ x: 0, y: 0 }, { x: 230, y: -80 }]) {
+    const mundo = { x: (ancora.x - vista.x) / vista.zoom, y: (ancora.y - vista.y) / vista.zoom };
+    const nova = ampliarVistaCarta(vista, 1.25, .8, ancora);
+    assert.ok(Math.abs(mundo.x * nova.zoom + nova.x - ancora.x) < 1e-8);
+    assert.ok(Math.abs(mundo.y * nova.zoom + nova.y - ancora.y) < 1e-8);
+  }
+  assert.equal(ampliarVistaCarta(vista, 20, .8).zoom, 5);
+  assert.equal(ampliarVistaCarta(vista, .01, .8).zoom, .8);
+});
+test('o alvo clicável usa a mesma posição do desenho junto aos polos', () => {
+  const terreno = { largura: 720, altura: 360 };
+  for (const lat of [-89.9, 89.9]) {
+    const [plano] = planejarLocaisCarta([{ ...local, lat }]);
+    const ancora = ancoraLocalCarta(plano, terreno);
+    assert.ok(ancora.y >= plano.tamanho * 2.3 && ancora.y <= terreno.altura - plano.tamanho * 1.5);
+    assert.equal(plano.y, (90 - lat) / 180);
+  }
+});
 
 test('a paisagem natural não cria cidades e o cadastro produz um assentamento ilustrado', () => {
   assert.deepEqual(planejarLocaisCarta([]), []);

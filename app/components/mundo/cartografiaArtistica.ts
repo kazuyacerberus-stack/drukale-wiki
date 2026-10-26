@@ -16,6 +16,17 @@ export type LocalCarta = {
   casas: CasaCarta[]; regiao: { x: number; y: number }[][]; pendente: boolean;
 };
 
+export function ampliarVistaCarta(vista: { zoom: number; x: number; y: number }, fator: number, minimo: number, ancora = { x: 0, y: 0 }) {
+  const zoom = Math.max(minimo, Math.min(5, vista.zoom * fator)), escala = zoom / vista.zoom;
+  return { zoom, x: ancora.x - (ancora.x - vista.x) * escala, y: ancora.y - (ancora.y - vista.y) * escala };
+}
+
+/** Um traço liga a posição geográfica ao desenho quando a borda do papel exige um recuo. */
+export function ancoraLocalCarta(local: LocalCarta, terreno: Pick<TerrenoCarta, 'largura' | 'altura'>) {
+  return { x: Math.max(local.tamanho * 2, Math.min(terreno.largura - local.tamanho * 2, local.x * terreno.largura)),
+    y: Math.max(local.tamanho * 2.3, Math.min(terreno.altura - local.tamanho * 1.5, local.y * terreno.altura)) };
+}
+
 export function sementeCarta(texto: string): number {
   let n = 2166136261;
   for (let i = 0; i < texto.length; i++) n = Math.imul(n ^ texto.charCodeAt(i), 16777619);

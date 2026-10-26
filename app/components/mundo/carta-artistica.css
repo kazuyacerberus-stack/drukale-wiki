@@ -12,10 +12,9 @@
 .atlas-page .carta-artistica .carta-terreno { z-index: 0; }
 .atlas-page .carta-artistica .carta-assentamentos { z-index: 1; pointer-events: none; }
 .atlas-page .carta-artistica .atlas-clima-plano { z-index: 2; }
-.atlas-page .carta-artistica .mapa-plano-local { z-index: 5; color: #61482b !important; text-shadow: none; border-radius: 50%; }
+.atlas-page .carta-artistica .mapa-plano-local { z-index: 5; color: #61482b; text-shadow: none; border-radius: 50%; }
 .atlas-page .carta-artistica .mapa-plano-local:hover,.atlas-page .carta-artistica .mapa-plano-local.on { background: #f4e5bd2e; outline: 1px solid #734a2b; }
-.atlas-page .carta-artistica .carta-local-ancora { align-self: start; margin-top: -10px; width: 22px; height: 22px; display: grid; place-items: center; color: #5a4228; border: 1px solid #8c704e; border-radius: 50%; background: #ecdfb9e8; font: 16px/1 Georgia,serif; box-shadow: 0 1px 4px #51422a35; }
-.atlas-page .carta-artistica .mapa-plano-local-nome { top: 27px; max-width: 155px; color: #473921; background: #eee0bfe8; border: 1px solid #8d744d99; border-radius: 2px; padding: 4px 7px; font: 13px/1.25 Georgia,'Times New Roman',serif; box-shadow: 0 2px 5px #45362325; }
+.atlas-page .carta-artistica .mapa-plano-local-nome { top: calc(100% - 4px); max-width: 155px; color: #473921; background: #eee0bfe8; border: 1px solid #8d744d99; border-radius: 2px; padding: 4px 7px; font: 13px/1.25 Georgia,'Times New Roman',serif; box-shadow: 0 2px 5px #45362325; pointer-events: auto; }
 .atlas-page .carta-artistica .mapa-plano-local.on .mapa-plano-local-nome { color: #713821; border-color: #9a5b37; background: #fff0ca; }
 .carta-mesa-legenda { position: absolute; z-index: 3; top: 97px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; color: #cfba93; white-space: nowrap; text-shadow: 0 2px 4px #110b04; font: italic 13px Georgia,serif; letter-spacing: .3px; pointer-events: none; }
 .carta-mesa-legenda i { width: 26px; height: 1px; background: #b99b624d; }

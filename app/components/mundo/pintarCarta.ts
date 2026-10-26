@@ -1,4 +1,4 @@
-import { BIOMA, prepararTerrenoCarta, sorteioCarta, type BiomaCarta, type DetalheCarta, type LocalCarta, type SegmentoCarta, type TerrenoCarta } from './cartografiaArtistica';
+import { BIOMA, ancoraLocalCarta, prepararTerrenoCarta, sorteioCarta, type BiomaCarta, type DetalheCarta, type LocalCarta, type SegmentoCarta, type TerrenoCarta } from './cartografiaArtistica';
 
 const CORES: [number, number, number][] = [[142, 171, 164], [211, 201, 158], [168, 182, 138], [225, 195, 143], [187, 179, 154], [226, 228, 210], [184, 155, 128]];
 const TINTA = '#534a36', MAR = '#476e6b';
@@ -156,7 +156,7 @@ export function desenharCarta(mapa: HTMLCanvasElement, mascara: HTMLCanvasElemen
     for (let k = 0; k < 3; k++) img.data[i * 4 + k] = rgb[k] + fibra + agua * (k === 0 ? 30 : 25);
     img.data[i * 4 + 3] = 255;
   }
-  b.putImageData(img, 0, 0); c.drawImage(banho, 0, 0, canvas.width, canvas.height); c.scale(canvas.width / L, canvas.height / A);
+  b.putImageData(img, 0, 0); c.filter = 'blur(3px)'; c.drawImage(banho, 0, 0, canvas.width, canvas.height); c.filter = 'none'; c.scale(canvas.width / L, canvas.height / A);
   c.lineCap = 'round'; c.lineJoin = 'round';
   // Retícula e linhas náuticas muito leves, próprias de uma carta desenhada.
   c.strokeStyle = '#736d4d27'; c.lineWidth = .18; c.setLineDash([1, 1.7]);
@@ -239,7 +239,7 @@ export function desenharLocaisCarta(canvas: HTMLCanvasElement, terreno: TerrenoC
   // Y order keeps the front buildings legible where nearby illustrations touch.
   for (const local of [...locais].sort((a, b) => a.y - b.y || a.id.localeCompare(b.id))) {
     const p = { x: local.x * L, y: local.y * A }, s = local.tamanho;
-    const x = Math.max(s * 2, Math.min(L - s * 2, p.x)), y = Math.max(s * 2.3, Math.min(A - s * 1.5, p.y));
+    const { x, y } = ancoraLocalCarta(local, terreno);
     c.save();
     if (x !== p.x || y !== p.y) { c.strokeStyle = '#695c40'; c.lineWidth = .3; linha(c, [[p.x, p.y], [x, y]]); }
     c.translate(x, y);

@@ -5,7 +5,7 @@ import { projetarMapaPlano } from '../../lib/cartografia';
 import { coordenadaLegivel, tipoDe, type Local } from '../../lib/mundo';
 import FenomenosPlano from './FenomenosPlano';
 import type { Fenomeno } from './clima';
-import { planejarLocaisCarta, type TerrenoCarta } from './cartografiaArtistica';
+import { ampliarVistaCarta, ancoraLocalCarta, planejarLocaisCarta, type TerrenoCarta } from './cartografiaArtistica';
 import './carta-artistica.css';
 
 export default function MapaPlano({ mapa, mascara, locais, selecionado, onSelecionar, eventos, climaSelecionado, foco, reset, raios }: {
@@ -26,6 +26,7 @@ export default function MapaPlano({ mapa, mascara, locais, selecionado, onSeleci
   const [terreno, setTerreno] = useState<TerrenoCarta | null>(null);
   const [arte, setArte] = useState<'preparando' | 'pronta' | 'indisponivel'>('preparando');
   const locaisDesenhados = useMemo(() => planejarLocaisCarta(locais), [locais]);
+  const desenhosPorId = useMemo(() => new Map(locaisDesenhados.map(l => [l.id, l])), [locaisDesenhados]);
   const janela=useRef<HTMLDivElement>(null);
   const [vista,setVista]=useState({zoom:1,x:0,y:0});
   const [larguraJanela,setLarguraJanela]=useState(0);
@@ -42,7 +43,7 @@ export default function MapaPlano({ mapa, mascara, locais, selecionado, onSeleci
     const maxX=Math.max(0,(w*z-w)/2),maxY=Math.max(0,(w*.5*z-h)/2);
     return {zoom:z,x:Math.max(-maxX,Math.min(maxX,v.x)),y:Math.max(-maxY,Math.min(maxY,v.y))};
   },[encaixe]);
-  const zoom=(fator:number)=>setVista(v=>limitar({...v,zoom:v.zoom*fator}));
+  const zoom=(fator:number,ancora?:{x:number;y:number})=>setVista(v=>limitar(ampliarVistaCarta(v,fator,encaixe(),ancora)));
   useEffect(()=>{
     const ajustar=()=>{setLarguraJanela(janela.current?.clientWidth??0);setVista({zoom:encaixe(),x:0,y:0});};
     ajustar();
@@ -66,7 +67,8 @@ export default function MapaPlano({ mapa, mascara, locais, selecionado, onSeleci
     const pontos=[...toques.current.values()];
     if(pontos.length>1){
       const d=Math.hypot(pontos[0].x-pontos[1].x,pontos[0].y-pontos[1].y);
-      if(arrasto.current.pinca)zoom(d/arrasto.current.pinca);
+      const r=e.currentTarget.getBoundingClientRect();
+      if(arrasto.current.pinca)zoom(d/arrasto.current.pinca,{x:(pontos[0].x+pontos[1].x)/2-r.left-r.width/2,y:(pontos[0].y+pontos[1].y)/2-r.top-r.height/2});
       arrasto.current.pinca=d;
     }else{const dx=e.clientX-arrasto.current.x,dy=e.clientY-arrasto.current.y;setVista(v=>limitar({...v,x:v.x+dx,y:v.y+dy}));}
     arrasto.current.x=e.clientX;arrasto.current.y=e.clientY;
@@ -111,7 +113,7 @@ export default function MapaPlano({ mapa, mascara, locais, selecionado, onSeleci
       <span className="carta-mesa-legenda" aria-hidden="true">O atlas do cartógrafo <i /> Terras e domínios de Terra Save</span>
       <div className="mapa-plano-janela" ref={janela} tabIndex={0} role="region" aria-label="Navegar no mapa 2D" aria-describedby="atlas-instrucoes"
         onPointerDown={descer} onPointerMove={mover} onPointerUp={subir} onPointerCancel={subir}
-        onWheel={e=>{e.stopPropagation();zoom(Math.exp(-e.deltaY*.0015));}}
+        onWheel={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();zoom(Math.exp(-e.deltaY*.0015),{x:e.clientX-r.left-r.width/2,y:e.clientY-r.top-r.height/2});}}
         onKeyDown={e=>{if(e.target!==e.currentTarget)return;const k=e.key;if(!['+','=','-','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(k))return;e.preventDefault();if(k==='+'||k==='=')zoom(1.2);else if(k==='-')zoom(1/1.2);else if(k==='Home')setVista({zoom:encaixe(),x:0,y:0});else setVista(v=>limitar({...v,x:v.x+(k==='ArrowLeft'?50:k==='ArrowRight'?-50:0),y:v.y+(k==='ArrowUp'?50:k==='ArrowDown'?-50:0)}));}}>
       <div className="mapa-plano-superficie" style={{transform:`translate(${vista.x}px,calc(-50% + ${vista.y}px)) scale(${vista.zoom})`,'--zoom-plano':vista.zoom} as CSSProperties}>
         <canvas ref={tela} className="carta-terreno" aria-hidden="true" />
@@ -121,14 +123,16 @@ export default function MapaPlano({ mapa, mascara, locais, selecionado, onSeleci
           const ponto = projetarMapaPlano(local.lat, local.lon);
           if (!ponto) return null;
           const tipo = tipoDe(local.tipo);
+          const desenho = desenhosPorId.get(local.id);
+          const ancora = desenho && terreno ? ancoraLocalCarta(desenho, terreno) : null;
+          const tamanho = desenho && terreno ? Math.max(44, desenho.tamanho * 2.6 / terreno.largura * larguraJanela * vista.zoom) : 44;
           return (
             <button key={local.id} type="button" className={`mapa-plano-local${local.id === selecionado ? ' on' : ''}`}
-              style={{ left: `${ponto.x}%`, top: `${ponto.y}%`, color: tipo.cor,transform:`translate(-50%,-50%) scale(${1/vista.zoom})` }}
+              style={{ left: `${ancora&&terreno?ancora.x/terreno.largura*100:ponto.x}%`, top: `${ancora&&terreno?ancora.y/terreno.altura*100:ponto.y}%`,width:tamanho,height:tamanho,transform:`translate(-50%,-50%) scale(${1/vista.zoom})` }}
               aria-label={`${local.nome}, ${tipo.rotulo}, ${coordenadaLegivel(local.lat, local.lon)}`}
               aria-pressed={local.id === selecionado}
               title={`${local.nome} · ${tipo.rotulo}`}
               onClick={() => onSelecionar(local)}>
-              <span className="carta-local-ancora" aria-hidden="true">{tipo.orbital ? '✧' : tipo.serpente ? '◇' : '⌖'}</span>
               <span className={`mapa-plano-local-nome${ponto.x > 75 ? ' nome-a-direita' : ponto.x < 25 ? ' nome-a-esquerda' : ''}`} aria-hidden="true">{local.nome}</span>
             </button>
           );
