@@ -1,0 +1,37 @@
+/* Toda regra pertence ao componente 2D; nenhum seletor alcança o globo. */
+.atlas-page .mapa-plano.carta-artistica {
+  background-color: #34291f;
+  background-image: radial-gradient(ellipse at 50% 42%,#7d654648,transparent 64%),radial-gradient(ellipse at 50% 50%,transparent 25%,#120e0ac9 100%),repeating-linear-gradient(0deg,transparent 0 119px,#110c075e 120px,#8b70552b 122px,transparent 124px 245px),repeating-linear-gradient(2deg,#6f513c13 0 1px,transparent 2px 9px,#ad855b12 11px,transparent 13px 27px),repeating-linear-gradient(0deg,#2b2119 0 62px,#493426 100px,#30251b 121px);
+}
+.atlas-page .carta-artistica .mapa-plano-janela { inset: 126px 5% 132px; overflow: hidden; border-radius: 8px; }
+.atlas-page .carta-artistica .mapa-plano-superficie {
+  background: #dbc7a1; border: 1px solid #b5a07a; box-shadow: 0 3px 2px #e3cda885,0 7px 0 -3px #b7a17b,0 12px 0 -7px #dfc9a1,0 20px 30px #090603aa,0 1px 12px #0d090580; isolation: isolate;
+}
+.atlas-page .carta-artistica .mapa-plano-superficie::after { content: ''; position: absolute; z-index: 4; inset: 0; pointer-events: none; background-image: linear-gradient(90deg,transparent 32.7%,#624b3026 33%,#fff4ce35 33.35%,transparent 33.7% 66%,#6a4d3029 66.3%,#fff6da2e 66.6%,transparent 67%),linear-gradient(0deg,transparent 49.4%,#7153321d 49.8%,#fff9da2b 50.2%,transparent 50.6%),radial-gradient(ellipse at 0 0,#8c6a4140,transparent 30%),radial-gradient(ellipse at 100% 100%,#81633e40,transparent 32%); box-shadow: inset 0 0 0 4px #d2bc9570,inset 0 0 14px #5f4c3045; }
+.atlas-page .carta-artistica .mapa-plano-superficie canvas { border: 0; }
+.atlas-page .carta-artistica .carta-terreno { z-index: 0; }
+.atlas-page .carta-artistica .carta-assentamentos { z-index: 1; pointer-events: none; }
+.atlas-page .carta-artistica .atlas-clima-plano { z-index: 2; }
+.atlas-page .carta-artistica .mapa-plano-local { z-index: 5; color: #61482b; text-shadow: none; border-radius: 50%; }
+.atlas-page .carta-artistica .mapa-plano-local:hover,.atlas-page .carta-artistica .mapa-plano-local.on { background: #f4e5bd2e; outline: 1px solid #734a2b; }
+.atlas-page .carta-artistica .mapa-plano-local-nome { top: calc(100% - 4px); max-width: 155px; color: #473921; background: #eee0bfe8; border: 1px solid #8d744d99; border-radius: 2px; padding: 4px 7px; font: 13px/1.25 Georgia,'Times New Roman',serif; box-shadow: 0 2px 5px #45362325; pointer-events: auto; }
+.atlas-page .carta-artistica .mapa-plano-local.on .mapa-plano-local-nome { color: #713821; border-color: #9a5b37; background: #fff0ca; }
+.carta-mesa-legenda { position: absolute; z-index: 3; top: 97px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; color: #cfba93; white-space: nowrap; text-shadow: 0 2px 4px #110b04; font: italic 13px Georgia,serif; letter-spacing: .3px; pointer-events: none; }
+.carta-mesa-legenda i { width: 26px; height: 1px; background: #b99b624d; }
+.atlas-page .carta-artistica .atlas-modo-plano { left: 24px; bottom: 106px; max-width: 390px; color: #e3d5bb; background: #251b12e0; border: 1px solid #8b72513b; font-family: Georgia,serif; }
+.atlas-page .carta-artistica .atlas-modo-plano small { color: #bbaa8c; }
+.atlas-page .carta-artistica .atlas-zoom-plano button { color: #f0e3c7; background: #2c2419f2; border-color: #99815c; }
+.atlas-page .carta-artistica .atlas-zoom-plano button:hover { background: #5d4931; border-color: #e0c696; }
+.atlas-page .carta-artistica .carta-estado { position: absolute; top: 47%; left: 50%; transform: translate(-50%,-50%); z-index: 6; max-width: calc(100% - 60px); margin: 0; padding: 15px 22px; border: 1px solid #a28962; border-radius: 5px; background: #eddfbb; color: #524229; box-shadow: 0 8px 30px #100b0477; font: 15px/1.5 Georgia,serif; }
+@media(max-width:760px) {
+  .atlas-page .carta-artistica .mapa-plano-janela { inset: 104px 10px 144px; }
+  .carta-mesa-legenda { top: 83px; font-size: 11px; gap: 8px; }
+  .carta-mesa-legenda i { width: 12px; }
+  .atlas-page .carta-artistica .atlas-modo-plano { bottom: 138px; left: 12px; max-width: calc(100% - 80px); font-size: 11px; }
+  .atlas-page .carta-artistica .mapa-plano-local-nome { max-width: 125px; font-size: 12px; }
+}
+@media(max-height:540px) and (min-width:761px) {
+  .atlas-page .carta-artistica .mapa-plano-janela { inset: 105px 5% 100px; }
+  .carta-mesa-legenda { top: 82px; font-size: 11px; }
+  .atlas-page .carta-artistica .atlas-modo-plano { display: none; }
+}
