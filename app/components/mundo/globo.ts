@@ -1,4 +1,6 @@
 import type { Mapas } from './textura';
+import { MAX_FENOMENOS, vetorClima, type EstadoClima } from './clima';
+import { matrizVista, normal3, olhoDaCamera, relevoNoMapa } from './geometria';
 
 type Peca = { pos: WebGLBuffer; nor: WebGLBuffer; idx: WebGLBuffer; n: number };
 /**
@@ -181,11 +183,15 @@ uniform sampler2D mapaC;
 uniform sampler2D mapaD;
 uniform mat3 giro;
 uniform vec3 luz;
+uniform vec3 olho;
 uniform float brilhoLava;
 uniform float uPolitico;
 uniform float tempo;
 uniform vec3 redem[${MAX_REDEMOINHOS}];
 uniform float nRedem;
+uniform vec4 fenomenos[${MAX_FENOMENOS}];
+uniform vec4 fasesClima[${MAX_FENOMENOS}];
+uniform float nFenomenos;
 
 // detalhe "triplanar": a textura é projetada pelos três eixos do planeta
 // e misturada conforme o lado para onde o ponto olha. Amostrar pelo mapa
@@ -197,7 +203,7 @@ vec3 tri(vec3 p, vec3 w, float esc, vec2 d) {
 }
 
 void main() {
-  vec3 alb = texture2D(mapa, vUv).rgb;
+  vec3 alb = pow(texture2D(mapa, vUv).rgb, vec3(2.2));
   vec3 msk = texture2D(mapaM, vUv).rgb;
   float agua = msk.r;
   float gelo = msk.g;
@@ -218,11 +224,13 @@ void main() {
   wt /= (wt.x + wt.y + wt.z);
   vec3 d1 = tri(P, wt, 8.0, vec2(0.0));
   vec3 d2 = tri(P, wt, 35.0, vec2(0.31));
+  vec3 d3 = tri(P, wt, 115.0, vec2(.17,.43));
+  float perto=1.-smoothstep(1.7,3.2,length(olho));
   float terra = 1.0 - agua;
   float grao = (d1.r - 0.5) * 0.65 + (d2.r - 0.5) * 0.35;
-  alb *= 1.0 + grao * 0.26 * terra;
+  alb *= 1.0 + (grao * .38 + (d3.r-.5)*.55*perto) * terra;
   vec2 dn = (d1.gb - 0.5) * 0.5 + (d2.gb - 0.5) * 0.3;
-  n = normalize(n + (T * dn.x + B * dn.y) * terra * 0.8);
+  n = normalize(n + (T * (dn.x+(d3.g-.5)*perto*.35) + B * (dn.y+(d3.b-.5)*perto*.35)) * terra * 0.65);
 
   // mar: a mesma textura de detalhe, andando em dois sentidos — onda
   // irregular. Com senoides o reflexo do sol saia listrado, feito grade
@@ -235,7 +243,7 @@ void main() {
   // redemoinhos: espiral de espuma girando em volta de um olho escuro,
   // com a superficie afundando em funil
   float espuma = 0.0;
-  float olho = 0.0;
+  float olhoRedemoinho = 0.0;
   for (int i = 0; i < ${MAX_REDEMOINHOS}; i++) {
     if (float(i) >= nRedem) break;
     vec3 c = redem[i];
@@ -255,17 +263,17 @@ void main() {
         // e um anel de espuma batendo na boca do funil
         float anel = smoothstep(0.12, 0.2, r) * (1.0 - smoothstep(0.2, 0.32, r)) * (0.5 + agito);
         espuma = max(espuma, (esp * smoothstep(0.05, 0.3, r) + anel * 0.7) * queda);
-        olho = max(olho, 1.0 - smoothstep(0.0, 0.22, r));
+        olhoRedemoinho = max(olhoRedemoinho, 1.0 - smoothstep(0.0, 0.22, r));
         vec3 paraCentro = -(q.x * t1 + q.y * t2) / max(r, 0.001);
         n = normalize(n + giro * paraCentro * queda * queda * 0.9 * agua);
       }
     }
   }
-  alb = mix(alb, alb * 0.25, olho * agua);
+  alb = mix(alb, alb * 0.25, olhoRedemoinho * agua);
   alb = mix(alb, vec3(0.82, 0.88, 0.92), espuma * 0.8 * agua);
 
   vec3 L = normalize(luz);
-  vec3 V = vec3(0.0, 0.0, 1.0);
+  vec3 V = normalize(olho-giro*vP);
   // a linha do amanhecer segue a esfera lisa: se seguisse o relevo,
   // o terminador viraria uma serrilha piscando
   float solLiso = dot(N, L);
@@ -282,7 +290,7 @@ void main() {
   vec2 deriva = vec2(tempo * 0.0035, 0.0);
   vec2 rumoSol = vec2(dot(L, T), dot(L, B)) * 0.006;
   float sombra = texture2D(mapaC, vUv + deriva + rumoSol).a;
-  cor *= 1.0 - sombra * 0.5 * dia;
+  cor *= 1.0 - sombra * 0.30 * dia;
 
   // reflexos: agua espelha o sol, gelo brilha largo, rocha quase nada
   vec3 Hv = normalize(L + V);
@@ -307,16 +315,32 @@ void main() {
   // nuvens por cima, acesas pelo sol e avermelhadas no crepusculo
   float nl = 0.03 + 1.05 * max(solLiso, 0.0) + 0.25 * crep;
   vec3 corNuv = nv.rgb * nl + vec3(0.6, 0.3, 0.1) * crep * 0.25;
-  cor = mix(cor, corNuv, nv.a * 0.92);
+  cor = mix(cor, corNuv, nv.a * 0.58);
 
   // neblina da atmosfera engrossando na borda
   float borda = 1.0 - max(dot(N, V), 0.0);
   vec3 corAtm = vec3(0.40, 0.52, 0.92);
-  cor = mix(cor, corAtm * (0.1 + 0.9 * dia), pow(borda, 3.0) * 0.5 * dia);
+  cor = mix(cor, corAtm * (0.1 + 0.9 * dia), pow(borda, 3.0) * 0.30 * dia);
   cor += vec3(0.8, 0.35, 0.1) * pow(borda, 6.0) * crep * 0.8;
+
+  // Sombra regional das nuvens e espuma no mesmo lugar das ondas 3D.
+  for (int i=0; i<${MAX_FENOMENOS}; i++) {
+    if(float(i)>=nFenomenos) break;
+    float alcance=max(fenomenos[i].w,.001);
+    float r=length(P-fenomenos[i].xyz)/alcance;
+    float forca=fasesClima[i].z;
+    if(fasesClima[i].x<1.5) {
+      cor*=1.-(1.-smoothstep(.1,.95,r))*.42*forca*dia;
+    } else {
+      float frente=fasesClima[i].y*1.05+.08;
+      float espumaClima=pow(max(0.,sin((r-frente)*49.)),10.)*exp(-pow((r-frente)*5.5,2.));
+      cor+=vec3(.20,.53,.65)*espumaClima*agua*forca*(1.-smoothstep(.75,1.,r));
+    }
+  }
 
   // exposicao suave: a lava nao estoura em branco chapado
   cor = 1.0 - exp(-cor * 1.15);
+  cor = pow(max(cor,vec3(0.)),vec3(0.454545));
 
   // mapa político: sobreposto por cima de tudo, só quando ligado —
   // com uPolitico em 0 (padrão) isto não muda nada no resultado
@@ -350,9 +374,10 @@ varying vec3 vN;
 uniform vec3 luz;
 uniform float dist;
 uniform float esc;
+uniform vec3 olho;
 void main() {
   vec3 n = normalize(vN);
-  vec3 v = normalize(vec3(0.0, 0.0, dist) - n * esc);
+  vec3 v = normalize(olho - n * esc);
   float f = dot(n, v);
   if (f < 0.0) discard;                       // a metade de tras da casca
   float fL = sqrt(max(0.0, 1.0 - 1.0 / (esc * esc)));   // onde fica a borda do planeta
@@ -363,7 +388,7 @@ void main() {
   float nl = dot(n, L);
   float aceso = smoothstep(-0.3, 0.35, nl);
   float crep = smoothstep(-0.35, 0.0, nl) * (1.0 - smoothstep(0.0, 0.35, nl));
-  vec3 c = vec3(0.34, 0.5, 1.0) * g * aceso * 0.95 + vec3(1.0, 0.45, 0.15) * g * crep * 0.7;
+  vec3 c = vec3(0.34, 0.5, 1.0) * g * aceso * 0.55 + vec3(1.0, 0.45, 0.15) * g * crep * 0.45;
   gl_FragColor = vec4(c, max(max(c.r, c.g), c.b));
 }`;
 
@@ -408,23 +433,10 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   // a malha sobe junto com o terreno: montanha, vulcão e geleira aparecem
   // no contorno do planeta. Exagerado de propósito — na escala real a
   // maior serra da Terra não passaria de um fio de cabelo no globo.
-  const EXAGERO = 0.012;
   const { altura, L: AL, A: AA } = mapas;
-  const elevar = (u: number, v: number) => {
-    const cx = u * AL, cy = v * AA;
-    let soma = 0, n = 0;
-    for (let dy = -4; dy <= 4; dy += 2)
-      for (let dx = -4; dx <= 4; dx += 2) {
-        const y = Math.min(AA - 1, Math.max(0, (cy + dy) | 0));
-        const x = ((((cx + dx) | 0) % AL) + AL) % AL;
-        soma += Math.max(0, altura[y * AL + x]);
-        n++;
-      }
-    // nos polos todas as colunas viram o mesmo ponto: sem este corte o
-    // polo vira um espeto
-    return (soma / n) * EXAGERO * Math.min(1, Math.sin(v * Math.PI) * 4);
-  };
-  const m = malhaEsfera(256, 128, elevar);
+  const elevar = (u: number, v: number) => relevoNoMapa(altura,AL,AA,u,v);
+  // 61.953 vértices: mais definição, ainda dentro dos índices de 16 bits do WebGL 1.
+  const m = malhaEsfera(320, 192, elevar);
   const bufPos = gl.createBuffer()!;
   gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
   gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
@@ -440,6 +452,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+  const anisotropia = gl.getExtension('EXT_texture_filter_anisotropic');
   function subirTextura(fonte: HTMLCanvasElement, unidade: number) {
     const t = gl.createTexture()!;
     gl.activeTexture(gl.TEXTURE0 + unidade);
@@ -449,6 +462,8 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    if(anisotropia) gl.texParameterf(gl.TEXTURE_2D,anisotropia.TEXTURE_MAX_ANISOTROPY_EXT,
+      Math.min(8,gl.getParameter(anisotropia.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
     gl.generateMipmap(gl.TEXTURE_2D);
     return t;
   }
@@ -483,6 +498,11 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   const uLava = gl.getUniformLocation(prog, 'brilhoLava');
   const uPol = gl.getUniformLocation(prog, 'uPolitico');
   const uTempo = gl.getUniformLocation(prog, 'tempo');
+  const uOlho = gl.getUniformLocation(prog, 'olho');
+  const uFenomenos=gl.getUniformLocation(prog,'fenomenos');
+  const uFases=gl.getUniformLocation(prog,'fasesClima');
+  const uNFenomenos=gl.getUniformLocation(prog,'nFenomenos');
+  const centrosClima=new Float32Array(MAX_FENOMENOS*4),fasesClima=new Float32Array(MAX_FENOMENOS*4);
 
   // os redemoinhos são fixos: vão uma vez só para a placa, como vetores
   // do planeta (a mesma conta de lat/lon que o resto do mapa usa)
@@ -519,6 +539,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   const uLuzAtm = gl.getUniformLocation(progAtm, 'luz');
   const uDistAtm = gl.getUniformLocation(progAtm, 'dist');
   const uEscAtm = gl.getUniformLocation(progAtm, 'esc');
+  const uOlhoAtm = gl.getUniformLocation(progAtm,'olho');
   gl.useProgram(prog);
 
   gl.enable(gl.DEPTH_TEST);
@@ -529,11 +550,12 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
   gl.clearColor(0, 0, 0, 0);
 
   return {
+    contexto: gl,
     /**
      * @param giro rotação horizontal, @param inclina vertical, @param dist afastamento da câmera
      * @param politico 0 a 1 — o quanto o mapa político aparece por cima do terreno
      */
-    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0, tempo = 0) {
+    desenhar(giro: number, inclina: number, dist: number, brilhoLava = 1, politico = 0, tempo = 0, clima?: EstadoClima, inclinacaoVista=0) {
       const L = canvas.width, A = canvas.height;
       gl.viewport(0, 0, L, A);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -551,7 +573,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       // Agora cada quadro rearma o que é do globo, do zero.
       // ------------------------------------------------------------
       gl.useProgram(prog);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      for (let i = 0; i < 8; i++) gl.disableVertexAttribArray(i);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, bufPos);
       gl.enableVertexAttribArray(aPos);
@@ -569,7 +591,8 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
 
       const r3 = rotacao3(giro, inclina);
       const modelo = para4(r3, 0);
-      const vista = new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-dist,1]);
+      const vista = matrizVista(dist,inclinacaoVista);
+      const olho = olhoDaCamera(dist,inclinacaoVista);
       const proj = perspectiva(38, L / A, 0.1, 100);
 
       gl.uniformMatrix4fv(uMvp, false, multiplicar(proj, multiplicar(vista, modelo)));
@@ -578,13 +601,21 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.uniform1f(uLava, brilhoLava);
       gl.uniform1f(uPol, politico);
       gl.uniform1f(uTempo, tempo);
+      gl.uniform3fv(uOlho,olho);
+      centrosClima.fill(0); fasesClima.fill(0);
+      const eventos=clima?.eventos.slice(0,MAX_FENOMENOS)??[];
+      eventos.forEach((e,i)=>{
+        centrosClima.set([...vetorClima(e.lat,e.lon),e.raio*Math.PI/180],i*4);
+        fasesClima.set([e.tipo==='tsunami'?2:e.tipo==='ciclone'?1:0,e.progresso,e.intensidade*e.opacidade,0],i*4);
+      });
+      gl.uniform4fv(uFenomenos,centrosClima);gl.uniform4fv(uFases,fasesClima);gl.uniform1f(uNFenomenos,eventos.length);
 
       gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_SHORT, 0);
 
       // a atmosfera por cima, somando luz — sem escrever profundidade,
       // para não esconder a cidadela nem a serpente que vêm depois
       gl.useProgram(progAtm);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      for (let i = 0; i < 8; i++) gl.disableVertexAttribArray(i);
       gl.bindBuffer(gl.ARRAY_BUFFER, bufAtm);
       gl.enableVertexAttribArray(aPosAtm);
       gl.vertexAttribPointer(aPosAtm, 3, gl.FLOAT, false, 0, 0);
@@ -595,6 +626,7 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.uniform3f(uLuzAtm, LUZ[0], LUZ[1], LUZ[2]);
       gl.uniform1f(uDistAtm, dist);
       gl.uniform1f(uEscAtm, ESC_ATM);
+      gl.uniform3fv(uOlhoAtm,olho);
       gl.enable(gl.BLEND);
       gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ONE, gl.ONE);
       gl.depthMask(false);
@@ -602,7 +634,13 @@ export function criarGlobo(canvas: HTMLCanvasElement, mapas: Mapas) {
       gl.depthMask(true);
       gl.disable(gl.BLEND);
 
-      return { gl, proj, vista, r3 };   // a cidadela desenha por cima
+      return { gl, proj, vista, r3, olho };   // a cidadela desenha por cima
+    },
+
+    liberar() {
+      for(const b of [bufPos,bufUv,bufIdx,bufAtm,bufAtmIdx]) gl.deleteBuffer(b);
+      for(const textura of texturas) gl.deleteTexture(textura);
+      for(const p of [prog,progAtm]) { for(const s of gl.getAttachedShaders(p)??[]) gl.deleteShader(s); gl.deleteProgram(p); }
     },
 
     /**
@@ -1030,12 +1068,15 @@ const VS_CID = `
 attribute vec3 pos;
 attribute vec3 nor;
 uniform mat4 mvp;
+uniform mat4 modelo;
 uniform mat3 rot;
 varying vec3 vN;
 varying vec3 vLocal;
+varying vec3 vMundo;
 void main() {
   vN = rot * nor;
   vLocal = pos;              // usado para acender as janelas do casco
+  vMundo = (modelo*vec4(pos,1.)).xyz;
   gl_Position = mvp * vec4(pos, 1.0);
 }`;
 
@@ -1043,14 +1084,16 @@ const FS_CID = `
 precision mediump float;
 varying vec3 vN;
 varying vec3 vLocal;
+varying vec3 vMundo;
 uniform vec3 luz;
+uniform vec3 olho;
 uniform vec3 corBase;
 uniform float janelas;      // 0 = peca lisa, 1 = casco habitado
 
 void main() {
   vec3 n = normalize(vN);
   vec3 L = normalize(luz);
-  vec3 V = vec3(0.0, 0.0, 1.0);
+  vec3 V = normalize(olho-vMundo);
   float s = max(dot(n, L), 0.0);
 
   vec3 c = corBase * (0.30 + 0.85 * s);
@@ -1113,6 +1156,7 @@ export function criarCidadela(gl: WebGLRenderingContext) {
   const uLuz = gl.getUniformLocation(prog, 'luz');
   const uCor = gl.getUniformLocation(prog, 'corBase');
   const uJan = gl.getUniformLocation(prog, 'janelas');
+  const uModelo=gl.getUniformLocation(prog,'modelo'),uOlho=gl.getUniformLocation(prog,'olho');
 
   return {
     /**
@@ -1121,15 +1165,16 @@ export function criarCidadela(gl: WebGLRenderingContext) {
      * @param tam  raio da cidadela
      */
     desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array,
-             orb: number[], tam: number, giroProprio = 0) {
+             orb: number[], tam: number, giroProprio = 0, olho:number[]=[0,0,3.6]) {
       // mesma precaução do globo: o estado da placa vem de quem
       // desenhou por último, então a cidadela rearma o que é dela
       gl.useProgram(prog);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      for (let i = 0; i < 8; i++) gl.disableVertexAttribArray(i);
       gl.enable(gl.DEPTH_TEST);
 
       gl.uniformMatrix3fv(uRot, false, r3);
       gl.uniform3f(uLuz, LUZ[0], LUZ[1], LUZ[2]);
+      gl.uniform3fv(uOlho,olho);
 
       // gira com o mundo, vai até a posição da órbita, e encolhe
       const base = multiplicar(
@@ -1167,12 +1212,19 @@ export function criarCidadela(gl: WebGLRenderingContext) {
         gl.vertexAttribPointer(aNor, 3, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, peca.idx);
 
-        gl.uniformMatrix4fv(uMvp, false,
-          multiplicar(proj, multiplicar(vista, multiplicar(base, local))));
+        const modeloPeca=multiplicar(base,local);
+        gl.uniformMatrix4fv(uModelo,false,modeloPeca);
+        gl.uniformMatrix4fv(uMvp, false, multiplicar(proj, multiplicar(vista, modeloPeca)));
+        gl.uniformMatrix3fv(uRot,false,normal3(modeloPeca));
         gl.uniform3f(uCor, cor[0], cor[1], cor[2]);
         gl.uniform1f(uJan, jan);
         gl.drawElements(gl.TRIANGLES, peca.n, gl.UNSIGNED_SHORT, 0);
       }
+    },
+    liberar() {
+      for(const p of Object.values(pecas)) {gl.deleteBuffer(p.pos);gl.deleteBuffer(p.nor);gl.deleteBuffer(p.idx);}
+      for(const s of gl.getAttachedShaders(prog)??[]) gl.deleteShader(s);
+      gl.deleteProgram(prog);
     },
   };
 }
@@ -1263,31 +1315,65 @@ function malhaSerpente(nos: number, lados: number, vao: number, grossura: number
       const a = i * (lados + 1) + j, b = a + lados + 1;
       idx.push(a, b, a + 1, b, b + 1, a + 1);
     }
+  // Placas e espinhos dorsais fazem parte da malha, sem dezenas de draw calls.
+  const normalizar=(p:number[])=>{const n=Math.hypot(...p)||1;return p.map(v=>v/n);};
+  const cruz=(a:number[],b:number[])=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const tri=(a:number[],b:number[],c:number[])=>{
+    const n=normalizar(cruz(b.map((v,k)=>v-a[k]),c.map((v,k)=>v-a[k]))), inicio=pos.length/3;
+    pos.push(...a,...b,...c);nor.push(...n,...n,...n);idx.push(inicio,inicio+1,inicio+2);
+  };
+  for(let i=5;i<nos-9;i+=6){
+    const t=i/nos,c=eixo(t),u=normalizar(c),f=normalizar(eixo(Math.min(1,t+.01)).map((v,k)=>v-c[k]));
+    const s=normalizar(cruz(f,u)),r=grossura*(.78-t*.4);
+    const p=(fr:number,la:number,al:number)=>c.map((v,k)=>v+f[k]*fr+s[k]*la+u[k]*al);
+    const a=p(-r*.65,-r*.22,r*.4),b=p(r*.65,-r*.22,r*.4),d=p(0,r*.22,r*.4),ponta=p(-r*.2,0,r*2.2);
+    tri(a,b,ponta);tri(b,d,ponta);tri(d,a,ponta);
+  }
   return {
     pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint16Array(idx),
     cabeca: eixo(0),
+    frente: normalizar(eixo(0).map((v,k)=>v-eixo(.015)[k])),
   };
+}
+
+function malhaPresa(lados=10) {
+  const pos:number[]=[],nor:number[]=[],idx:number[]=[];
+  for(let i=0;i<lados;i++){
+    const a=i/lados*Math.PI*2,b=(i+1)/lados*Math.PI*2;
+    const n=[Math.cos((a+b)/2),.32,Math.sin((a+b)/2)],d=Math.hypot(...n);
+    const inicio=pos.length/3;
+    pos.push(Math.cos(a),0,Math.sin(a),Math.cos(b),0,Math.sin(b),0,1,0);
+    for(let j=0;j<3;j++)nor.push(n[0]/d,n[1]/d,n[2]/d);
+    idx.push(inicio,inicio+1,inicio+2);
+  }
+  return {pos:new Float32Array(pos),nor:new Float32Array(nor),idx:new Uint16Array(idx)};
 }
 
 const FS_SERP = `
 precision mediump float;
 varying vec3 vN;
 varying vec3 vLocal;
+varying vec3 vMundo;
 uniform vec3 luz;
+uniform vec3 olho;
 uniform vec3 corBase;
 uniform float janelas;      // aqui: 1 = corpo com escamas, 0 = peca lisa
 
 void main() {
   vec3 n = normalize(vN);
   vec3 L = normalize(luz);
-  vec3 V = vec3(0.0, 0.0, 1.0);
+  vec3 V = normalize(olho-vMundo);
   float s = max(dot(n, L), 0.0);
 
   vec3 c = corBase * (0.26 + 0.95 * s);
 
-  // escamas: um xadrez fino acompanhando o corpo
-  float e = sin(vLocal.y * 620.0) * sin(vLocal.x * 620.0) * sin(vLocal.z * 620.0);
-  c *= 1.0 + smoothstep(0.1, 0.8, e) * 0.4 * janelas;
+  // Escamas sobrepostas, com borda escura e centro úmido.
+  vec2 escala=vLocal.zy*vec2(390.,630.);
+  float linha=floor(escala.y);
+  escala.x+=mod(linha,2.)*.5;
+  vec2 cel=fract(escala)-.5;
+  float placa=1.-smoothstep(.21,.55,length(cel*vec2(.95,1.30)));
+  c*=1.+(placa-.45)*.48*max(janelas,0.);
 
   // umida: reflexo largo e macio, nada de metal
   vec3 H = normalize(L + V);
@@ -1295,7 +1381,9 @@ void main() {
 
   // a beirada acende, para o corpo nao sumir contra o mar escuro
   float borda = 1.0 - abs(dot(n, V));
-  c += vec3(0.30, 0.85, 0.62) * pow(borda, 2.6) * 0.55;
+  c += vec3(0.20, 0.42, 0.48) * pow(borda, 3.) * 0.22;
+  if(janelas<-.5)c=corBase*1.6;
+  c=pow(1.-exp(-c*1.1),vec3(.454545));
   gl_FragColor = vec4(c, 1.0);
 }`;
 
@@ -1314,8 +1402,9 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
   const GROSSURA = opcoes.grossura ?? 0.034;  // raio do corpo, em raios de planeta
   const COR = opcoes.cor ?? [0.13, 0.4, 0.31];
   const COR_CABECA: [number, number, number] = [COR[0] * 1.3, COR[1] * 1.2, COR[2] * 1.2];
-  const corpo = malhaSerpente(140, 12, VAO, GROSSURA);
-  const bola = malhaEsfera(18, 12);
+  const corpo = malhaSerpente(192, 20, VAO, GROSSURA);
+  const bola = malhaEsfera(24, 16);
+  const presa = malhaPresa();
 
   function subir(dados: Float32Array) {
     const b = gl.createBuffer()!;
@@ -1334,6 +1423,7 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
     corpo: { pos: subir(corpo.pos), nor: subir(corpo.nor), idx: subirIdx(corpo.idx), n: corpo.idx.length },
     // a esfera tem raio 1, entao a posicao ja serve de normal
     bola: { pos: subir(bola.pos), nor: subir(bola.pos), idx: subirIdx(bola.idx), n: bola.idx.length },
+    presa: {pos:subir(presa.pos),nor:subir(presa.nor),idx:subirIdx(presa.idx),n:presa.idx.length},
   };
 
   const aPos = gl.getAttribLocation(prog, 'pos');
@@ -1343,13 +1433,17 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
   const uLuz = gl.getUniformLocation(prog, 'luz');
   const uCor = gl.getUniformLocation(prog, 'corBase');
   const uEsc = gl.getUniformLocation(prog, 'janelas');
+  const uModelo=gl.getUniformLocation(prog,'modelo'),uOlho=gl.getUniformLocation(prog,'olho');
 
   /** Uma peça pequena posta num ponto do corpo (cabeça, olhos, crista). */
-  const emCima = (p: [number, number, number], rx: number, ry: number, rz: number,
-                  desloca: [number, number, number] = [0, 0, 0]) =>
-    multiplicar(
-      transladar(p[0] + desloca[0], p[1] + desloca[1], p[2] + desloca[2]),
-      new Float32Array([rx,0,0,0, 0,ry,0,0, 0,0,rz,0, 0,0,0,1]));
+  const cb=corpo.cabeca;
+  const un=(a:number[])=>{const n=Math.hypot(...a)||1;return a.map(v=>v/n);};
+  const cr=(a:number[],b:number[])=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const cima=un(cb),lado=un(cr(cima,corpo.frente)),frente=un(cr(lado,cima));
+  const emCima = (rx:number,ry:number,rz:number,x=0,y=0,z=0)=>new Float32Array([
+    lado[0]*rx,lado[1]*rx,lado[2]*rx,0,cima[0]*ry,cima[1]*ry,cima[2]*ry,0,frente[0]*rz,frente[1]*rz,frente[2]*rz,0,
+    cb[0]+lado[0]*x+cima[0]*y+frente[0]*z,cb[1]+lado[1]*x+cima[1]*y+frente[1]*z,cb[2]+lado[2]*x+cima[2]*y+frente[2]*z,1,
+  ]);
 
   return {
     /**
@@ -1357,13 +1451,14 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
      * @param onda  avança com o tempo; é o que faz o corpo sacudir
      */
     desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array,
-             lat: number, lon: number, onda = 0) {
+             lat: number, lon: number, onda = 0, olho:number[]=[0,0,3.6]) {
       gl.useProgram(prog);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      for (let i = 0; i < 8; i++) gl.disableVertexAttribArray(i);
       gl.enable(gl.DEPTH_TEST);
 
       gl.uniformMatrix3fv(uRot, false, r3);
       gl.uniform3f(uLuz, LUZ[0], LUZ[1], LUZ[2]);
+      gl.uniform3fv(uOlho,olho);
 
       // o corpo nasce em volta do equador, centrado no eixo X. Primeiro
       // ele tomba em torno do eixo Z até a latitude, depois gira em torno
@@ -1378,21 +1473,26 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
       const girar = new Float32Array([cO, 0, sO, 0, 0, 1, 0, 0, -sO, 0, cO, 0, 0, 0, 0, 1]);
       const base = multiplicar(rot4(r3), multiplicar(girar, tombar));
 
-      const cb = corpo.cabeca;
-      const olho: [number, number, number] = [cb[0] * 0.02, cb[1] * 0.02, cb[2] * 0.02];
+      const G=GROSSURA;
+      const abertura=.85+Math.sin(onda*.65)*.10;
       const partes: [Peca, Float32Array, number[], number][] = [
         [pecas.corpo, new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]), COR, 1],
-        // a cabeça: uma bola achatada e puxada para a frente
-        [pecas.bola, emCima(cb, GROSSURA * 2.0, GROSSURA * 1.15, GROSSURA * 1.25), COR_CABECA, 0],
-        // dois olhos acesos, para saber de que lado ela está olhando
-        [pecas.bola, emCima(cb, GROSSURA * 0.22, GROSSURA * 0.22, GROSSURA * 0.22,
-                            [olho[0] + GROSSURA * 0.5, olho[1] + GROSSURA * 0.5, olho[2]]),
-         [1.0, 0.85, 0.2], 0],
-        [pecas.bola, emCima(cb, GROSSURA * 0.22, GROSSURA * 0.22, GROSSURA * 0.22,
-                            [olho[0] - GROSSURA * 0.5, olho[1] + GROSSURA * 0.5, olho[2]]),
-         [1.0, 0.85, 0.2], 0],
+        [pecas.bola, emCima(G*1.25,G*.78,G*1.9,0,G*.40,G*.9),COR_CABECA,1],
+        [pecas.bola, emCima(G,G*.38,G*1.35,0,G*.14,G*2.25),COR_CABECA,1],
+        [pecas.bola, emCima(G*.93,G*.24,G*1.45,0,-G*.36,G*2.3),[.025,.025,.032],0],
+        [pecas.bola, emCima(G*1.03,G*.28,G*1.85,0,-G*abertura,G*1.8),[COR[0]*.8,COR[1]*.85,COR[2]*.8],1],
       ];
-
+      for(const s of [-1,1]) {
+        partes.push([pecas.bola,emCima(G*.43,G*.32,G*.85,s*G*.9,G*.85,G*1.24),COR_CABECA,1]);
+        partes.push([pecas.bola,emCima(G*.20,G*.20,G*.26,s*G*1.10,G*.83,G*1.68),[1.,.50,.10],-1]);
+        partes.push([pecas.bola,emCima(G*.075,G*.15,G*.13,s*G*1.24,G*.85,G*1.72),[.025,.025,.03],0]);
+        partes.push([pecas.presa,emCima(G*.27,G*1.7,G*.28,s*G*.83,G*.85,-G*.12),[.62,.59,.44],0]);
+        for(let t=0;t<4;t++) {
+          const z=G*(1.2+t*.54);
+          partes.push([pecas.presa,emCima(G*.12,-G*.56,G*.14,s*G*.70,-G*.02,z),[.85,.81,.62],0]);
+          partes.push([pecas.presa,emCima(G*.10,G*.45,G*.12,s*G*.66,-G*(abertura-.12),z+.10*G),[.74,.75,.61],0]);
+        }
+      }
 
       for (const [peca, local, cor, esc] of partes) {
         gl.bindBuffer(gl.ARRAY_BUFFER, peca.pos);
@@ -1403,12 +1503,19 @@ export function criarSerpente(gl: WebGLRenderingContext, opcoes: OpcoesSerpente 
         gl.vertexAttribPointer(aNor, 3, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, peca.idx);
 
-        gl.uniformMatrix4fv(uMvp, false,
-          multiplicar(proj, multiplicar(vista, multiplicar(base, local))));
+        const modeloPeca=multiplicar(base,local);
+        gl.uniformMatrix4fv(uModelo,false,modeloPeca);
+        gl.uniformMatrix4fv(uMvp, false,multiplicar(proj,multiplicar(vista,modeloPeca)));
+        gl.uniformMatrix3fv(uRot,false,normal3(modeloPeca));
         gl.uniform3f(uCor, cor[0], cor[1], cor[2]);
         gl.uniform1f(uEsc, esc);
         gl.drawElements(gl.TRIANGLES, peca.n, gl.UNSIGNED_SHORT, 0);
       }
+    },
+    liberar() {
+      for(const p of Object.values(pecas)) {gl.deleteBuffer(p.pos);gl.deleteBuffer(p.nor);gl.deleteBuffer(p.idx);}
+      for(const s of gl.getAttachedShaders(prog)??[]) gl.deleteShader(s);
+      gl.deleteProgram(prog);
     },
   };
 }
@@ -1531,7 +1638,7 @@ export function criarContornos(gl: WebGLRenderingContext) {
     desenhar(proj: Float32Array, vista: Float32Array, r3: Float32Array, dist: number, lista: Contorno[], tempo: number) {
       if (lista.length === 0) return;
       gl.useProgram(prog);
-      for (let i = 0; i < 4; i++) gl.disableVertexAttribArray(i);
+      for (let i = 0; i < 8; i++) gl.disableVertexAttribArray(i);
       gl.disable(gl.DEPTH_TEST);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -1558,6 +1665,11 @@ export function criarContornos(gl: WebGLRenderingContext) {
       }
       gl.disable(gl.BLEND);
       gl.enable(gl.DEPTH_TEST);
+    },
+    liberar() {
+      gl.deleteBuffer(buf);cache.clear();
+      for(const s of gl.getAttachedShaders(prog)??[])gl.deleteShader(s);
+      gl.deleteProgram(prog);
     },
   };
 }
